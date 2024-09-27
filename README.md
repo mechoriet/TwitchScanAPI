@@ -1,8 +1,8 @@
-Rebroadcast Twitch websocket and makes additional information available over a REST API.
+### Rebroadcast Twitch Websocket and Additional Information over REST API
 
-Need to add a appsettings.json in order for it to work.
-Example:
+To rebroadcast the Twitch websocket and make additional information available over a REST API, you need to add an `appsettings.json` file for configuration. Below is an example configuration:
 
+```json
 {
   "Logging": {
     "LogLevel": {
