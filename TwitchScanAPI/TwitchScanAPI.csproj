@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +17,12 @@
     <_ContentIncludedByDefault Remove="TwitchStats\MessagesByMods.json" />
     <_ContentIncludedByDefault Remove="TwitchStats\Subscriptions.json" />
     <_ContentIncludedByDefault Remove="TwitchStats\TimedOut.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\.dockerignore">
+      <Link>.dockerignore</Link>
+    </Content>
   </ItemGroup>
 
 </Project>
