@@ -10,4 +10,12 @@
     <PackageReference Include="TwitchLib" Version="3.2.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="TwitchStats\Banned.json" />
+    <_ContentIncludedByDefault Remove="TwitchStats\ClearedMessages.json" />
+    <_ContentIncludedByDefault Remove="TwitchStats\MessagesByMods.json" />
+    <_ContentIncludedByDefault Remove="TwitchStats\Subscriptions.json" />
+    <_ContentIncludedByDefault Remove="TwitchStats\TimedOut.json" />
+  </ItemGroup>
+
 </Project>
