@@ -14,7 +14,7 @@ namespace TwitchScanAPI.Controllers
             _twitchStats = twitchStats;
         }
 
-        [HttpGet]
+        [HttpPost]
         public ActionResult Init(string channelName)
         {
             var added = _twitchStats.Init(channelName);
@@ -48,7 +48,14 @@ namespace TwitchScanAPI.Controllers
         }
 
         [HttpGet]
-        public ActionResult GetAllStatistics(string channelName)
+        public ActionResult GetAllStatistics()
+        {
+            var stats = _twitchStats.GetAllStatistics();
+            return Ok(stats);
+        }
+
+        [HttpGet]
+        public ActionResult GetChannelStatistics(string channelName)
         {
             var stats = _twitchStats.GetAllStatistics(channelName);
             if (stats == null)

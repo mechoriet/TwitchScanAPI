@@ -131,6 +131,8 @@ namespace TwitchScanAPI.Data
                 Message = e.Subscriber.ResubMessage,
                 SubscriptionPlanName = e.Subscriber.SubscriptionPlanName,
                 SubscriptionPlan = e.Subscriber.SubscriptionPlan.ToString(),
+                Months = 1,
+                MultiMonth = int.TryParse(e.Subscriber.MsgParamCumulativeMonths, out var multi) ? multi : 1,
             };
             Statistics.Update(subscription);
             await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
@@ -147,7 +149,8 @@ namespace TwitchScanAPI.Data
                 Message = e.ReSubscriber.ResubMessage,
                 SubscriptionPlanName = e.ReSubscriber.SubscriptionPlanName,
                 SubscriptionPlan = e.ReSubscriber.SubscriptionPlan.ToString(),
-                Months = e.ReSubscriber.Months,
+                MultiMonth = int.TryParse(e.ReSubscriber.MsgParamCumulativeMonths, out var multi) ? multi : 1,
+                Months = int.TryParse(e.ReSubscriber.MsgParamStreakMonths, out var months) ? months : 1
             };
             Statistics.Update(subscription);
             await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
@@ -166,8 +169,8 @@ namespace TwitchScanAPI.Data
                 SubscriptionPlanName = e.GiftedSubscription.MsgParamSubPlanName,
                 SubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString(),
                 Months = int.TryParse(e.GiftedSubscription.MsgParamMonths, out var months) ? months : 1,
+                MultiMonth = int.TryParse(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, out var multiMonth) ? multiMonth : 1,
                 Message = e.GiftedSubscription.SystemMsg,
-                GiftedSubscriptionCount = int.TryParse(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, out var count) ? count : 1,
                 GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlanName
             };
             await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
@@ -208,7 +211,8 @@ namespace TwitchScanAPI.Data
                 UserName = e.GiftedSubscription.Login,
                 DisplayName = e.GiftedSubscription.DisplayName,
                 GiftedSubscriptionCount = e.GiftedSubscription.MsgParamMassGiftCount,
-                GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString()
+                GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString(),
+                MultiMonth = int.TryParse(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, out var multiMonth) ? multiMonth : 1,
             };
             
             Statistics.Update(subscription);

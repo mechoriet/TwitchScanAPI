@@ -72,6 +72,11 @@ namespace TwitchScanAPI.Data
             return channel?.Statistics;
         }
 
+        public IDictionary<string, IDictionary<string, object>?> GetAllStatistics()
+        {
+            return _twitchStats.ToDictionary(x => x.ChannelName, x => x.Statistics?.GetAllStatistics());
+        }
+
         public IDictionary<string, object>? GetAllStatistics(string channelName)
         {
             var stats = GetStatistics(channelName);
