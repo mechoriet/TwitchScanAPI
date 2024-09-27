@@ -19,10 +19,11 @@ namespace TwitchScanAPI.Data.Statistics
         {
             return new
             {
+                TotalSubscribers = _subscriptions.Values.Sum(x => x.Months),
                 TotalNewSubscribers = _subscriptionCounts.GetValueOrDefault(SubscriptionType.New),
                 TotalReSubscribers = _subscriptionCounts.GetValueOrDefault(SubscriptionType.Re),
                 TotalGiftedSubscriptions = _subscriptionCounts.GetValueOrDefault(SubscriptionType.Gifted),
-                AverageSubscriptionMonths = _subscriberMonths.Count > 0 ? _subscriberMonths.Values.Average() : 0,
+                AverageSubscriptionMonths = !_subscriberMonths.IsEmpty ? _subscriberMonths.Values.Average() : 0,
                 TopSubscribers = _subscriberMonths
                     .OrderByDescending(kv => kv.Value)
                     .Take(10)

@@ -65,6 +65,15 @@ namespace TwitchScanAPI.Data
             channel.AddTextToObserve(text);
             return true;
         }
+        
+        public IEnumerable<string> GetPossibleStatistics()
+        {
+            return _twitchStats.SelectMany(x =>
+            {
+                var collection = x.Statistics?.GetAllStatistics().Keys;
+                return collection ?? Enumerable.Empty<string>();
+            }).Distinct();
+        }
 
         public Statistics.Base.Statistics? GetStatistics(string channelName)
         {

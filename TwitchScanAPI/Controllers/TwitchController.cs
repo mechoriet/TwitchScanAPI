@@ -48,6 +48,13 @@ namespace TwitchScanAPI.Controllers
         }
 
         [HttpGet]
+        public ActionResult GetPossibleStatistics()
+        {
+            var stats = _twitchStats.GetPossibleStatistics();
+            return Ok(stats);
+        }
+
+        [HttpGet]
         public ActionResult GetAllStatistics()
         {
             var stats = _twitchStats.GetAllStatistics();

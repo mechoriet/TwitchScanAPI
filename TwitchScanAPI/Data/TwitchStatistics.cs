@@ -175,6 +175,23 @@ namespace TwitchScanAPI.Data
             };
             await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
         }
+
+        private async void Client_OnCommunitySubscription(object? sender, OnCommunitySubscriptionArgs e)
+        {
+            var subscription = new Subscription
+            {
+                Type = SubscriptionType.Community,
+                Time = DateTime.UtcNow,
+                UserName = e.GiftedSubscription.Login,
+                DisplayName = e.GiftedSubscription.DisplayName,
+                GiftedSubscriptionCount = e.GiftedSubscription.MsgParamMassGiftCount,
+                GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString(),
+                MultiMonth = int.TryParse(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, out var multiMonth) ? multiMonth : 1,
+            };
+            
+            Statistics.Update(subscription);
+            await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
+        }
         
         private async void Client_OnRaid(object? sender, OnRaidNotificationArgs e)
         {
@@ -200,23 +217,6 @@ namespace TwitchScanAPI.Data
 
             Statistics.Update(hostEvent);
             await _hubContext.Clients.Group(ChannelName).ReceiveHostEvent(hostEvent);
-        }
-
-        private async void Client_OnCommunitySubscription(object? sender, OnCommunitySubscriptionArgs e)
-        {
-            var subscription = new Subscription
-            {
-                Type = SubscriptionType.Community,
-                Time = DateTime.UtcNow,
-                UserName = e.GiftedSubscription.Login,
-                DisplayName = e.GiftedSubscription.DisplayName,
-                GiftedSubscriptionCount = e.GiftedSubscription.MsgParamMassGiftCount,
-                GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString(),
-                MultiMonth = int.TryParse(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, out var multiMonth) ? multiMonth : 1,
-            };
-            
-            Statistics.Update(subscription);
-            await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
         }
 
         private async void Client_OnUserBanned(object? sender, OnUserBannedArgs e)
