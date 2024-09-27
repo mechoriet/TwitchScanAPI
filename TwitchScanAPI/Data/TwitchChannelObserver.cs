@@ -42,6 +42,20 @@ namespace TwitchScanAPI.Data
 
             return new ResultMessage<string?>(channelName, null);
         }
+        
+        public ResultMessage<string?> Remove(string channelName)
+        {
+            var channel = GetChannelStatistics(channelName);
+            if (channel == null)
+            {
+                var error = new Error($"{channelName} not found", StatusCodes.Status404NotFound);
+                return new ResultMessage<string?>(null, error);
+            }
+
+            channel.Dispose();
+            _twitchStats.Remove(channel);
+            return new ResultMessage<string?>(channelName, null);
+        }
 
         public bool AddTextToObserve(string channelName, string text)
         {
@@ -52,27 +66,19 @@ namespace TwitchScanAPI.Data
             return true;
         }
 
-        public IEnumerable<object>? GetTimedOutUsers(string channelName) =>
-            GetChannelStatistics(channelName)?.TimedOutUsers;
+        public Statistics.Base.Statistics? GetStatistics(string channelName)
+        {
+            var channel = GetChannelStatistics(channelName);
+            return channel?.Statistics;
+        }
 
-        public IEnumerable<object>? GetBannedUsers(string channelName) =>
-            GetChannelStatistics(channelName)?.BannedUsers;
-
-        public IEnumerable<object>? GetClearedMessages(string channelName) =>
-            GetChannelStatistics(channelName)?.ClearedMessages;
+        public IDictionary<string, object>? GetAllStatistics(string channelName)
+        {
+            var stats = GetStatistics(channelName);
+            return stats?.GetAllStatistics();
+        }
 
         public IEnumerable<string>? GetUsers(string channelName) => GetChannelStatistics(channelName)?.Users.Keys;
-
-        public IEnumerable<ChannelMessage>? GetMessages(string channelName) => GetChannelStatistics(channelName)?.Messages;
-
-        public IEnumerable<ChannelMessage>? GetObservedMessages(string channelName) =>
-            GetChannelStatistics(channelName)?.ObservedMessages;
-        
-        public IEnumerable<ChannelMessage>? GetElevatedMessages(string channelName) =>
-            GetChannelStatistics(channelName)?.ElevatedMessages;
-
-        public IEnumerable<object>? GetSubscriptions(string channelName) =>
-            GetChannelStatistics(channelName)?.Subscriptions;
 
         private TwitchStatistics? GetChannelStatistics(string channelName)
         {

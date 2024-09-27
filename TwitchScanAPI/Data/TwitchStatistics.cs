@@ -17,6 +17,7 @@ using TwitchScanAPI.Global;
 using TwitchScanAPI.Hubs;
 using TwitchScanAPI.Models;
 using TwitchScanAPI.Models.Enums;
+using TwitchScanAPI.Models.Twitch;
 
 namespace TwitchScanAPI.Data
 {
@@ -26,18 +27,14 @@ namespace TwitchScanAPI.Data
         private readonly TwitchClient _client;
         private readonly IHubContext<TwitchHub, ITwitchHub> _hubContext;
         private readonly IConfiguration _configuration;
-        
+
         // Channel Information
         public string ChannelName { get; }
         public ConcurrentDictionary<string, string> Users { get; } = new(StringComparer.OrdinalIgnoreCase);
-        public ConcurrentBag<ChannelMessage> Messages { get; } = new();
-        public ConcurrentBag<ChannelMessage> ObservedMessages { get; } = new();
-        public ConcurrentBag<ChannelMessage> ElevatedMessages { get; } = new();
-        public ConcurrentBag<object> ClearedMessages { get; } = new();
-        public ConcurrentBag<object> TimedOutUsers { get; } = new();
-        public ConcurrentBag<object> BannedUsers { get; } = new();
-        public ConcurrentBag<object> Subscriptions { get; } = new();
-        
+
+        // Statistics
+        public Statistics.Base.Statistics Statistics { get; }
+
         // Words to observe
         private readonly HashSet<string> _wordsToObserve = new(StringComparer.OrdinalIgnoreCase);
         private Regex? _observePatternRegex;
@@ -48,6 +45,7 @@ namespace TwitchScanAPI.Data
             _hubContext = hubContext;
             _configuration = configuration;
             _client = InitializeClient();
+            Statistics = new Statistics.Base.Statistics();
             ConnectClient();
         }
 
@@ -64,7 +62,7 @@ namespace TwitchScanAPI.Data
             // Fetch the OAuth token from the configuration
             var oauth = _configuration.GetValue<string>(Variables.TwitchOauthKey);
             var twitchChatName = _configuration.GetValue<string>(Variables.TwitchChatName);
-            var credentials = new ConnectionCredentials(twitchChatName,oauth);
+            var credentials = new ConnectionCredentials(twitchChatName, oauth);
             var clientOptions = new ClientOptions
             {
                 MessagesAllowedInPeriod = 750,
@@ -85,10 +83,11 @@ namespace TwitchScanAPI.Data
             client.OnUserBanned += Client_OnUserBanned;
             client.OnUserJoined += Client_OnUserJoined;
             client.OnUserLeft += Client_OnUserLeft;
+            client.OnRaidNotification += Client_OnRaid;
+            client.OnBeingHosted += ClientOnOnBeingHosted;
 
             return client;
         }
-
         private void ConnectClient()
         {
             _client.Connect();
@@ -107,127 +106,173 @@ namespace TwitchScanAPI.Data
             }
         }
 
-        private void Client_OnUserLeft(object? sender, OnUserLeftArgs e)
+        // Event Handlers
+
+        private async void Client_OnUserLeft(object? sender, OnUserLeftArgs e)
         {
             Users.TryRemove(e.Username, out _);
-            _hubContext.Clients.Group(ChannelName).ReceiveUserLeft(e.Username);
+            await _hubContext.Clients.Group(ChannelName).ReceiveUserLeft(e.Username);
         }
 
-        private void Client_OnUserJoined(object? sender, OnUserJoinedArgs e)
+        private async void Client_OnUserJoined(object? sender, OnUserJoinedArgs e)
         {
             Users.TryAdd(e.Username, e.Channel);
-            _hubContext.Clients.Group(ChannelName).ReceiveUserJoined(e.Username, e.Channel);
+            await _hubContext.Clients.Group(ChannelName).ReceiveUserJoined(e.Username, e.Channel);
         }
 
         private async void Client_OnNewSubscriber(object? sender, OnNewSubscriberArgs e)
         {
-            var subscription = new
+            var subscription = new Subscription
             {
-                e.Subscriber,
                 Type = SubscriptionType.New,
-                Time = DateTime.UtcNow
+                Time = DateTime.UtcNow,
+                UserName = e.Subscriber.Login,
+                DisplayName = e.Subscriber.DisplayName,
+                Message = e.Subscriber.ResubMessage,
+                SubscriptionPlanName = e.Subscriber.SubscriptionPlanName,
+                SubscriptionPlan = e.Subscriber.SubscriptionPlan.ToString(),
             };
-            Subscriptions.Add(subscription);
-            await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
-        }
-
-        private async void Client_OnCommunitySubscription(object? sender, OnCommunitySubscriptionArgs e)
-        {
-            var subscription = new
-            {
-                e.GiftedSubscription,
-                Type = SubscriptionType.Community,
-                Time = DateTime.UtcNow
-            };
-            Subscriptions.Add(subscription);
-            await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
-        }
-
-        private async void Client_OnGiftedSubscription(object? sender, OnGiftedSubscriptionArgs e)
-        {
-            var subscription = new
-            {
-                e.GiftedSubscription,
-                Type = SubscriptionType.Gifted,
-                Time = DateTime.UtcNow
-            };
-            Subscriptions.Add(subscription);
+            Statistics.Update(subscription);
             await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
         }
 
         private async void Client_OnReSubscriber(object? sender, OnReSubscriberArgs e)
         {
-            var subscription = new
+            var subscription = new Subscription
             {
-                e.ReSubscriber,
                 Type = SubscriptionType.Re,
+                Time = DateTime.UtcNow,
+                UserName = e.ReSubscriber.Login,
+                DisplayName = e.ReSubscriber.DisplayName,
+                Message = e.ReSubscriber.ResubMessage,
+                SubscriptionPlanName = e.ReSubscriber.SubscriptionPlanName,
+                SubscriptionPlan = e.ReSubscriber.SubscriptionPlan.ToString(),
+                Months = e.ReSubscriber.Months,
+            };
+            Statistics.Update(subscription);
+            await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
+        }
+
+        private async void Client_OnGiftedSubscription(object? sender, OnGiftedSubscriptionArgs e)
+        {
+            var subscription = new Subscription
+            {
+                Type = SubscriptionType.Gifted,
+                Time = DateTime.UtcNow,
+                UserName = e.GiftedSubscription.Login,
+                DisplayName = e.GiftedSubscription.DisplayName,
+                RecipientUserName = e.GiftedSubscription.MsgParamRecipientUserName,
+                RecipientDisplayName = e.GiftedSubscription.MsgParamRecipientDisplayName,
+                SubscriptionPlanName = e.GiftedSubscription.MsgParamSubPlanName,
+                SubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString(),
+                Months = int.TryParse(e.GiftedSubscription.MsgParamMonths, out var months) ? months : 1,
+                Message = e.GiftedSubscription.SystemMsg,
+                GiftedSubscriptionCount = int.TryParse(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, out var count) ? count : 1,
+                GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlanName
+            };
+            await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
+        }
+        
+        private async void Client_OnRaid(object? sender, OnRaidNotificationArgs e)
+        {
+            var raidEvent = new RaidEvent
+            {
+                Raider = e.RaidNotification.MsgParamDisplayName,
+                ViewerCount = int.TryParse(e.RaidNotification.MsgParamViewerCount, out var count) ? count : 0,
                 Time = DateTime.UtcNow
             };
-            Subscriptions.Add(subscription);
+
+            Statistics.Update(raidEvent);
+            await _hubContext.Clients.Group(ChannelName).ReceiveRaidEvent(raidEvent);
+        }
+
+        private async void ClientOnOnBeingHosted(object? sender, OnBeingHostedArgs e)
+        {
+            var hostEvent = new HostEvent
+            {
+                Hoster = e.BeingHostedNotification.HostedByChannel,
+                ViewerCount = e.BeingHostedNotification.Viewers,
+                Time = DateTime.UtcNow
+            };
+
+            Statistics.Update(hostEvent);
+            await _hubContext.Clients.Group(ChannelName).ReceiveHostEvent(hostEvent);
+        }
+
+        private async void Client_OnCommunitySubscription(object? sender, OnCommunitySubscriptionArgs e)
+        {
+            var subscription = new Subscription
+            {
+                Type = SubscriptionType.Community,
+                Time = DateTime.UtcNow,
+                UserName = e.GiftedSubscription.Login,
+                DisplayName = e.GiftedSubscription.DisplayName,
+                GiftedSubscriptionCount = e.GiftedSubscription.MsgParamMassGiftCount,
+                GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString()
+            };
+            
+            Statistics.Update(subscription);
             await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
         }
 
         private async void Client_OnUserBanned(object? sender, OnUserBannedArgs e)
         {
-            var bannedUser = new
+            var bannedUser = new BannedUser
             {
-                e.UserBan.Username,
-                e.UserBan.BanReason,
+                Username = e.UserBan.Username,
+                BanReason = e.UserBan.BanReason,
                 Time = DateTime.UtcNow
             };
-            BannedUsers.Add(bannedUser);
+            
+            Statistics.Update(bannedUser);
             await _hubContext.Clients.Group(ChannelName).ReceiveBannedUser(bannedUser);
         }
 
         private async void Client_OnMessageCleared(object? sender, OnMessageClearedArgs e)
         {
-            var clearedMessage = new
+            var clearedMessage = new ClearedMessage
             {
-                e.Message,
-                e.TargetMessageId,
-                e.TmiSentTs,
+                Message = e.Message,
+                TargetMessageId = e.TargetMessageId,
+                TmiSentTs = e.TmiSentTs,
                 Time = DateTime.UtcNow
             };
-            ClearedMessages.Add(clearedMessage);
+            
+            Statistics.Update(clearedMessage);
             await _hubContext.Clients.Group(ChannelName).ReceiveClearedMessage(clearedMessage);
         }
 
         private async void Client_OnUserTimedOut(object? sender, OnUserTimedoutArgs e)
         {
-            var timedOutUser = new
+            var timedOutUser = new TimedOutUser
             {
-                e.UserTimeout.Username,
-                e.UserTimeout.TimeoutReason,
-                e.UserTimeout.TimeoutDuration,
+                Username = e.UserTimeout.Username,
+                TimeoutReason = e.UserTimeout.TimeoutReason,
+                TimeoutDuration = e.UserTimeout.TimeoutDuration,
                 Time = DateTime.UtcNow
             };
-            TimedOutUsers.Add(timedOutUser);
+            
+            Statistics.Update(timedOutUser);
             await _hubContext.Clients.Group(ChannelName).ReceiveTimedOutUser(timedOutUser);
         }
 
         private async void Client_OnMessageReceived(object? sender, OnMessageReceivedArgs e)
         {
-            var sendMessage = new ChannelMessage(ChannelName, e.ChatMessage);
-            
-            Messages.Add(sendMessage);
-            if (Messages.Count > Variables.MaxMessages)
-            {
-                Messages.TryTake(out _);
-            }
-            
-            if (_observePatternRegex == null) return;
-
-            if (!_observePatternRegex.IsMatch(e.ChatMessage.Message)) return;
-            
             var channelMessage = new ChannelMessage(ChannelName, e.ChatMessage);
-            ObservedMessages.Add(channelMessage);
             await _hubContext.Clients.Group(ChannelName).ReceiveChannelMessage(channelMessage);
 
+            // Update statistics
+            Statistics.Update(channelMessage);
+
+            // Check for observed words
+            if (_observePatternRegex != null && _observePatternRegex.IsMatch(e.ChatMessage.Message))
+            {
+                await _hubContext.Clients.Group(ChannelName).ReceiveObservedMessage(channelMessage);
+            }
             if ((!e.ChatMessage.IsModerator && !e.ChatMessage.IsPartner && !e.ChatMessage.IsStaff &&
                  !e.ChatMessage.IsVip) ||
                 Variables.BotNames.Contains(e.ChatMessage.DisplayName, StringComparer.OrdinalIgnoreCase)) return;
-            
-            ElevatedMessages.Add(channelMessage);
+
             await _hubContext.Clients.Group(ChannelName).ReceiveElevatedMessage(channelMessage);
         }
 

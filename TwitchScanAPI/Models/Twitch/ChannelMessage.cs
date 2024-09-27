@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using TwitchLib.Client.Models;
+using TwitchScanAPI.Models.Twitch.Base;
 
-namespace TwitchScanAPI.Models
+namespace TwitchScanAPI.Models.Twitch
 {
-    public class ChannelMessage
+    public class ChannelMessage : TimedEntity
     {
         public ChannelMessage(string channel, ChatMessage chatMessage)
         {
@@ -16,7 +14,5 @@ namespace TwitchScanAPI.Models
 
         public string Channel { get; set; }
         public ChatMessage ChatMessage { get; set; }
-        
-        public DateTime TimeStamp { get; set; } = DateTime.Now;
     }
 }

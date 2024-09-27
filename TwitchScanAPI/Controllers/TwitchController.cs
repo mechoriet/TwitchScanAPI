@@ -8,7 +8,7 @@ namespace TwitchScanAPI.Controllers
     public class TwitchController : Controller
     {
         private readonly TwitchChannelObserver _twitchStats;
-        
+
         public TwitchController(TwitchChannelObserver twitchStats)
         {
             _twitchStats = twitchStats;
@@ -18,14 +18,27 @@ namespace TwitchScanAPI.Controllers
         public ActionResult Init(string channelName)
         {
             var added = _twitchStats.Init(channelName);
-            return added.Error != null ? StatusCode(added.Error.StatusCode, added.Error.ErrorMessage) : Ok(added.Result);
+            return added.Error != null
+                ? StatusCode(added.Error.StatusCode, added.Error.ErrorMessage)
+                : Ok(added.Result);
+        }
+
+        [HttpDelete]
+        public ActionResult Remove(string channelName)
+        {
+            var removed = _twitchStats.Remove(channelName);
+            return removed.Error != null
+                ? StatusCode(removed.Error.StatusCode, removed.Error.ErrorMessage)
+                : Ok(removed.Result);
         }
 
         [HttpPost]
         public ActionResult AddTextToObserve(string channelName, string text)
         {
             var added = _twitchStats.AddTextToObserve(channelName, text);
-            return added ? Ok() : StatusCode(StatusCodes.Status404NotFound);
+            return added ? 
+                Ok() : 
+                StatusCode(StatusCodes.Status404NotFound);
         }
 
         [HttpGet]
@@ -35,44 +48,15 @@ namespace TwitchScanAPI.Controllers
         }
 
         [HttpGet]
-        public ActionResult GetMessages(string channelName)
+        public ActionResult GetAllStatistics(string channelName)
         {
-            return Ok(_twitchStats.GetMessages(channelName));
-        }
+            var stats = _twitchStats.GetAllStatistics(channelName);
+            if (stats == null)
+            {
+                return NotFound($"Channel {channelName} not found.");
+            }
 
-        [HttpGet]
-        public ActionResult GetObservedMessages(string channelName)
-        {
-            return Ok(_twitchStats.GetObservedMessages(channelName));
-        }
-
-        [HttpGet]
-        public ActionResult GetElevatedMessages(string channelName)
-        {
-            return Ok(_twitchStats.GetElevatedMessages(channelName));
-        }
-
-        [HttpGet]
-        public ActionResult GetTimedOutUsers(string channelName)
-        {
-            return Ok (_twitchStats.GetTimedOutUsers(channelName));
-        }
-
-        [HttpGet]
-        public ActionResult GetBannedUsers(string channelName)
-        {
-            return Ok(_twitchStats.GetBannedUsers(channelName));
-        }
-
-        [HttpGet]
-        public ActionResult GetClearedMessages(string channelName)
-        {
-            return Ok(_twitchStats.GetClearedMessages(channelName));
-        }
-        [HttpGet]
-        public ActionResult GetSubscriptions(string channelName)
-        {
-            return Ok(_twitchStats.GetSubscriptions(channelName));
+            return Ok(stats);
         }
     }
 }
