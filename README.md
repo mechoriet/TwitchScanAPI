@@ -57,6 +57,23 @@ The system is built around the following core components:
     cd twitch-statistics-analyzer
     ```
 
+2. **Add your Twitch Chatbot settings**
+
+    ```json
+    {
+      "Logging": {
+        "LogLevel": {
+          "Default": "Information",
+          "Microsoft": "Warning",
+          "Microsoft.Hosting.Lifetime": "Information"
+        }
+      },
+      "AllowedHosts": "*",
+      "oauth": "oauth:YourToken",
+      "chatName": "YourTwitchBotName"
+    }
+    ```
+
 2. **Restore Dependencies**
 
     ```bash
@@ -96,79 +113,6 @@ The system is built around the following core components:
     // Retrieve a specific statistic
     var sentimentStats = statistics.GetStatistic("SentimentAnalysis");
     ```
-
-### Example: Sentiment Analysis
-
-The `SentimentAnalysisStatistic` tracks sentiment over time, per-user sentiments, and top positive/negative messages.
-
-#### Sample Output
-
-```json
-{
-  "SentimentOverTime": [
-    {
-      "Time": "2024-09-28T07:00:00Z",
-      "AveragePositive": 0.10,
-      "AverageNegative": 0.05,
-      "AverageNeutral": 0.85,
-      "AverageCompound": 0.05,
-      "MessageCount": 20
-    },
-  ],
-  "SentimentOverTimeLabeled": [
-    {
-      "TimePeriod": "2024-09-28 07:00",
-      "AveragePositive": "10.00% Positive Sentiment",
-      "AverageNegative": "5.00% Negative Sentiment",
-      "AverageNeutral": "85.00% Neutral Sentiment",
-      "AverageCompound": "0.050 Compound Score",
-      "MessageCount": "20 Messages"
-    },
-  ],
-  "TopPositiveUsers": [
-    {
-      "Username": "user1",
-      "AveragePositive": 0.450,
-      "AverageNegative": 0.100,
-      "AverageNeutral": 0.450,
-      "AverageCompound": 0.300,
-      "MessageCount": 10
-    },
-  ],
-  "TopNegativeUsers": [
-    {
-      "Username": "user3",
-      "AveragePositive": 0.050,
-      "AverageNegative": 0.350,
-      "AverageNeutral": 0.600,
-      "AverageCompound": -0.200,
-      "MessageCount": 12
-    },
-  ],
-  "TopPositiveMessages": [
-    {
-      "Username": "user1",
-      "Message": "I love this stream!",
-      "Positive": 0.5,
-      "Negative": 0.0,
-      "Neutral": 0.5,
-      "Compound": 0.700,
-      "Time": "2024-09-28T07:15:00Z"
-    },
-  ],
-  "TopNegativeMessages": [
-    {
-      "Username": "user3",
-      "Message": "This is the worst!",
-      "Positive": 0.0,
-      "Negative": 0.5,
-      "Neutral": 0.5,
-      "Compound": -0.700,
-      "Time": "2024-09-28T07:20:00Z"
-    },
-  ]
-}
-```
 
 ## Extending with New Statistics
 
