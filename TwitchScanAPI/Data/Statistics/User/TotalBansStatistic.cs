@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Linq;
-using TwitchScanAPI.Data.Statistics.Base;
-using TwitchScanAPI.Models.Twitch;
+using TwitchScanAPI.Data.Statistics.Chat.Base;
+using TwitchScanAPI.Models.Twitch.User;
 
-namespace TwitchScanAPI.Data.Statistics
+namespace TwitchScanAPI.Data.Statistics.User
 {
     public class TotalBansStatistic : IStatistic
     {
@@ -22,15 +22,15 @@ namespace TwitchScanAPI.Data.Statistics
             };
         }
 
-        public void Update(BannedUser bannedUser)
+        public void Update(UserBanned userBanned)
         {
-            if (bannedUser == null) return;
+            if (userBanned == null) return;
 
             _banCount++;
 
-            if (!string.IsNullOrWhiteSpace(bannedUser.BanReason))
+            if (!string.IsNullOrWhiteSpace(userBanned.BanReason))
             {
-                _banReasons.AddOrUpdate(bannedUser.BanReason.Trim(), 1, (key, count) => count + 1);
+                _banReasons.AddOrUpdate(userBanned.BanReason.Trim(), 1, (key, count) => count + 1);
             }
         }
     }

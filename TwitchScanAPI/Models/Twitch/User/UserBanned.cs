@@ -1,12 +1,12 @@
 ﻿using TwitchScanAPI.Models.Twitch.Base;
 
-namespace TwitchScanAPI.Models.Twitch
+namespace TwitchScanAPI.Models.Twitch.User
 {
-    public class BannedUser : UserEntity
+    public class UserBanned : UserEntity
     {
         public string BanReason { get; set; }
         
-        public BannedUser(string username, string banReason) : base(username)
+        public UserBanned(string username, string banReason) : base(username)
         {
             BanReason = banReason;
         }

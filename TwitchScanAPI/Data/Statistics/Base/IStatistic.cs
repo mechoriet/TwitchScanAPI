@@ -1,6 +1,6 @@
 ﻿using TwitchScanAPI.Models.Twitch;
 
-namespace TwitchScanAPI.Data.Statistics.Base
+namespace TwitchScanAPI.Data.Statistics.Chat.Base
 {
     public interface IStatistic
     {

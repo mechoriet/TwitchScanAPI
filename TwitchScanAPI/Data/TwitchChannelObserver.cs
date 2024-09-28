@@ -75,21 +75,15 @@ namespace TwitchScanAPI.Data
             }).Distinct();
         }
 
-        public Statistics.Base.Statistics? GetStatistics(string channelName)
-        {
-            var channel = GetChannelStatistics(channelName);
-            return channel?.Statistics;
-        }
-
         public IDictionary<string, IDictionary<string, object>?> GetAllStatistics()
         {
-            return _twitchStats.ToDictionary(x => x.ChannelName, x => x.Statistics?.GetAllStatistics());
+            return _twitchStats.ToDictionary(x => x.ChannelName, x => GetAllStatistics(x.ChannelName)).OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value);
         }
 
         public IDictionary<string, object>? GetAllStatistics(string channelName)
         {
-            var stats = GetStatistics(channelName);
-            return stats?.GetAllStatistics();
+            var stats = GetChannelStatistics(channelName)?.Statistics;
+            return stats?.GetAllStatistics().OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value);
         }
 
         public IEnumerable<string>? GetUsers(string channelName) => GetChannelStatistics(channelName)?.Users.Keys;

@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Linq;
-using TwitchScanAPI.Data.Statistics.Base;
+using TwitchScanAPI.Data.Statistics.Chat.Base;
 using TwitchScanAPI.Models.Twitch;
+using TwitchScanAPI.Models.Twitch.Chat;
 
-namespace TwitchScanAPI.Data.Statistics
+namespace TwitchScanAPI.Data.Statistics.Chat
 {
     public class PeakActivityPeriodStatistic : IStatistic
     {

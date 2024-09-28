@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using TwitchScanAPI.Data.Statistics.Base;
-using TwitchScanAPI.Models.Twitch;
+using TwitchScanAPI.Data.Statistics.Chat.Base;
 using TwitchScanAPI.Models.Twitch.Base;
+using TwitchScanAPI.Models.Twitch.Chat;
 
-namespace TwitchScanAPI.Data.Statistics
+namespace TwitchScanAPI.Data.Statistics.User
 {
     public class TotalUsersStatistic : IStatistic
     {

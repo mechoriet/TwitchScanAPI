@@ -1,8 +1,7 @@
-﻿using System;
-using TwitchLib.Client.Models;
+﻿using TwitchLib.Client.Models;
 using TwitchScanAPI.Models.Twitch.Base;
 
-namespace TwitchScanAPI.Models.Twitch
+namespace TwitchScanAPI.Models.Twitch.Chat
 {
     public class ChannelMessage : TimedEntity
     {

@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Linq;
-using TwitchScanAPI.Data.Statistics.Base;
-using TwitchScanAPI.Models.Twitch;
+using TwitchScanAPI.Data.Statistics.Chat.Base;
+using TwitchScanAPI.Models.Twitch.User;
 
-namespace TwitchScanAPI.Data.Statistics
+namespace TwitchScanAPI.Data.Statistics.User
 {
     public class TotalTimeoutsStatistic : IStatistic
     {
@@ -25,16 +25,16 @@ namespace TwitchScanAPI.Data.Statistics
             };
         }
 
-        public void Update(TimedOutUser timedOutUser)
+        public void Update(UserTimedOut userTimedOut)
         {
-            if (timedOutUser == null) return;
+            if (userTimedOut == null) return;
 
             _timeoutCount++;
-            _totalTimeoutDuration += timedOutUser.TimeoutDuration;
+            _totalTimeoutDuration += userTimedOut.TimeoutDuration;
 
-            if (!string.IsNullOrWhiteSpace(timedOutUser.TimeoutReason))
+            if (!string.IsNullOrWhiteSpace(userTimedOut.TimeoutReason))
             {
-                _timeoutReasons.AddOrUpdate(timedOutUser.TimeoutReason.Trim(), 1, (key, count) => count + 1);
+                _timeoutReasons.AddOrUpdate(userTimedOut.TimeoutReason.Trim(), 1, (key, count) => count + 1);
             }
         }
     }

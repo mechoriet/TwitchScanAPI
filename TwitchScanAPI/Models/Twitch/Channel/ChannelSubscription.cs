@@ -1,9 +1,9 @@
 ﻿using TwitchScanAPI.Models.Enums;
 using TwitchScanAPI.Models.Twitch.Base;
 
-namespace TwitchScanAPI.Models.Twitch
+namespace TwitchScanAPI.Models.Twitch.Channel
 {
-    public class Subscription : TimedEntity
+    public class ChannelSubscription : TimedEntity
     {
         public SubscriptionType Type { get; set; }
         public string UserName { get; set; }

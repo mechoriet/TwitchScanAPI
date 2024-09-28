@@ -1,6 +1,6 @@
 ﻿using TwitchScanAPI.Models.Twitch.Base;
 
-namespace TwitchScanAPI.Models.Twitch
+namespace TwitchScanAPI.Models.Twitch.Chat
 {
     public class ClearedMessage : TimedEntity
     {

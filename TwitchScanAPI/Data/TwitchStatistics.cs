@@ -18,6 +18,9 @@ using TwitchScanAPI.Hubs;
 using TwitchScanAPI.Models.Enums;
 using TwitchScanAPI.Models.Twitch;
 using TwitchScanAPI.Models.Twitch.Base;
+using TwitchScanAPI.Models.Twitch.Channel;
+using TwitchScanAPI.Models.Twitch.Chat;
+using TwitchScanAPI.Models.Twitch.User;
 
 namespace TwitchScanAPI.Data
 {
@@ -33,7 +36,7 @@ namespace TwitchScanAPI.Data
         public ConcurrentDictionary<string, string> Users { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         // Statistics
-        public Statistics.Base.Statistics Statistics { get; }
+        public Statistics.Chat.Base.Statistics Statistics { get; }
 
         // Words to observe
         private readonly HashSet<string> _wordsToObserve = new(StringComparer.OrdinalIgnoreCase);
@@ -45,7 +48,7 @@ namespace TwitchScanAPI.Data
             _hubContext = hubContext;
             _configuration = configuration;
             _client = InitializeClient();
-            Statistics = new Statistics.Base.Statistics();
+            Statistics = new Statistics.Chat.Base.Statistics();
             ConnectClient();
         }
 
@@ -112,7 +115,7 @@ namespace TwitchScanAPI.Data
         {
             Users.TryRemove(e.Username, out _);
             
-            Statistics.Update(new UserEntity(e.Username));
+            Statistics.Update(new UserLeft(e.Username));
             await _hubContext.Clients.Group(ChannelName).ReceiveUserLeft(e.Username);
         }
 
@@ -120,13 +123,13 @@ namespace TwitchScanAPI.Data
         {
             Users.TryAdd(e.Username, e.Channel);
             
-            Statistics.Update(new UserEntity(e.Username));
+            Statistics.Update(new UserJoined(e.Username));
             await _hubContext.Clients.Group(ChannelName).ReceiveUserJoined(e.Username, e.Channel);
         }
 
         private async void Client_OnNewSubscriber(object? sender, OnNewSubscriberArgs e)
         {
-            var subscription = new Subscription
+            var subscription = new ChannelSubscription
             {
                 Type = SubscriptionType.New,
                 UserName = e.Subscriber.Login,
@@ -144,7 +147,7 @@ namespace TwitchScanAPI.Data
 
         private async void Client_OnReSubscriber(object? sender, OnReSubscriberArgs e)
         {
-            var subscription = new Subscription
+            var subscription = new ChannelSubscription
             {
                 UserName = e.ReSubscriber.Login,
                 DisplayName = e.ReSubscriber.DisplayName,
@@ -161,7 +164,7 @@ namespace TwitchScanAPI.Data
 
         private async void Client_OnGiftedSubscription(object? sender, OnGiftedSubscriptionArgs e)
         {
-            var subscription = new Subscription
+            var subscription = new ChannelSubscription
             {
                 Type = SubscriptionType.Gifted,
                 UserName = e.GiftedSubscription.Login,
@@ -182,7 +185,7 @@ namespace TwitchScanAPI.Data
 
         private async void Client_OnCommunitySubscription(object? sender, OnCommunitySubscriptionArgs e)
         {
-            var subscription = new Subscription
+            var subscription = new ChannelSubscription
             {
                 Type = SubscriptionType.Community,
                 UserName = e.GiftedSubscription.Login,
@@ -198,7 +201,7 @@ namespace TwitchScanAPI.Data
         
         private async void Client_OnRaid(object? sender, OnRaidNotificationArgs e)
         {
-            var raidEvent = new RaidEvent
+            var raidEvent = new ChannelRaid
             {
                 Raider = e.RaidNotification.MsgParamDisplayName,
                 ViewerCount = int.TryParse(e.RaidNotification.MsgParamViewerCount, out var count) ? count : 0
@@ -210,7 +213,7 @@ namespace TwitchScanAPI.Data
 
         private async void ClientOnOnBeingHosted(object? sender, OnBeingHostedArgs e)
         {
-            var hostEvent = new HostEvent
+            var hostEvent = new ChannelHost
             {
                 Hoster = e.BeingHostedNotification.HostedByChannel,
                 ViewerCount = e.BeingHostedNotification.Viewers
@@ -222,7 +225,7 @@ namespace TwitchScanAPI.Data
 
         private async void Client_OnUserBanned(object? sender, OnUserBannedArgs e)
         {
-            var bannedUser = new BannedUser(e.UserBan.Username, e.UserBan.BanReason);
+            var bannedUser = new UserBanned(e.UserBan.Username, e.UserBan.BanReason);
             
             Statistics.Update(bannedUser);
             await _hubContext.Clients.Group(ChannelName).ReceiveBannedUser(bannedUser);
@@ -243,7 +246,7 @@ namespace TwitchScanAPI.Data
 
         private async void Client_OnUserTimedOut(object? sender, OnUserTimedoutArgs e)
         {
-            var timedOutUser = new TimedOutUser
+            var timedOutUser = new UserTimedOut
             {
                 Username = e.UserTimeout.Username,
                 TimeoutReason = e.UserTimeout.TimeoutReason,

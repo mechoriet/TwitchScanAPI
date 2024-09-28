@@ -1,11 +1,12 @@
 ﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using TwitchScanAPI.Data.Statistics.Base;
+using TwitchScanAPI.Data.Statistics.Chat.Base;
 using TwitchScanAPI.Models.Enums;
 using TwitchScanAPI.Models.Twitch;
+using TwitchScanAPI.Models.Twitch.Channel;
 
-namespace TwitchScanAPI.Data.Statistics
+namespace TwitchScanAPI.Data.Statistics.Chat
 {
     public class SubscriptionStatistic : IStatistic
     {
@@ -30,13 +31,13 @@ namespace TwitchScanAPI.Data.Statistics
             };
         }
 
-        public void Update(Subscription subscription)
+        public void Update(ChannelSubscription channelSubscription)
         {
-            // Increment count based on the subscription type
-            _subscriptionCounts.AddOrUpdate(subscription.Type, 1, (type, count) => count + 1);
+            // Increment count based on the channelSubscription type
+            _subscriptionCounts.AddOrUpdate(channelSubscription.Type, 1, (type, count) => count + 1);
 
             // Track months for resubscribers and gifted subscriptions if applicable
-            _subscriberMonths.AddOrUpdate(subscription.UserName, subscription.Months, (key, oldValue) => oldValue + subscription.Months);
+            _subscriberMonths.AddOrUpdate(channelSubscription.UserName, channelSubscription.Months, (key, oldValue) => oldValue + channelSubscription.Months);
         }
     }
 }

@@ -1,6 +1,9 @@
 ﻿using System.Threading.Tasks;
 using TwitchScanAPI.Models;
 using TwitchScanAPI.Models.Twitch;
+using TwitchScanAPI.Models.Twitch.Channel;
+using TwitchScanAPI.Models.Twitch.Chat;
+using TwitchScanAPI.Models.Twitch.User;
 
 namespace TwitchScanAPI.Hubs
 {
@@ -9,12 +12,12 @@ namespace TwitchScanAPI.Hubs
         Task ReceiveChannelMessage(ChannelMessage message);
         Task ReceiveElevatedMessage(ChannelMessage message);
         Task ReceiveObservedMessage(ChannelMessage message);
-        Task ReceiveBannedUser(BannedUser bannedUser);
-        Task ReceiveTimedOutUser(TimedOutUser timedOutUser);
+        Task ReceiveBannedUser(UserBanned userBanned);
+        Task ReceiveTimedOutUser(UserTimedOut userTimedOut);
         Task ReceiveClearedMessage(ClearedMessage clearedMessage);
-        Task ReceiveSubscription(Subscription subscription);
-        Task ReceiveRaidEvent(RaidEvent raidEvent);
-        Task ReceiveHostEvent(HostEvent hostEvent);
+        Task ReceiveSubscription(ChannelSubscription channelSubscription);
+        Task ReceiveRaidEvent(ChannelRaid channelRaid);
+        Task ReceiveHostEvent(ChannelHost channelHost);
         Task ReceiveUserJoined(string username, string channel);
         Task ReceiveUserLeft(string username);
     }
