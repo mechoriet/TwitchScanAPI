@@ -13,13 +13,12 @@ namespace TwitchScanAPI.Data.Statistics
 
         private readonly ConcurrentDictionary<SubscriptionType, int> _subscriptionCounts = new();
         private readonly ConcurrentDictionary<string, int> _subscriberMonths = new();
-        private readonly ConcurrentDictionary<string, Subscription> _subscriptions = new();
 
         public object GetResult()
         {
             return new
             {
-                TotalSubscribers = _subscriptions.Values.Count,
+                TotalSubscribers = _subscriptionCounts.Values.Sum(),
                 TotalNewSubscribers = _subscriptionCounts.GetValueOrDefault(SubscriptionType.New),
                 TotalReSubscribers = _subscriptionCounts.GetValueOrDefault(SubscriptionType.Re),
                 TotalGiftedSubscriptions = _subscriptionCounts.GetValueOrDefault(SubscriptionType.Gifted),
@@ -28,23 +27,11 @@ namespace TwitchScanAPI.Data.Statistics
                     .OrderByDescending(kv => kv.Value)
                     .Take(10)
                     .ToDictionary(kv => kv.Key, kv => kv.Value),
-                Subscriptions = _subscriptions.Values
-                    .OrderByDescending(x => x.Months)
-                    .Take(10)
-                    .Select(x => new
-                    {
-                        x.UserName,
-                        x.Months,
-                        x.Type
-                    })
             };
         }
 
         public void Update(Subscription subscription)
         {
-            // Track all subscriptions
-            _subscriptions.AddOrUpdate(subscription.UserName, subscription, (key, oldValue) => subscription);
-            
             // Increment count based on the subscription type
             _subscriptionCounts.AddOrUpdate(subscription.Type, 1, (type, count) => count + 1);
 
