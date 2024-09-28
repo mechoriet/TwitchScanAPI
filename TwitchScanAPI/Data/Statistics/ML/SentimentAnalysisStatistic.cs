@@ -2,7 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using TwitchScanAPI.Data.Statistics.Chat.Base;
+using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Dto.Statistics;
 using TwitchScanAPI.Models.ML.SentimentAnalysis;
 using TwitchScanAPI.Models.Twitch.Chat;

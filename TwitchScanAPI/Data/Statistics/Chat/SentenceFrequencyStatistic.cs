@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using TwitchScanAPI.Data.Statistics.Chat.Base;
+using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Chat;
 
 namespace TwitchScanAPI.Data.Statistics.Chat

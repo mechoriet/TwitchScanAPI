@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using TwitchScanAPI.Data.Statistics.Chat.Base;
+using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Enums;
 using TwitchScanAPI.Models.Twitch;
 using TwitchScanAPI.Models.Twitch.Channel;

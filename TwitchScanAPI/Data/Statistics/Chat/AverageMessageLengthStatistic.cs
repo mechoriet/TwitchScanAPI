@@ -1,5 +1,5 @@
 ﻿using System.Threading;
-using TwitchScanAPI.Data.Statistics.Chat.Base;
+using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Chat;
 
 namespace TwitchScanAPI.Data.Statistics.Chat
@@ -7,8 +7,8 @@ namespace TwitchScanAPI.Data.Statistics.Chat
     public class AverageMessageLengthStatistic : IStatistic
     {
         public string Name => "AverageMessageLength";
-        private long _totalLength = 0;
-        private long _messageCount = 0;
+        private long _totalLength;
+        private long _messageCount;
 
         public object GetResult()
         {

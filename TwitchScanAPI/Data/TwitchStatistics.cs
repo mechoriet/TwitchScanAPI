@@ -36,7 +36,7 @@ namespace TwitchScanAPI.Data
         public ConcurrentDictionary<string, string> Users { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         // Statistics
-        public Statistics.Chat.Base.Statistics Statistics { get; }
+        public Statistics.Base.Statistics Statistics { get; }
 
         // Words to observe
         private readonly HashSet<string> _wordsToObserve = new(StringComparer.OrdinalIgnoreCase);
@@ -48,7 +48,7 @@ namespace TwitchScanAPI.Data
             _hubContext = hubContext;
             _configuration = configuration;
             _client = InitializeClient();
-            Statistics = new Statistics.Chat.Base.Statistics();
+            Statistics = new Statistics.Base.Statistics();
             ConnectClient();
         }
 

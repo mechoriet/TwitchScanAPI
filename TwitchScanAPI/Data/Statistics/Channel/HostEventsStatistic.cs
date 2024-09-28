@@ -1,5 +1,5 @@
 ﻿using System.Threading;
-using TwitchScanAPI.Data.Statistics.Chat.Base;
+using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Channel;
 
 namespace TwitchScanAPI.Data.Statistics
@@ -7,7 +7,7 @@ namespace TwitchScanAPI.Data.Statistics
     public class HostEventsStatistic : IStatistic
     {
         public string Name => "HostEvents";
-        private int _hostCount = 0;
+        private int _hostCount;
 
         public object GetResult()
         {

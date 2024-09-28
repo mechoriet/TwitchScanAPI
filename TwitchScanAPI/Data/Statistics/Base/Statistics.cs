@@ -2,9 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using TwitchScanAPI.Models.Twitch;
 
-namespace TwitchScanAPI.Data.Statistics.Chat.Base
+namespace TwitchScanAPI.Data.Statistics.Base
 {
     public class Statistics
     {
@@ -23,7 +22,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat.Base
             var statistics = Assembly.GetExecutingAssembly()
                 .GetTypes()
                 .Where(t => statisticType.IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract)
-                .Select(Activator.CreateInstance)
+                .Select(Activator.CreateInstance) // Dynamically create an instance of each discovered statistic class
                 .Cast<IStatistic>()
                 .ToList();
 
@@ -36,17 +35,23 @@ namespace TwitchScanAPI.Data.Statistics.Chat.Base
 
             foreach (var statistic in _statistics)
             {
+                // Find all 'Update' methods that accept exactly one parameter
                 var methods = statistic.GetType()
                     .GetMethods(BindingFlags.Public | BindingFlags.Instance)
                     .Where(m => m.Name == "Update" && m.GetParameters().Length == 1);
-                
+
                 foreach (var method in methods)
                 {
+                    // Use the method's parameter type as the event type
                     var eventType = method.GetParameters()[0].ParameterType;
+
+                    // Initialize the handler list for this event type if it doesn't already exist
                     if (!handlers.ContainsKey(eventType))
                     {
                         handlers[eventType] = new List<(IStatistic, MethodInfo)>();
                     }
+
+                    // Add the statistic and its corresponding 'Update' method to the list for this event type
                     handlers[eventType].Add((statistic, method));
                 }
             }
@@ -69,6 +74,8 @@ namespace TwitchScanAPI.Data.Statistics.Chat.Base
         {
             var eventType = typeof(TEvent);
             if (!_eventHandlers.TryGetValue(eventType, out var handlers)) return;
+
+            // Invoke each statistic's 'Update' method, passing in the event data
             foreach (var (statistic, method) in handlers)
             {
                 method.Invoke(statistic, new object[] { eventData });

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading;
-using TwitchScanAPI.Data.Statistics.Chat.Base;
+using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Chat;
 
 namespace TwitchScanAPI.Data.Statistics.Chat
