@@ -17,6 +17,7 @@ using TwitchScanAPI.Global;
 using TwitchScanAPI.Hubs;
 using TwitchScanAPI.Models.Enums;
 using TwitchScanAPI.Models.Twitch;
+using TwitchScanAPI.Models.Twitch.Base;
 
 namespace TwitchScanAPI.Data
 {
@@ -110,12 +111,16 @@ namespace TwitchScanAPI.Data
         private async void Client_OnUserLeft(object? sender, OnUserLeftArgs e)
         {
             Users.TryRemove(e.Username, out _);
+            
+            Statistics.Update(new UserEntity(e.Username));
             await _hubContext.Clients.Group(ChannelName).ReceiveUserLeft(e.Username);
         }
 
         private async void Client_OnUserJoined(object? sender, OnUserJoinedArgs e)
         {
             Users.TryAdd(e.Username, e.Channel);
+            
+            Statistics.Update(new UserEntity(e.Username));
             await _hubContext.Clients.Group(ChannelName).ReceiveUserJoined(e.Username, e.Channel);
         }
 
@@ -124,7 +129,6 @@ namespace TwitchScanAPI.Data
             var subscription = new Subscription
             {
                 Type = SubscriptionType.New,
-                Time = DateTime.UtcNow,
                 UserName = e.Subscriber.Login,
                 DisplayName = e.Subscriber.DisplayName,
                 Message = e.Subscriber.ResubMessage,
@@ -142,8 +146,6 @@ namespace TwitchScanAPI.Data
         {
             var subscription = new Subscription
             {
-                Type = SubscriptionType.Re,
-                Time = DateTime.UtcNow,
                 UserName = e.ReSubscriber.Login,
                 DisplayName = e.ReSubscriber.DisplayName,
                 Message = e.ReSubscriber.ResubMessage,
@@ -162,7 +164,6 @@ namespace TwitchScanAPI.Data
             var subscription = new Subscription
             {
                 Type = SubscriptionType.Gifted,
-                Time = DateTime.UtcNow,
                 UserName = e.GiftedSubscription.Login,
                 DisplayName = e.GiftedSubscription.DisplayName,
                 RecipientUserName = e.GiftedSubscription.MsgParamRecipientUserName,
@@ -184,7 +185,6 @@ namespace TwitchScanAPI.Data
             var subscription = new Subscription
             {
                 Type = SubscriptionType.Community,
-                Time = DateTime.UtcNow,
                 UserName = e.GiftedSubscription.Login,
                 DisplayName = e.GiftedSubscription.DisplayName,
                 GiftedSubscriptionCount = e.GiftedSubscription.MsgParamMassGiftCount,
@@ -201,8 +201,7 @@ namespace TwitchScanAPI.Data
             var raidEvent = new RaidEvent
             {
                 Raider = e.RaidNotification.MsgParamDisplayName,
-                ViewerCount = int.TryParse(e.RaidNotification.MsgParamViewerCount, out var count) ? count : 0,
-                Time = DateTime.UtcNow
+                ViewerCount = int.TryParse(e.RaidNotification.MsgParamViewerCount, out var count) ? count : 0
             };
 
             Statistics.Update(raidEvent);
@@ -214,8 +213,7 @@ namespace TwitchScanAPI.Data
             var hostEvent = new HostEvent
             {
                 Hoster = e.BeingHostedNotification.HostedByChannel,
-                ViewerCount = e.BeingHostedNotification.Viewers,
-                Time = DateTime.UtcNow
+                ViewerCount = e.BeingHostedNotification.Viewers
             };
 
             Statistics.Update(hostEvent);
@@ -224,12 +222,7 @@ namespace TwitchScanAPI.Data
 
         private async void Client_OnUserBanned(object? sender, OnUserBannedArgs e)
         {
-            var bannedUser = new BannedUser
-            {
-                Username = e.UserBan.Username,
-                BanReason = e.UserBan.BanReason,
-                Time = DateTime.UtcNow
-            };
+            var bannedUser = new BannedUser(e.UserBan.Username, e.UserBan.BanReason);
             
             Statistics.Update(bannedUser);
             await _hubContext.Clients.Group(ChannelName).ReceiveBannedUser(bannedUser);
@@ -242,7 +235,6 @@ namespace TwitchScanAPI.Data
                 Message = e.Message,
                 TargetMessageId = e.TargetMessageId,
                 TmiSentTs = e.TmiSentTs,
-                Time = DateTime.UtcNow
             };
             
             Statistics.Update(clearedMessage);
@@ -256,7 +248,6 @@ namespace TwitchScanAPI.Data
                 Username = e.UserTimeout.Username,
                 TimeoutReason = e.UserTimeout.TimeoutReason,
                 TimeoutDuration = e.UserTimeout.TimeoutDuration,
-                Time = DateTime.UtcNow
             };
             
             Statistics.Update(timedOutUser);

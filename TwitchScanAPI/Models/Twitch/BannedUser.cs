@@ -2,9 +2,13 @@
 
 namespace TwitchScanAPI.Models.Twitch
 {
-    public class BannedUser : TimedEntity
+    public class BannedUser : UserEntity
     {
-        public string Username { get; set; }
         public string BanReason { get; set; }
+        
+        public BannedUser(string username, string banReason) : base(username)
+        {
+            BanReason = banReason;
+        }
     }
 }

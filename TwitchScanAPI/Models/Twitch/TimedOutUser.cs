@@ -8,5 +8,4 @@ namespace TwitchScanAPI.Models.Twitch
         public string TimeoutReason { get; set; }
         public int TimeoutDuration { get; set; }
     }
-
 }

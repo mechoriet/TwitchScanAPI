@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch;
+using TwitchScanAPI.Models.Twitch.Base;
 
 namespace TwitchScanAPI.Data.Statistics
 {
@@ -18,11 +19,20 @@ namespace TwitchScanAPI.Data.Statistics
 
         public void Update(ChannelMessage message)
         {
-            if (string.IsNullOrWhiteSpace(message.ChatMessage?.Username)) return; // Handle null or empty usernames
+            AddUser(message?.ChatMessage?.Username);
+        }
+        
+        public void Update(UserEntity userEntity)
+        {
+            AddUser(userEntity?.Username);
+        }
+        
+        private void AddUser(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username)) return; // Handle null or empty usernames
 
             // Add the username to the dictionary (case-insensitive due to the StringComparer)
-            _users.TryAdd(message.ChatMessage.Username.Trim(), 0);
+            _users.TryAdd(username.Trim(), 0);
         }
     }
-
 }
