@@ -29,6 +29,14 @@ namespace TwitchScanAPI.Data.Statistics
                     .Take(10)
                     .ToDictionary(kv => kv.Key, kv => kv.Value),
                 Subscriptions = _subscriptions.Values
+                    .OrderByDescending(x => x.Months)
+                    .Take(10)
+                    .Select(x => new
+                    {
+                        x.UserName,
+                        x.Months,
+                        x.Type
+                    })
             };
         }
 
