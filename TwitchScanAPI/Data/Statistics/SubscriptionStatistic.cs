@@ -19,7 +19,7 @@ namespace TwitchScanAPI.Data.Statistics
         {
             return new
             {
-                TotalSubscribers = _subscriptions.Values.Sum(x => x.Months),
+                TotalSubscribers = _subscriptions.Values.Count,
                 TotalNewSubscribers = _subscriptionCounts.GetValueOrDefault(SubscriptionType.New),
                 TotalReSubscribers = _subscriptionCounts.GetValueOrDefault(SubscriptionType.Re),
                 TotalGiftedSubscriptions = _subscriptionCounts.GetValueOrDefault(SubscriptionType.Gifted),
