@@ -15,7 +15,6 @@ using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Models;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Hubs;
-using TwitchScanAPI.Models;
 using TwitchScanAPI.Models.Enums;
 using TwitchScanAPI.Models.Twitch;
 
@@ -134,6 +133,7 @@ namespace TwitchScanAPI.Data
                 Months = 1,
                 MultiMonth = int.TryParse(e.Subscriber.MsgParamCumulativeMonths, out var multi) ? multi : 1,
             };
+            
             Statistics.Update(subscription);
             await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
         }
@@ -152,6 +152,7 @@ namespace TwitchScanAPI.Data
                 MultiMonth = int.TryParse(e.ReSubscriber.MsgParamCumulativeMonths, out var multi) ? multi : 1,
                 Months = int.TryParse(e.ReSubscriber.MsgParamStreakMonths, out var months) ? months : 1
             };
+            
             Statistics.Update(subscription);
             await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
         }
@@ -173,6 +174,8 @@ namespace TwitchScanAPI.Data
                 Message = e.GiftedSubscription.SystemMsg,
                 GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlanName
             };
+            
+            Statistics.Update(subscription);
             await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
         }
 
