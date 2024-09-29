@@ -30,7 +30,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             // Round the minutes to the nearest 10
             var roundedMinutes = Math.Floor((double)dateTime.Minute / 10) * 10;
             var hour = new DateTime(dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour, (int)roundedMinutes, 0)
-                .ToString("MM/dd/yyyy-HH:mm:00");
+                .ToString("yyyy-MM-ddTHH:mm:ss");
 
 
             // Add or update the count for the current hour in a thread-safe manner
