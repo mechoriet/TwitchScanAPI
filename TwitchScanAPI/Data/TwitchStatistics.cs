@@ -149,6 +149,7 @@ namespace TwitchScanAPI.Data
         {
             var subscription = new ChannelSubscription
             {
+                Type = SubscriptionType.Re,
                 UserName = e.ReSubscriber.Login,
                 DisplayName = e.ReSubscriber.DisplayName,
                 Message = e.ReSubscriber.ResubMessage,
