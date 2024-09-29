@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Timers;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Dto.Statistics;
 using TwitchScanAPI.Models.ML.SentimentAnalysis;
@@ -29,6 +30,10 @@ namespace TwitchScanAPI.Data.Statistics.ML
 
         // Define the time interval for bucketing (e.g., 5 minutes)
         private readonly TimeSpan _bucketSize = TimeSpan.FromMinutes(5);
+        // Define the retention period for the cleanup (e.g., keep data for 24 hours)
+        private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(24);
+        // Define the cleanup interval for the timer (e.g., every hour)
+        private readonly TimeSpan _cleanupInterval = TimeSpan.FromHours(1);
 
         // Collections to store top messages
         private readonly List<SentimentMessageDTO> _topPositiveMessages = new();
@@ -37,6 +42,18 @@ namespace TwitchScanAPI.Data.Statistics.ML
         // Locks for thread-safe operations on message lists
         private readonly object _topPositiveMessagesLock = new();
         private readonly object _topNegativeMessagesLock = new();
+        
+        // Timer for periodic cleanup
+        private readonly Timer _cleanupTimer;
+        
+        public SentimentAnalysisStatistic()
+        {
+            // Initialize the timer to trigger cleanup
+            _cleanupTimer = new Timer(_cleanupInterval.TotalMilliseconds);
+            _cleanupTimer.Elapsed += (sender, e) => CleanupOldData();
+            _cleanupTimer.AutoReset = true;  // Ensures the timer will keep triggering every hour
+            _cleanupTimer.Start();
+        }
 
         public object GetResult()
         {
@@ -86,6 +103,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
                 userSentiment.Negative += results.Negative;
                 userSentiment.Neutral += results.Neutral;
                 userSentiment.Compound += results.Compound;
+                userSentiment.LastUpdated = DateTime.UtcNow;
             }
 
             // Update top positive messages
@@ -118,6 +136,30 @@ namespace TwitchScanAPI.Data.Statistics.ML
             lock (_topNegativeMessagesLock)
             {
                 AddTopMessage(_topNegativeMessages, negativeMessage, (a, b) => a.Compound.CompareTo(b.Compound));
+            }
+        }
+        
+        private void CleanupOldData()
+        {
+            var expirationTime = DateTime.UtcNow - _retentionPeriod;
+
+            // Clean up old sentiment scores based on time
+            foreach (var key in _sentimentOverTime.Keys)
+            {
+                if (key < expirationTime)
+                {
+                    _sentimentOverTime.TryRemove(key, out _);
+                }
+            }
+
+            // Clean up old user sentiments
+            foreach (var key in _userSentiments.Keys)
+            {
+                var userSentiment = _userSentiments[key];
+                if (userSentiment.LastUpdated < expirationTime)
+                {
+                    _userSentiments.TryRemove(key, out _);
+                }
             }
         }
 

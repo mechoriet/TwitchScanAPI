@@ -1,4 +1,6 @@
-﻿namespace TwitchScanAPI.Models.ML.SentimentAnalysis
+﻿using System;
+
+namespace TwitchScanAPI.Models.ML.SentimentAnalysis
 {
     public class UserSentiment
     {
@@ -8,6 +10,7 @@
         public double Neutral;
         public double Compound;
         public long MessageCount;
+        public DateTime LastUpdated = DateTime.UtcNow;
         public readonly object Lock = new();
 
         public double AveragePositive => MessageCount > 0 ? Positive / MessageCount : 0;
