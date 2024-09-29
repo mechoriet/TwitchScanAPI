@@ -52,6 +52,9 @@ namespace TwitchScanAPI
             app.UseHttpsRedirection();
 
             app.UseRouting();
+            
+            // Enable CORS
+            app.UseCors("AllowSpecificOrigins");
 
             app.UseAuthorization();
 
