@@ -168,8 +168,8 @@ namespace TwitchScanAPI.Data.Statistics.ML
         private List<UserSentimentDTO> GetTopPositiveUsers()
         {
             return _userSentiments.Values
-                .Where(u => u.MessageCount >= MinMessages) // Minimum messages to be considered
-                .OrderByDescending(u => u.AveragePositive)
+                .Where(u => u.MessageCount >= MinMessages)
+                .OrderByDescending(u => u.AverageCompound)
                 .Take(TopUsersCount)
                 .Select(u => new UserSentimentDTO
                 {
@@ -187,7 +187,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
         {
             return _userSentiments.Values
                 .Where(u => u.MessageCount >= MinMessages)
-                .OrderBy(u => u.AverageNegative)
+                .OrderBy(u => u.AverageCompound)
                 .Take(TopUsersCount)
                 .Select(u => new UserSentimentDTO
                 {
