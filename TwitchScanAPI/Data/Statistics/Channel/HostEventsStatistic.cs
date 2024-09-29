@@ -2,7 +2,7 @@
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Channel;
 
-namespace TwitchScanAPI.Data.Statistics
+namespace TwitchScanAPI.Data.Statistics.Channel
 {
     public class HostEventsStatistic : IStatistic
     {

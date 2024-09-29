@@ -5,6 +5,7 @@ namespace TwitchScanAPI.Models.Twitch.Channel
 {
     public class ChannelSubscription : TimedEntity
     {
+        public ChannelSubscription(SubscriptionType type) => Type = type;
         public SubscriptionType Type { get; set; }
         public string UserName { get; set; }
         public string DisplayName { get; set; }

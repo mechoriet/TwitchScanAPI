@@ -1,9 +1,8 @@
 ﻿using System.Threading;
 using TwitchScanAPI.Data.Statistics.Base;
-using TwitchScanAPI.Models.Twitch;
 using TwitchScanAPI.Models.Twitch.Channel;
 
-namespace TwitchScanAPI.Data.Statistics.Chat
+namespace TwitchScanAPI.Data.Statistics.Channel
 {
     public class RaidEventsStatistic : IStatistic
     {

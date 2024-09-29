@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Enums;
-using TwitchScanAPI.Models.Twitch;
 using TwitchScanAPI.Models.Twitch.Channel;
 
-namespace TwitchScanAPI.Data.Statistics.Chat
+namespace TwitchScanAPI.Data.Statistics.Channel
 {
     public class SubscriptionStatistic : IStatistic
     {
@@ -23,6 +22,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 TotalNewSubscribers = _subscriptionCounts.GetValueOrDefault(SubscriptionType.New),
                 TotalReSubscribers = _subscriptionCounts.GetValueOrDefault(SubscriptionType.Re),
                 TotalGiftedSubscriptions = _subscriptionCounts.GetValueOrDefault(SubscriptionType.Gifted),
+                TotalCommunitySubscriptions = _subscriptionCounts.GetValueOrDefault(SubscriptionType.Community),
                 AverageSubscriptionMonths = !_subscriberMonths.IsEmpty ? _subscriberMonths.Values.Average() : 0,
                 TopSubscribers = _subscriberMonths
                     .OrderByDescending(kv => kv.Value)

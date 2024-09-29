@@ -129,9 +129,8 @@ namespace TwitchScanAPI.Data
 
         private async void Client_OnNewSubscriber(object? sender, OnNewSubscriberArgs e)
         {
-            var subscription = new ChannelSubscription
+            var subscription = new ChannelSubscription(SubscriptionType.New)
             {
-                Type = SubscriptionType.New,
                 UserName = e.Subscriber.Login,
                 DisplayName = e.Subscriber.DisplayName,
                 Message = e.Subscriber.ResubMessage,
@@ -147,9 +146,8 @@ namespace TwitchScanAPI.Data
 
         private async void Client_OnReSubscriber(object? sender, OnReSubscriberArgs e)
         {
-            var subscription = new ChannelSubscription
+            var subscription = new ChannelSubscription(SubscriptionType.Re)
             {
-                Type = SubscriptionType.Re,
                 UserName = e.ReSubscriber.Login,
                 DisplayName = e.ReSubscriber.DisplayName,
                 Message = e.ReSubscriber.ResubMessage,
@@ -165,9 +163,8 @@ namespace TwitchScanAPI.Data
 
         private async void Client_OnGiftedSubscription(object? sender, OnGiftedSubscriptionArgs e)
         {
-            var subscription = new ChannelSubscription
+            var subscription = new ChannelSubscription(SubscriptionType.Gifted)
             {
-                Type = SubscriptionType.Gifted,
                 UserName = e.GiftedSubscription.Login,
                 DisplayName = e.GiftedSubscription.DisplayName,
                 RecipientUserName = e.GiftedSubscription.MsgParamRecipientUserName,
@@ -186,9 +183,8 @@ namespace TwitchScanAPI.Data
 
         private async void Client_OnCommunitySubscription(object? sender, OnCommunitySubscriptionArgs e)
         {
-            var subscription = new ChannelSubscription
+            var subscription = new ChannelSubscription(SubscriptionType.Community)
             {
-                Type = SubscriptionType.Community,
                 UserName = e.GiftedSubscription.Login,
                 DisplayName = e.GiftedSubscription.DisplayName,
                 GiftedSubscriptionCount = e.GiftedSubscription.MsgParamMassGiftCount,
