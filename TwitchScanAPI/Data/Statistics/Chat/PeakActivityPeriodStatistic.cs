@@ -14,7 +14,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
         public object GetResult()
         {
-            // Return the top 3 hours with the highest message counts
+            // Return the top 100 peak activity periods ordered by message count
             return _hourlyMessageCounts
                 .OrderByDescending(kv => kv.Value)
                 .Take(100)
@@ -26,7 +26,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             if (message?.Time == null) return; // Handle null message or time
 
             // Get the time in UTC format
-            var dateTime = message.Time.ToUniversalTime();
+            var dateTime = message.Time;
     
             // Round the minutes to the nearest 5-minute period
             var roundedMinutes = Math.Floor((double)dateTime.Minute / 5) * 5;
@@ -39,5 +39,4 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             _hourlyMessageCounts.AddOrUpdate(roundedTime, 1, (key, oldValue) => oldValue + 1);
         }
     }
-
 }
