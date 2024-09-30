@@ -36,7 +36,7 @@ namespace TwitchScanAPI.Data
                 var error = new Error($"{channelName} already exists in Observer", StatusCodes.Status409Conflict);
                 return new ResultMessage<string?>(null, error);
             }
-
+            
             var stats = new TwitchStatistics(channelName, _hubContext, _configuration);
             _twitchStats.Add(stats);
 
@@ -70,8 +70,8 @@ namespace TwitchScanAPI.Data
         {
             return _twitchStats.SelectMany(x =>
             {
-                var collection = x.Statistics?.GetAllStatistics().Keys;
-                return collection ?? Enumerable.Empty<string>();
+                var collection = x.Statistics.GetAllStatistics().Keys;
+                return collection;
             }).Distinct();
         }
 

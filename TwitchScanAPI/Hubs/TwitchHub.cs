@@ -15,5 +15,4 @@ namespace TwitchScanAPI.Hubs
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, channelName);
         }
     }
-
 }

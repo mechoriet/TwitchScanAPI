@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using TwitchScanAPI.Models;
 using TwitchScanAPI.Models.Twitch;
 using TwitchScanAPI.Models.Twitch.Channel;
@@ -20,6 +21,7 @@ namespace TwitchScanAPI.Hubs
         Task ReceiveHostEvent(ChannelHost channelHost);
         Task ReceiveUserJoined(string username, string channel);
         Task ReceiveUserLeft(string username);
+        // Send all statistics regularly to the client
+        Task ReceiveStatistics(IDictionary<string, object> statistics);
     }
-
 }

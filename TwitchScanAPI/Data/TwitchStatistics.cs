@@ -6,6 +6,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Timers;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using TwitchLib.Client;
@@ -16,8 +18,6 @@ using TwitchLib.Communication.Models;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Hubs;
 using TwitchScanAPI.Models.Enums;
-using TwitchScanAPI.Models.Twitch;
-using TwitchScanAPI.Models.Twitch.Base;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Chat;
 using TwitchScanAPI.Models.Twitch.User;
@@ -41,6 +41,10 @@ namespace TwitchScanAPI.Data
         // Words to observe
         private readonly HashSet<string> _wordsToObserve = new(StringComparer.OrdinalIgnoreCase);
         private Regex? _observePatternRegex;
+        
+        // Timer for regularly sending statistics
+        private readonly Timer? _statisticsTimer;
+        private readonly TimeSpan _sendInterval = TimeSpan.FromSeconds(5);
 
         public TwitchStatistics(string channelName, IHubContext<TwitchHub, ITwitchHub> hubContext, IConfiguration configuration)
         {
@@ -50,6 +54,11 @@ namespace TwitchScanAPI.Data
             _client = InitializeClient();
             Statistics = new Statistics.Base.Statistics();
             ConnectClient();
+            // Initialize the timer to send statistics at regular intervals
+            _statisticsTimer = new Timer(_sendInterval.TotalMilliseconds);
+            _statisticsTimer.Elapsed += async (_, _) => await SendStatistics();
+            _statisticsTimer.AutoReset = true;  // Ensures the timer will keep triggering every hour
+            _statisticsTimer.Start();
         }
 
         public void AddTextToObserve(string text)
@@ -91,6 +100,7 @@ namespace TwitchScanAPI.Data
 
             return client;
         }
+
         private void ConnectClient()
         {
             _client.Connect();
@@ -107,6 +117,13 @@ namespace TwitchScanAPI.Data
             {
                 _observePatternRegex = null;
             }
+        }
+        
+        private async Task SendStatistics()
+        {
+            var statistics = Statistics.GetAllStatistics();
+            if (statistics == null) return;
+            await _hubContext.Clients.Group(ChannelName).ReceiveStatistics(statistics);
         }
 
         // Event Handlers
@@ -276,6 +293,7 @@ namespace TwitchScanAPI.Data
 
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             if (_client.IsConnected)
             {
                 _client.Disconnect();
