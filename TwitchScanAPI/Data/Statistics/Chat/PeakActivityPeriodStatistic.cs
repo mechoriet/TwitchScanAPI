@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Timers;
 using TwitchScanAPI.Data.Statistics.Base;
-using TwitchScanAPI.Models.Twitch;
 using TwitchScanAPI.Models.Twitch.Chat;
 
 namespace TwitchScanAPI.Data.Statistics.Chat

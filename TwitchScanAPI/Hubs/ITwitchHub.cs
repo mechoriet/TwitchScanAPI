@@ -1,7 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-using TwitchScanAPI.Models;
-using TwitchScanAPI.Models.Twitch;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Chat;
 using TwitchScanAPI.Models.Twitch.User;

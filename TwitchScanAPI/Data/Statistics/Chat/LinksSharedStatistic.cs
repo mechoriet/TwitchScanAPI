@@ -1,7 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 using System.Threading;
 using TwitchScanAPI.Data.Statistics.Base;
-using TwitchScanAPI.Models.Twitch;
 using TwitchScanAPI.Models.Twitch.Chat;
 
 namespace TwitchScanAPI.Data.Statistics.Chat
