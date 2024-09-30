@@ -15,6 +15,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         private readonly ConcurrentDictionary<string, int> _hourlyMessageCounts = new();
 
         private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(24);
+        private const int BucketSize = 1;
 
         private readonly Timer _cleanupTimer;
 
@@ -29,10 +30,8 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
         public object GetResult()
         {
-            // Return ~24 hours of peak activity periods
             return _hourlyMessageCounts
                 .OrderByDescending(kv => kv.Value)
-                .Take(300)
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
         }
 
@@ -44,7 +43,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             var dateTime = message.Time;
 
             // Round the minutes to the nearest 5-minute period
-            var roundedMinutes = Math.Floor((double)dateTime.Minute / 5) * 5;
+            var roundedMinutes = Math.Floor((double)dateTime.Minute / BucketSize) * BucketSize;
 
             // Create a new DateTime with the rounded minutes
             var roundedTime = new DateTime(dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour,
