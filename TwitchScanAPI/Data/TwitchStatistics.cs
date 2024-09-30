@@ -81,7 +81,10 @@ namespace TwitchScanAPI.Data
                 ThrottlingPeriod = TimeSpan.FromSeconds(30)
             };
             var customClient = new WebSocketClient(clientOptions);
-            var client = new TwitchClient(customClient);
+            var client = new TwitchClient(customClient)
+            {
+                AutoReListenOnException = true
+            };
             client.Initialize(credentials, ChannelName);
 
             // Subscribe to events
@@ -96,7 +99,7 @@ namespace TwitchScanAPI.Data
             client.OnUserJoined += Client_OnUserJoined;
             client.OnUserLeft += Client_OnUserLeft;
             client.OnRaidNotification += Client_OnRaid;
-            client.OnBeingHosted += ClientOnOnBeingHosted;
+            client.OnBeingHosted += ClientOnBeingHosted;
 
             return client;
         }
@@ -225,7 +228,7 @@ namespace TwitchScanAPI.Data
             await _hubContext.Clients.Group(ChannelName).ReceiveRaidEvent(raidEvent);
         }
 
-        private async void ClientOnOnBeingHosted(object? sender, OnBeingHostedArgs e)
+        private async void ClientOnBeingHosted(object? sender, OnBeingHostedArgs e)
         {
             var hostEvent = new ChannelHost
             {
@@ -277,7 +280,8 @@ namespace TwitchScanAPI.Data
             await _hubContext.Clients.Group(ChannelName).ReceiveChannelMessage(channelMessage);
 
             // Update statistics
-            Statistics.Update(channelMessage);
+            if (!Variables.BotNames.Contains(e.ChatMessage.DisplayName.ToLower(), StringComparer.OrdinalIgnoreCase))
+                Statistics.Update(channelMessage);
 
             // Check for observed words
             if (_observePatternRegex != null && _observePatternRegex.IsMatch(e.ChatMessage.Message))

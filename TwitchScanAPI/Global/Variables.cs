@@ -6,7 +6,21 @@ namespace TwitchScanAPI.Global
     {
         public const string TwitchOauthKey = "oauth";
         public const string TwitchChatName = "chatName";
-        public static readonly List<string> BotNames = new() { "streamlabs", "nightbot", "fossabot" };
-        public const int MaxMessages = 100;
+        public static readonly List<string> BotNames = new()
+        {
+            "streamlabs", 
+            "nightbot", 
+            "fossabot",
+            "streamelements",
+            "moobot",
+            "soundalerts",
+            "own3d",
+            "creatisbot",
+            "tangibot",
+            "overlayexpert",
+            "streamstickers",
+            "regressz",
+            "botrixoficial",
+        };
     }
 }
