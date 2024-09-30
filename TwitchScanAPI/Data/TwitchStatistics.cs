@@ -44,7 +44,7 @@ namespace TwitchScanAPI.Data
         
         // Timer for regularly sending statistics
         private readonly Timer? _statisticsTimer;
-        private readonly TimeSpan _sendInterval = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan _sendInterval = TimeSpan.FromSeconds(60);
 
         public TwitchStatistics(string channelName, IHubContext<TwitchHub, ITwitchHub> hubContext, IConfiguration configuration)
         {
