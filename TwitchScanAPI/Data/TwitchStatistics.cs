@@ -38,6 +38,7 @@ namespace TwitchScanAPI.Data
         // Channel Information
         public string ChannelName { get; }
         public int MessageCount { get; private set; }
+        public DateTime StartedAt { get; } = DateTime.Now;
         public ConcurrentDictionary<string, string> Users { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         // Statistics
