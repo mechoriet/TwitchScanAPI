@@ -16,9 +16,9 @@ namespace TwitchScanAPI.Controllers
         }
 
         [HttpPost]
-        public ActionResult Init(string channelName)
+        public async Task<ActionResult> Init(string channelName)
         {
-            var added = _twitchStats.Init(channelName);
+            var added = await _twitchStats.Init(channelName);
             return added.Error != null
                 ? StatusCode(added.Error.StatusCode, added.Error.ErrorMessage)
                 : Ok(added.Result);

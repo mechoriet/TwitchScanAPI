@@ -1,4 +1,5 @@
 ﻿// TwitchStatistics.cs
+
 #nullable enable
 
 using System;
@@ -30,7 +31,7 @@ namespace TwitchScanAPI.Data
     public class TwitchStatistics : IDisposable
     {
         // Configuration
-        private readonly TwitchClient _client;
+        private TwitchClient? _client;
         private readonly TwitchAPI _api = new();
         private readonly IHubContext<TwitchHub, ITwitchHub> _hubContext;
         private readonly IConfiguration _configuration;
@@ -47,23 +48,22 @@ namespace TwitchScanAPI.Data
         // Words to observe
         private readonly HashSet<string> _wordsToObserve = new(StringComparer.OrdinalIgnoreCase);
         private Regex? _observePatternRegex;
-        
+
         // Timer for regularly sending statistics
         private readonly Timer? _statisticsTimer;
         private readonly TimeSpan _sendInterval = TimeSpan.FromSeconds(60);
 
-        public TwitchStatistics(string channelName, IHubContext<TwitchHub, ITwitchHub> hubContext, IConfiguration configuration)
+        public TwitchStatistics(string channelName, IHubContext<TwitchHub, ITwitchHub> hubContext,
+            IConfiguration configuration)
         {
             ChannelName = channelName;
             _hubContext = hubContext;
             _configuration = configuration;
-            _client = InitializeClient();
             Statistics = new Statistics.Base.Statistics();
-            ConnectClient();
             // Initialize the timer to send statistics at regular intervals
             _statisticsTimer = new Timer(_sendInterval.TotalMilliseconds);
             _statisticsTimer.Elapsed += async (_, _) => await SendStatistics();
-            _statisticsTimer.AutoReset = true;  // Ensures the timer will keep triggering every hour
+            _statisticsTimer.AutoReset = true; // Ensures the timer will keep triggering every hour
             _statisticsTimer.Start();
         }
 
@@ -75,11 +75,25 @@ namespace TwitchScanAPI.Data
             }
         }
 
-        private TwitchClient InitializeClient()
+        public async Task InitializeClient()
         {
             // Fetch the OAuth token from the configuration
             var oauth = _configuration.GetValue<string>(Variables.TwitchOauthKey);
             var clientId = _configuration.GetValue<string>(Variables.TwitchClientId);
+            var clientSecret = _configuration.GetValue<string>(Variables.TwitchClientSecret);
+
+            // Connect to the Api
+            _api.Settings.ClientId = clientId;
+            _api.Settings.Secret = clientSecret;
+
+            // Check if the channel is online
+            var isOnline = await CheckUserOnline();
+            if (!isOnline)
+            {
+                throw new Exception("Channel is offline");
+            }
+
+            // Initialize the client
             var twitchChatName = _configuration.GetValue<string>(Variables.TwitchChatName);
             var credentials = new ConnectionCredentials(twitchChatName, oauth);
             var clientOptions = new ClientOptions
@@ -88,35 +102,40 @@ namespace TwitchScanAPI.Data
                 ThrottlingPeriod = TimeSpan.FromSeconds(30)
             };
             var customClient = new WebSocketClient(clientOptions);
-            var client = new TwitchClient(customClient)
+            _client = new TwitchClient(customClient)
             {
                 AutoReListenOnException = true
             };
-            client.Initialize(credentials, ChannelName);
+            _client.Initialize(credentials, ChannelName);
 
             // Subscribe to events
-            client.OnMessageReceived += Client_OnMessageReceived;
-            client.OnNewSubscriber += Client_OnNewSubscriber;
-            client.OnReSubscriber += Client_OnReSubscriber;
-            client.OnGiftedSubscription += Client_OnGiftedSubscription;
-            client.OnCommunitySubscription += Client_OnCommunitySubscription;
-            client.OnUserTimedout += Client_OnUserTimedOut;
-            client.OnMessageCleared += Client_OnMessageCleared;
-            client.OnUserBanned += Client_OnUserBanned;
-            client.OnUserJoined += Client_OnUserJoined;
-            client.OnUserLeft += Client_OnUserLeft;
-            client.OnRaidNotification += Client_OnRaid;
-            
-            // Connect to the Api
-            _api.Settings.ClientId = clientId;
-            _api.Settings.AccessToken = oauth;
+            _client.OnMessageReceived += Client_OnMessageReceived;
+            _client.OnNewSubscriber += Client_OnNewSubscriber;
+            _client.OnReSubscriber += Client_OnReSubscriber;
+            _client.OnGiftedSubscription += Client_OnGiftedSubscription;
+            _client.OnCommunitySubscription += Client_OnCommunitySubscription;
+            _client.OnUserTimedout += Client_OnUserTimedOut;
+            _client.OnMessageCleared += Client_OnMessageCleared;
+            _client.OnUserBanned += Client_OnUserBanned;
+            _client.OnUserJoined += Client_OnUserJoined;
+            _client.OnUserLeft += Client_OnUserLeft;
+            _client.OnRaidNotification += Client_OnRaid;
 
-            return client;
+            _client.Connect();
         }
 
-        private void ConnectClient()
+        private async Task<bool> CheckUserOnline()
         {
-            _client.Connect();
+            try
+            {
+                var streams = await _api.Helix.Streams.GetStreamsAsync(userLogins: new List<string> { ChannelName });
+                return streams != null && streams.Streams.Any();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return false;
+            }
         }
 
         private void UpdateRegex()
@@ -131,25 +150,34 @@ namespace TwitchScanAPI.Data
                 _observePatternRegex = null;
             }
         }
-        
+
         public async Task<IDictionary<string, object>> GetStatistics()
         {
-            var streams = await _api.Helix.Streams.GetStreamsAsync(userLogins: new List<string> { ChannelName });
-            var stream = streams.Streams.FirstOrDefault();
-            var channelInformation = new ChannelInformation() {
-                Viewers = stream?.ViewerCount ?? 0,
-                Title = stream?.Title ?? "No Title",
-                Game = stream?.GameName ?? "No Game",
-                Uptime = stream?.StartedAt ?? DateTime.MinValue,
-                Thumbnail = stream?.ThumbnailUrl ?? "No Thumbnail",
-                StreamType = stream?.Type ?? "Offline"
-            };
-            Statistics.Update(channelInformation);
-            
-            var statistics = Statistics.GetAllStatistics();
-            return statistics ?? new Dictionary<string, object>();
+            try
+            {
+                var streams = await _api.Helix.Streams.GetStreamsAsync(userLogins: new List<string> { ChannelName });
+                var stream = streams.Streams.FirstOrDefault();
+                var channelInformation = new ChannelInformation()
+                {
+                    Viewers = stream?.ViewerCount ?? 0,
+                    Title = stream?.Title ?? "No Title",
+                    Game = stream?.GameName ?? "No Game",
+                    Uptime = stream?.StartedAt ?? DateTime.MinValue,
+                    Thumbnail = stream?.ThumbnailUrl ?? "No Thumbnail",
+                    StreamType = stream?.Type ?? "Offline"
+                };
+                Statistics.Update(channelInformation);
+
+                var statistics = Statistics.GetAllStatistics();
+                return statistics ?? new Dictionary<string, object>();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return new Dictionary<string, object>();
+            }
         }
-        
+
         private async Task SendStatistics()
         {
             await _hubContext.Clients.Group(ChannelName).ReceiveStatistics(await GetStatistics());
@@ -160,7 +188,7 @@ namespace TwitchScanAPI.Data
         private async void Client_OnUserLeft(object? sender, OnUserLeftArgs e)
         {
             Users.TryRemove(e.Username, out _);
-            
+
             Statistics.Update(new UserLeft(e.Username));
             await _hubContext.Clients.Group(ChannelName).ReceiveUserLeft(e.Username);
         }
@@ -168,7 +196,7 @@ namespace TwitchScanAPI.Data
         private async void Client_OnUserJoined(object? sender, OnUserJoinedArgs e)
         {
             Users.TryAdd(e.Username, e.Channel);
-            
+
             Statistics.Update(new UserJoined(e.Username));
             await _hubContext.Clients.Group(ChannelName).ReceiveUserJoined(e.Username, e.Channel);
         }
@@ -185,7 +213,7 @@ namespace TwitchScanAPI.Data
                 Months = 1,
                 MultiMonth = int.TryParse(e.Subscriber.MsgParamCumulativeMonths, out var multi) ? multi : 1,
             };
-            
+
             Statistics.Update(subscription);
             await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
         }
@@ -202,7 +230,7 @@ namespace TwitchScanAPI.Data
                 MultiMonth = int.TryParse(e.ReSubscriber.MsgParamCumulativeMonths, out var multi) ? multi : 1,
                 Months = int.TryParse(e.ReSubscriber.MsgParamStreakMonths, out var months) ? months : 1
             };
-            
+
             Statistics.Update(subscription);
             await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
         }
@@ -218,11 +246,13 @@ namespace TwitchScanAPI.Data
                 SubscriptionPlanName = e.GiftedSubscription.MsgParamSubPlanName,
                 SubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString(),
                 Months = int.TryParse(e.GiftedSubscription.MsgParamMonths, out var months) ? months : 1,
-                MultiMonth = int.TryParse(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, out var multiMonth) ? multiMonth : 1,
+                MultiMonth = int.TryParse(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, out var multiMonth)
+                    ? multiMonth
+                    : 1,
                 Message = e.GiftedSubscription.SystemMsg,
                 GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlanName
             };
-            
+
             Statistics.Update(subscription);
             await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
         }
@@ -235,13 +265,15 @@ namespace TwitchScanAPI.Data
                 DisplayName = e.GiftedSubscription.DisplayName,
                 GiftedSubscriptionCount = e.GiftedSubscription.MsgParamMassGiftCount,
                 GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString(),
-                MultiMonth = int.TryParse(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, out var multiMonth) ? multiMonth : 1,
+                MultiMonth = int.TryParse(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, out var multiMonth)
+                    ? multiMonth
+                    : 1,
             };
-            
+
             Statistics.Update(subscription);
             await _hubContext.Clients.Group(ChannelName).ReceiveSubscription(subscription);
         }
-        
+
         private async void Client_OnRaid(object? sender, OnRaidNotificationArgs e)
         {
             var raidEvent = new ChannelRaid
@@ -257,7 +289,7 @@ namespace TwitchScanAPI.Data
         private async void Client_OnUserBanned(object? sender, OnUserBannedArgs e)
         {
             var bannedUser = new UserBanned(e.UserBan.Username, e.UserBan.BanReason);
-            
+
             Statistics.Update(bannedUser);
             await _hubContext.Clients.Group(ChannelName).ReceiveBannedUser(bannedUser);
         }
@@ -270,7 +302,7 @@ namespace TwitchScanAPI.Data
                 TargetMessageId = e.TargetMessageId,
                 TmiSentTs = e.TmiSentTs,
             };
-            
+
             Statistics.Update(clearedMessage);
             await _hubContext.Clients.Group(ChannelName).ReceiveClearedMessage(clearedMessage);
         }
@@ -283,7 +315,7 @@ namespace TwitchScanAPI.Data
                 TimeoutReason = e.UserTimeout.TimeoutReason,
                 TimeoutDuration = e.UserTimeout.TimeoutDuration,
             };
-            
+
             Statistics.Update(timedOutUser);
             await _hubContext.Clients.Group(ChannelName).ReceiveTimedOutUser(timedOutUser);
         }
@@ -305,6 +337,7 @@ namespace TwitchScanAPI.Data
             {
                 await _hubContext.Clients.Group(ChannelName).ReceiveObservedMessage(channelMessage);
             }
+
             if ((!e.ChatMessage.IsModerator && !e.ChatMessage.IsPartner && !e.ChatMessage.IsStaff &&
                  !e.ChatMessage.IsVip) ||
                 Variables.BotNames.Contains(e.ChatMessage.DisplayName, StringComparer.OrdinalIgnoreCase)) return;
@@ -331,7 +364,7 @@ namespace TwitchScanAPI.Data
             _client.OnUserBanned -= Client_OnUserBanned;
             _client.OnUserJoined -= Client_OnUserJoined;
             _client.OnUserLeft -= Client_OnUserLeft;
-            
+
             _statisticsTimer?.Stop();
             _statisticsTimer?.Dispose();
         }

@@ -25,7 +25,7 @@ namespace TwitchScanAPI.Data
             _configuration = configuration;
         }
 
-        public ResultMessage<string?> Init(string channelName)
+        public async Task<ResultMessage<string?>> Init(string channelName)
         {
             if (string.IsNullOrWhiteSpace(channelName) || channelName.Length < 2)
             {
@@ -38,13 +38,22 @@ namespace TwitchScanAPI.Data
                 var error = new Error($"{channelName} already exists in Observer", StatusCodes.Status409Conflict);
                 return new ResultMessage<string?>(null, error);
             }
-            
-            var stats = new TwitchStatistics(channelName, _hubContext, _configuration);
-            _twitchStats.Add(stats);
+
+            try
+            {
+                var stats = new TwitchStatistics(channelName, _hubContext, _configuration);
+                await stats.InitializeClient();
+                _twitchStats.Add(stats);
+            }
+            catch (Exception e)
+            {
+                var error = new Error(e.Message, StatusCodes.Status500InternalServerError);
+                return new ResultMessage<string?>(null, error);
+            }
 
             return new ResultMessage<string?>(channelName, null);
         }
-        
+
         public ResultMessage<string?> Remove(string channelName)
         {
             var channel = GetChannelStatistics(channelName);
@@ -67,12 +76,12 @@ namespace TwitchScanAPI.Data
             channel.AddTextToObserve(text);
             return true;
         }
-        
+
         public IEnumerable<InitiatedChannel> GetInitiatedChannels()
         {
             return _twitchStats.Select(x => new InitiatedChannel(x.ChannelName, x.MessageCount, x.StartedAt));
         }
-        
+
         public async Task<IEnumerable<string>> GetPossibleStatistics()
         {
             var stats = await GetAllStatistics();

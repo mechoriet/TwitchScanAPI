@@ -6,6 +6,7 @@ namespace TwitchScanAPI.Global
     {
         public const string TwitchOauthKey = "oauth";
         public const string TwitchClientId = "clientId";
+        public const string TwitchClientSecret = "clientSecret";
         public const string TwitchChatName = "chatName";
         public static readonly List<string> BotNames = new()
         {
