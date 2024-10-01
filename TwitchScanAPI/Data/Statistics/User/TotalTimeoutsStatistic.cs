@@ -34,7 +34,7 @@ namespace TwitchScanAPI.Data.Statistics.User
 
             if (!string.IsNullOrWhiteSpace(userTimedOut.TimeoutReason))
             {
-                _timeoutReasons.AddOrUpdate(userTimedOut.TimeoutReason.Trim(), 1, (key, count) => count + 1);
+                _timeoutReasons.AddOrUpdate(userTimedOut.TimeoutReason.Trim(), 1, (_, count) => count + 1);
             }
         }
     }

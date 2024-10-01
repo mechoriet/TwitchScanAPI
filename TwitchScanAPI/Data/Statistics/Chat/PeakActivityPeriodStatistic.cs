@@ -22,7 +22,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         {
             // Initialize the timer to trigger cleanup every hour
             _cleanupTimer = new Timer(3600000); // 3600000 ms = 1 hour
-            _cleanupTimer.Elapsed += (sender, e) => CleanupOldData();
+            _cleanupTimer.Elapsed += (_, _) => CleanupOldData();
             _cleanupTimer.AutoReset = true;
             _cleanupTimer.Start();
         }
@@ -47,10 +47,10 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             // Create a new DateTime with the rounded minutes
             var roundedTime = new DateTime(dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour,
                     (int)roundedMinutes, 0)
-                .ToString("yyyy-MM-ddTHH:mm:ss");
+                .ToString("yyyy-MM-ddTHH:mm:ssZ");
 
             // Add or update the count for the current rounded time in a thread-safe manner
-            _hourlyMessageCounts.AddOrUpdate(roundedTime, 1, (key, oldValue) => oldValue + 1);
+            _hourlyMessageCounts.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);
         }
 
         private void CleanupOldData()

@@ -50,7 +50,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
         {
             // Initialize the timer to trigger cleanup
             _cleanupTimer = new Timer(_cleanupInterval.TotalMilliseconds);
-            _cleanupTimer.Elapsed += (sender, e) => CleanupOldData();
+            _cleanupTimer.Elapsed += (_, _) => CleanupOldData();
             _cleanupTimer.AutoReset = true;  // Ensures the timer will keep triggering every hour
             _cleanupTimer.Start();
         }

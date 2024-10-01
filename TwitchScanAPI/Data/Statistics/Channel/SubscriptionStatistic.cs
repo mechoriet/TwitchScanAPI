@@ -34,10 +34,10 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         public void Update(ChannelSubscription channelSubscription)
         {
             // Increment count based on the channelSubscription type
-            _subscriptionCounts.AddOrUpdate(channelSubscription.Type, 1, (type, count) => count + 1);
+            _subscriptionCounts.AddOrUpdate(channelSubscription.Type, 1, (_, count) => count + 1);
 
             // Track months for resubscribers and gifted subscriptions if applicable
-            _subscriberMonths.AddOrUpdate(channelSubscription.UserName, channelSubscription.Months, (key, oldValue) => oldValue + channelSubscription.Months);
+            _subscriberMonths.AddOrUpdate(channelSubscription.UserName, channelSubscription.Months, (_, oldValue) => oldValue + channelSubscription.Months);
         }
     }
 }

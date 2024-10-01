@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using TwitchScanAPI.Data;
 
@@ -36,9 +37,7 @@ namespace TwitchScanAPI.Controllers
         public ActionResult AddTextToObserve(string channelName, string text)
         {
             var added = _twitchStats.AddTextToObserve(channelName, text);
-            return added ? 
-                Ok() : 
-                StatusCode(StatusCodes.Status404NotFound);
+            return added ? Ok() : StatusCode(StatusCodes.Status404NotFound);
         }
 
         [HttpGet]
@@ -46,6 +45,7 @@ namespace TwitchScanAPI.Controllers
         {
             return Ok(_twitchStats.GetInitiatedChannels());
         }
+
         [HttpGet]
         public ActionResult GetUsers(string channelName)
         {
@@ -53,27 +53,23 @@ namespace TwitchScanAPI.Controllers
         }
 
         [HttpGet]
-        public ActionResult GetPossibleStatistics()
+        public async Task<ActionResult> GetPossibleStatistics()
         {
-            var stats = _twitchStats.GetPossibleStatistics();
+            var stats = await _twitchStats.GetPossibleStatistics();
             return Ok(stats);
         }
 
         [HttpGet]
-        public ActionResult GetAllStatistics()
+        public async Task<ActionResult> GetAllStatistics()
         {
-            var stats = _twitchStats.GetAllStatistics();
+            var stats = await _twitchStats.GetAllStatistics();
             return Ok(stats);
         }
 
         [HttpGet]
-        public ActionResult GetChannelStatistics(string channelName)
+        public async Task<ActionResult> GetChannelStatistics(string channelName)
         {
-            var stats = _twitchStats.GetAllStatistics(channelName);
-            if (stats == null)
-            {
-                return NotFound($"Channel {channelName} not found.");
-            }
+            var stats = await _twitchStats.GetAllStatistics(channelName);
 
             return Ok(stats);
         }

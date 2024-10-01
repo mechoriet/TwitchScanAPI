@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Timers;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
+using TwitchLib.Api;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
@@ -30,7 +31,7 @@ namespace TwitchScanAPI.Data
     {
         // Configuration
         private readonly TwitchClient _client;
-        private readonly TwitchPubSub _pubSubClient = new();
+        private readonly TwitchAPI _api = new();
         private readonly IHubContext<TwitchHub, ITwitchHub> _hubContext;
         private readonly IConfiguration _configuration;
 
@@ -40,7 +41,7 @@ namespace TwitchScanAPI.Data
         public ConcurrentDictionary<string, string> Users { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         // Statistics
-        public Statistics.Base.Statistics Statistics { get; }
+        private Statistics.Base.Statistics Statistics { get; }
 
         // Words to observe
         private readonly HashSet<string> _wordsToObserve = new(StringComparer.OrdinalIgnoreCase);
@@ -77,6 +78,7 @@ namespace TwitchScanAPI.Data
         {
             // Fetch the OAuth token from the configuration
             var oauth = _configuration.GetValue<string>(Variables.TwitchOauthKey);
+            var clientId = _configuration.GetValue<string>(Variables.TwitchClientId);
             var twitchChatName = _configuration.GetValue<string>(Variables.TwitchChatName);
             var credentials = new ConnectionCredentials(twitchChatName, oauth);
             var clientOptions = new ClientOptions
@@ -103,43 +105,12 @@ namespace TwitchScanAPI.Data
             client.OnUserJoined += Client_OnUserJoined;
             client.OnUserLeft += Client_OnUserLeft;
             client.OnRaidNotification += Client_OnRaid;
-            client.OnBeingHosted += ClientOnBeingHosted;
             
-            // Connect to the PubSub client
-            _pubSubClient.OnViewCount += PubSubClientOnViewCount;
-            _pubSubClient.OnStreamUp += onStreamUp;
-            _pubSubClient.OnStreamDown += onStreamDown;
-            _pubSubClient.OnPubSubServiceConnected += PubSubClientOnOnPubSubServiceConnected;
-            
-            _pubSubClient.ListenToVideoPlayback(ChannelName);
-            _pubSubClient.Connect();
+            // Connect to the Api
+            _api.Settings.ClientId = clientId;
+            _api.Settings.AccessToken = oauth;
 
             return client;
-        }
-
-        private void PubSubClientOnOnPubSubServiceConnected(object? sender, EventArgs e)
-        {
-            _pubSubClient.SendTopics(_configuration.GetValue<string>(Variables.TwitchOauthKey));
-        }
-
-        private void PubSubClientOnViewCount(object? sender, OnViewCountArgs e)
-        {
-            var viewCount = new ChannelViewCount
-            {
-                ViewerCount = e.Viewers,
-                StreamTime = e.ServerTime
-            };
-            Statistics.Update(viewCount);
-        }
-        
-        private void onStreamUp(object? sender, OnStreamUpArgs e)
-        {
-            
-        }
-        
-        private void onStreamDown(object? sender, OnStreamDownArgs e)
-        {
-            
         }
 
         private void ConnectClient()
@@ -160,11 +131,27 @@ namespace TwitchScanAPI.Data
             }
         }
         
+        public async Task<IDictionary<string, object>> GetStatistics()
+        {
+            var streams = await _api.Helix.Streams.GetStreamsAsync(userLogins: new List<string> { ChannelName });
+            var stream = streams.Streams.FirstOrDefault();
+            var channelInformation = new ChannelInformation() {
+                Viewers = stream?.ViewerCount ?? 0,
+                Title = stream?.Title ?? "No Title",
+                Game = stream?.GameName ?? "No Game",
+                Uptime = stream?.StartedAt ?? DateTime.MinValue,
+                Thumbnail = stream?.ThumbnailUrl ?? "No Thumbnail",
+                StreamType = stream?.Type ?? "Offline"
+            };
+            Statistics.Update(channelInformation);
+            
+            var statistics = Statistics.GetAllStatistics();
+            return statistics ?? new Dictionary<string, object>();
+        }
+        
         private async Task SendStatistics()
         {
-            var statistics = Statistics.GetAllStatistics();
-            if (statistics == null) return;
-            await _hubContext.Clients.Group(ChannelName).ReceiveStatistics(statistics);
+            await _hubContext.Clients.Group(ChannelName).ReceiveStatistics(await GetStatistics());
         }
 
         // Event Handlers
@@ -264,18 +251,6 @@ namespace TwitchScanAPI.Data
 
             Statistics.Update(raidEvent);
             await _hubContext.Clients.Group(ChannelName).ReceiveRaidEvent(raidEvent);
-        }
-
-        private async void ClientOnBeingHosted(object? sender, OnBeingHostedArgs e)
-        {
-            var hostEvent = new ChannelHost
-            {
-                Hoster = e.BeingHostedNotification.HostedByChannel,
-                ViewerCount = e.BeingHostedNotification.Viewers
-            };
-
-            Statistics.Update(hostEvent);
-            await _hubContext.Clients.Group(ChannelName).ReceiveHostEvent(hostEvent);
         }
 
         private async void Client_OnUserBanned(object? sender, OnUserBannedArgs e)

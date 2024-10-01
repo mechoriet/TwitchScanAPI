@@ -30,7 +30,7 @@ namespace TwitchScanAPI.Data.Statistics.User
 
             if (!string.IsNullOrWhiteSpace(userBanned.BanReason))
             {
-                _banReasons.AddOrUpdate(userBanned.BanReason.Trim(), 1, (key, count) => count + 1);
+                _banReasons.AddOrUpdate(userBanned.BanReason.Trim(), 1, (_, count) => count + 1);
             }
         }
     }

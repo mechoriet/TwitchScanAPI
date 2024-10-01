@@ -35,7 +35,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             if (string.IsNullOrWhiteSpace(message.ChatMessage?.Username)) return; // Handle null or empty usernames
 
             // Add or update the chatter's message count in a thread-safe manner
-            _chatterCounts.AddOrUpdate(message.ChatMessage.Username.Trim(), 1, (key, oldValue) => oldValue + 1);
+            _chatterCounts.AddOrUpdate(message.ChatMessage.Username.Trim(), 1, (_, oldValue) => oldValue + 1);
         }
     }
 

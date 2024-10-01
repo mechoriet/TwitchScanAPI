@@ -47,7 +47,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 var trimmedMessage = message.ChatMessage.Message.Trim();
                 if (!string.IsNullOrWhiteSpace(trimmedMessage))
                 {
-                    _sentenceCounts.AddOrUpdate(trimmedMessage.ToLower(), 1, (key, count) => count + 1);
+                    _sentenceCounts.AddOrUpdate(trimmedMessage.ToLower(), 1, (_, count) => count + 1);
                 }
                 return;
             }
@@ -59,7 +59,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 var trimmed = sentence.Trim();
                 if (string.IsNullOrWhiteSpace(trimmed)) continue; // Skip empty sentences
 
-                _sentenceCounts.AddOrUpdate(trimmed.ToLower(), 1, (key, count) => count + 1);
+                _sentenceCounts.AddOrUpdate(trimmed.ToLower(), 1, (_, count) => count + 1);
             }
         }
 

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using TwitchScanAPI.Hubs;
@@ -76,24 +77,31 @@ namespace TwitchScanAPI.Data
             });
         }
         
-        public IEnumerable<string> GetPossibleStatistics()
+        public async Task<IEnumerable<string>> GetPossibleStatistics()
         {
-            return _twitchStats.SelectMany(x =>
+            var stats = await GetAllStatistics();
+            return _twitchStats.SelectMany(_ =>
             {
-                var collection = x.Statistics.GetAllStatistics().Keys;
+                var collection = stats.Keys;
                 return collection;
             }).Distinct();
         }
 
-        public IDictionary<string, IDictionary<string, object>?> GetAllStatistics()
+        public async Task<IDictionary<string, IDictionary<string, object>?>> GetAllStatistics()
         {
-            return _twitchStats.ToDictionary(x => x.ChannelName, x => GetAllStatistics(x.ChannelName)).OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value);
+            var stats = new Dictionary<string, IDictionary<string, object>?>();
+            foreach (var channel in _twitchStats)
+            {
+                stats[channel.ChannelName] = await channel.GetStatistics();
+            }
+
+            return stats;
         }
 
-        public IDictionary<string, object>? GetAllStatistics(string channelName)
+        public async Task<IDictionary<string, object>?> GetAllStatistics(string channelName)
         {
-            var stats = GetChannelStatistics(channelName)?.Statistics;
-            return stats?.GetAllStatistics().OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value);
+            var stats = await GetChannelStatistics(channelName)?.GetStatistics()!;
+            return stats;
         }
 
         public IEnumerable<string>? GetUsers(string channelName) => GetChannelStatistics(channelName)?.Users.Keys;

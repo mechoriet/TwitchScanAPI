@@ -25,7 +25,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
             foreach (var emote in emotes)
             {
-                _emoteCounts.AddOrUpdate(emote.Name, 1, (key, count) => count + 1);
+                _emoteCounts.AddOrUpdate(emote.Name, 1, (_, count) => count + 1);
             }
         }
     }

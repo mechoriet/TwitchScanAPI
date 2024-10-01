@@ -46,7 +46,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 var trimmed = word.Trim();
                 if (string.IsNullOrWhiteSpace(trimmed)) continue; // Skip empty or invalid words
 
-                _wordCounts.AddOrUpdate(trimmed.ToLower(), 1, (key, count) => count + 1);
+                _wordCounts.AddOrUpdate(trimmed.ToLower(), 1, (_, count) => count + 1);
             }
         }
     }
