@@ -42,6 +42,11 @@ namespace TwitchScanAPI.Controllers
         }
 
         [HttpGet]
+        public ActionResult GetInitiatedChannels()
+        {
+            return Ok(_twitchStats.GetInitiatedChannels());
+        }
+        [HttpGet]
         public ActionResult GetUsers(string channelName)
         {
             return Ok(_twitchStats.GetUsers(channelName));

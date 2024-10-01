@@ -15,6 +15,8 @@ using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Models;
+using TwitchLib.PubSub;
+using TwitchLib.PubSub.Events;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Hubs;
 using TwitchScanAPI.Models.Enums;
@@ -28,11 +30,13 @@ namespace TwitchScanAPI.Data
     {
         // Configuration
         private readonly TwitchClient _client;
+        private readonly TwitchPubSub _pubSubClient = new();
         private readonly IHubContext<TwitchHub, ITwitchHub> _hubContext;
         private readonly IConfiguration _configuration;
 
         // Channel Information
         public string ChannelName { get; }
+        public int MessageCount { get; private set; }
         public ConcurrentDictionary<string, string> Users { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         // Statistics
@@ -100,8 +104,42 @@ namespace TwitchScanAPI.Data
             client.OnUserLeft += Client_OnUserLeft;
             client.OnRaidNotification += Client_OnRaid;
             client.OnBeingHosted += ClientOnBeingHosted;
+            
+            // Connect to the PubSub client
+            _pubSubClient.OnViewCount += PubSubClientOnViewCount;
+            _pubSubClient.OnStreamUp += onStreamUp;
+            _pubSubClient.OnStreamDown += onStreamDown;
+            _pubSubClient.OnPubSubServiceConnected += PubSubClientOnOnPubSubServiceConnected;
+            
+            _pubSubClient.ListenToVideoPlayback(ChannelName);
+            _pubSubClient.Connect();
 
             return client;
+        }
+
+        private void PubSubClientOnOnPubSubServiceConnected(object? sender, EventArgs e)
+        {
+            _pubSubClient.SendTopics(_configuration.GetValue<string>(Variables.TwitchOauthKey));
+        }
+
+        private void PubSubClientOnViewCount(object? sender, OnViewCountArgs e)
+        {
+            var viewCount = new ChannelViewCount
+            {
+                ViewerCount = e.Viewers,
+                StreamTime = e.ServerTime
+            };
+            Statistics.Update(viewCount);
+        }
+        
+        private void onStreamUp(object? sender, OnStreamUpArgs e)
+        {
+            
+        }
+        
+        private void onStreamDown(object? sender, OnStreamDownArgs e)
+        {
+            
         }
 
         private void ConnectClient()
@@ -281,7 +319,10 @@ namespace TwitchScanAPI.Data
 
             // Update statistics
             if (!Variables.BotNames.Contains(e.ChatMessage.DisplayName.ToLower(), StringComparer.OrdinalIgnoreCase))
+            {
+                MessageCount++;
                 Statistics.Update(channelMessage);
+            }
 
             // Check for observed words
             if (_observePatternRegex != null && _observePatternRegex.IsMatch(e.ChatMessage.Message))
@@ -314,6 +355,9 @@ namespace TwitchScanAPI.Data
             _client.OnUserBanned -= Client_OnUserBanned;
             _client.OnUserJoined -= Client_OnUserJoined;
             _client.OnUserLeft -= Client_OnUserLeft;
+            
+            _statisticsTimer?.Stop();
+            _statisticsTimer?.Dispose();
         }
     }
 }

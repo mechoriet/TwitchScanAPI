@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using TwitchScanAPI.Hubs;
 using TwitchScanAPI.Models;
+using TwitchScanAPI.Models.Dto.Twitch.Channel;
 
 namespace TwitchScanAPI.Data
 {
@@ -64,6 +65,15 @@ namespace TwitchScanAPI.Data
 
             channel.AddTextToObserve(text);
             return true;
+        }
+        
+        public IEnumerable<InitiatedChannel> GetInitiatedChannels()
+        {
+            return _twitchStats.Select(x => new InitiatedChannel
+            {
+                ChannelName = x.ChannelName,
+                MessageCount = x.MessageCount
+            });
         }
         
         public IEnumerable<string> GetPossibleStatistics()
