@@ -20,8 +20,8 @@ namespace TwitchScanAPI.Controllers
         {
             var added = await _twitchStats.Init(channelName);
             return added.Error != null
-                ? StatusCode(added.Error.StatusCode, added.Error)
-                : Ok(added.Result);
+                ? StatusCode(added.Error.StatusCode, added)
+                : Ok(added);
         }
 
         [HttpDelete]
@@ -29,8 +29,8 @@ namespace TwitchScanAPI.Controllers
         {
             var removed = _twitchStats.Remove(channelName);
             return removed.Error != null
-                ? StatusCode(removed.Error.StatusCode, removed.Error.ErrorMessage)
-                : Ok(removed.Result);
+                ? StatusCode(removed.Error.StatusCode, removed)
+                : Ok(removed);
         }
 
         [HttpPost]
