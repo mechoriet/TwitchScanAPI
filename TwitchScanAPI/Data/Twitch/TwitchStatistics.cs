@@ -134,12 +134,12 @@ namespace TwitchScanAPI.Data.Twitch
         private async Task SendStatisticsAsync()
         {
             var isOnline = await _clientManager.IsChannelOnlineAsync();
+            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, isOnline, MessageCount));
             if (!isOnline)
                 return;
 
             var statistics = await GetStatisticsAsync();
             await _notificationService.ReceiveStatisticsAsync(ChannelName, statistics);
-            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, isOnline, MessageCount));
         }
 
         #region Event Handlers
