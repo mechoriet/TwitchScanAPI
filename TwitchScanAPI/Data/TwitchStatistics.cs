@@ -16,7 +16,6 @@ using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
-using TwitchLib.Communication.Enums;
 using TwitchLib.Communication.Models;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Hubs;
