@@ -24,6 +24,7 @@ namespace TwitchScanAPI.Data.Twitch
         public string ChannelName { get; }
         public int MessageCount { get; private set; }
         public DateTime StartedAt { get; } = DateTime.Now;
+        public bool IsConnected => _clientManager.IsConnected;
         
         private readonly TwitchClientManager _clientManager;
         private readonly StatisticsManager _statisticsManager;

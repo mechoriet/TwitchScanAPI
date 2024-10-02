@@ -112,7 +112,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         public IEnumerable<InitiatedChannel> GetInitiatedChannels()
         {
-            return _twitchStats.Select(x => new InitiatedChannel(x.ChannelName, x.MessageCount, x.StartedAt));
+            return _twitchStats.Select(x => new InitiatedChannel(x.ChannelName, x.MessageCount, x.StartedAt, x.IsConnected));
         }
 
         public async Task<IEnumerable<string>> GetPossibleStatistics()
