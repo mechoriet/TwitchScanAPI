@@ -119,11 +119,11 @@ namespace TwitchScanAPI.Data
             _client.OnUserJoined += Client_OnUserJoined;
             _client.OnUserLeft += Client_OnUserLeft;
             _client.OnRaidNotification += Client_OnRaid;
-            _client.Connect();
+             _client.Connect();
             
             // Initialize the timer to send statistics at regular intervals
             _statisticsTimer.Elapsed += async (_, _) => await SendStatistics();
-            _statisticsTimer.AutoReset = true; // Ensures the timer will keep triggering every hour
+            _statisticsTimer.AutoReset = true;
             _statisticsTimer.Start();
         }
 
