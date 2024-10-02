@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
-using TwitchScanAPI.Data;
+using TwitchScanAPI.Data.Twitch.Manager;
 using TwitchScanAPI.Hubs;
 using TwitchScanAPI.Services;
 
@@ -22,7 +22,8 @@ namespace TwitchScanAPI
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "TwitchScanAPI", Version = "v1" });
             });
             
-            services.AddSingleton<TwitchChannelObserver>();
+            services.AddSingleton<NotificationService>();
+            services.AddSingleton<TwitchChannelManager>();
             services.AddHttpClient<TwitchAuthService>();
             
             services.AddCors(options =>

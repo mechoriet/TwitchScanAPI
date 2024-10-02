@@ -1,88 +1,95 @@
-﻿#nullable enable
+﻿// TwitchChannelObserver.cs (Full Implementation)
 
-using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
-using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using TwitchScanAPI.Global;
-using TwitchScanAPI.Hubs;
 using TwitchScanAPI.Models;
 using TwitchScanAPI.Models.Dto.Twitch.Channel;
 using TwitchScanAPI.Services;
 
-namespace TwitchScanAPI.Data
+namespace TwitchScanAPI.Data.Twitch.Manager
 {
-    public class TwitchChannelObserver
+    public class TwitchChannelManager : IDisposable
     {
         private readonly List<TwitchStatistics> _twitchStats = new();
-        private readonly IHubContext<TwitchHub, ITwitchHub> _hubContext;
         private readonly IConfiguration _configuration;
         private readonly TwitchAuthService _authService;
+        private readonly NotificationService _notificationService;
 
         // Check every 30 minutes if the OAuth token needs to be refreshed
         private readonly Timer _oauthTimer = new(TimeSpan.FromMinutes(30).TotalMilliseconds);
-        public TwitchChannelObserver(IHubContext<TwitchHub, ITwitchHub> hubContext, IConfiguration configuration, TwitchAuthService authService)
+
+        public TwitchChannelManager(IConfiguration configuration, TwitchAuthService authService, NotificationService notificationService)
         {
-            _hubContext = hubContext;
             _configuration = configuration;
             _authService = authService;
-            
+            _notificationService = notificationService;
+
             // Refresh the OAuth token on startup
-            _ = RefreshAuthToken();
+            _ = RefreshAuthTokenAsync();
 
             // Initialize the timer to trigger token refresh every 30 minutes
-            _oauthTimer.Elapsed += async (_, _) => await RefreshAuthToken();
+            _oauthTimer.Elapsed += async (_, _) => await RefreshAuthTokenAsync();
             _oauthTimer.AutoReset = true;
             _oauthTimer.Start();
         }
-        
-        private async Task RefreshAuthToken()
+
+        private async Task RefreshAuthTokenAsync()
         {
-            // Update oauth token for all channels
-            var oauth = await _authService.GetOAuthTokenAsync();
-            _configuration[Variables.TwitchOauthKey] = oauth;
-            foreach (var channel in _twitchStats)
+            try
             {
-                await channel.AttemptConnectionAsync();
+                // Update OAuth token
+                var oauth = await _authService.GetOAuthTokenAsync();
+                _configuration[Variables.TwitchOauthKey] = oauth;
+
+                // Update OAuth token for all TwitchStatistics instances
+                foreach (var channel in _twitchStats)
+                {
+                    await channel.RefreshConnectionAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error refreshing OAuth token: {ex.Message}");
             }
         }
 
-        public async Task<ResultMessage<string?>> Init(string channelName)
+        public Task<ResultMessage<string?>> Init(string channelName)
         {
             if (string.IsNullOrWhiteSpace(channelName) || channelName.Length < 2)
             {
                 var error = new Error($"{channelName} is too short", StatusCodes.Status400BadRequest);
-                return new ResultMessage<string?>(null, error);
+                return Task.FromResult(new ResultMessage<string?>(null, error));
             }
 
             if (_twitchStats.Any(x => string.Equals(x.ChannelName, channelName, StringComparison.OrdinalIgnoreCase)))
             {
                 var error = new Error($"{channelName} already exists in Observer", StatusCodes.Status409Conflict);
-                return new ResultMessage<string?>(null, error);
+                return Task.FromResult(new ResultMessage<string?>(null, error));
             }
 
             try
             {
-                var stats = new TwitchStatistics(channelName, _hubContext, _configuration);
-                await stats.InitializeClientAsync();
+                var stats = new TwitchStatistics(channelName, _configuration, _notificationService);
                 _twitchStats.Add(stats);
             }
             catch (Exception e)
             {
                 var error = new Error(e.Message, StatusCodes.Status403Forbidden);
-                return new ResultMessage<string?>(null, error);
+                return Task.FromResult(new ResultMessage<string?>(null, error));
             }
 
-            return new ResultMessage<string?>(channelName, null);
+            return Task.FromResult(new ResultMessage<string?>(channelName, null));
         }
 
         public ResultMessage<string?> Remove(string channelName)
         {
-            var channel = GetChannelStatistics(channelName);
+            var channel = GetChannel(channelName);
             if (channel == null)
             {
                 var error = new Error($"{channelName} not found", StatusCodes.Status404NotFound);
@@ -96,7 +103,7 @@ namespace TwitchScanAPI.Data
 
         public bool AddTextToObserve(string channelName, string text)
         {
-            var channel = GetChannelStatistics(channelName);
+            var channel = GetChannel(channelName);
             if (channel == null) return false;
 
             channel.AddTextToObserve(text);
@@ -131,16 +138,28 @@ namespace TwitchScanAPI.Data
 
         public async Task<IDictionary<string, object>?> GetAllStatistics(string channelName)
         {
-            var stats = await GetChannelStatistics(channelName)?.GetStatisticsAsync()!;
+            var stats = await GetChannel(channelName)?.GetStatisticsAsync()!;
             return stats;
         }
 
-        public IEnumerable<string>? GetUsers(string channelName) => GetChannelStatistics(channelName)?.Users.Keys;
+        public IEnumerable<string>? GetUsers(string channelName) => GetChannel(channelName)?.GetUsers();
 
-        private TwitchStatistics? GetChannelStatistics(string channelName)
+        private TwitchStatistics? GetChannel(string channelName)
         {
             return _twitchStats.FirstOrDefault(x =>
                 string.Equals(x.ChannelName, channelName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public void Dispose()
+        {
+            foreach (var channel in _twitchStats)
+            {
+                channel.Dispose();
+            }
+
+            _oauthTimer.Stop();
+            _oauthTimer.Dispose();
+            GC.SuppressFinalize(this);
         }
     }
 }

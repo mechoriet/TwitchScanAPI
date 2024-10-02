@@ -1,16 +1,16 @@
 ﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using TwitchScanAPI.Data;
+using TwitchScanAPI.Data.Twitch.Manager;
 
 namespace TwitchScanAPI.Controllers
 {
     [Route("[controller]/[action]")]
     public class TwitchController : Controller
     {
-        private readonly TwitchChannelObserver _twitchStats;
+        private readonly TwitchChannelManager _twitchStats;
 
-        public TwitchController(TwitchChannelObserver twitchStats)
+        public TwitchController(TwitchChannelManager twitchStats)
         {
             _twitchStats = twitchStats;
         }

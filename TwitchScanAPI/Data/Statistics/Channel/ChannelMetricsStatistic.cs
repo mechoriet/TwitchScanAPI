@@ -20,7 +20,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         private long _viewerCountEntries;
 
         // For Current Game and Uptime Tracking
-        private string _currentGame;
+        private string? _currentGame;
         private TimeSpan _currentUptime;
 
         // For Viewers Over Time
@@ -66,8 +66,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
         public void Update(ChannelInformation channelInfo)
         {
-            if (channelInfo == null) return;
-
             var currentTime = DateTime.UtcNow;
 
             // Update Viewer History
