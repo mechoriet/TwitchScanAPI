@@ -74,9 +74,9 @@ namespace TwitchScanAPI.Services
             return _hubContext.Clients.Group(channelName).ReceiveTimedOutUser(timedOutUser);
         }
         
-        public Task ReceiveOnlineStatusAsync(string channelName, bool isOnline)
+        public Task ReceiveOnlineStatusAsync(ChannelStatus channelStatus)
         {
-            return _hubContext.Clients.All.ReceiveOnlineStatus(channelName, isOnline);
+            return _hubContext.Clients.All.ReceiveOnlineStatus(channelStatus);
         }
     }
 }

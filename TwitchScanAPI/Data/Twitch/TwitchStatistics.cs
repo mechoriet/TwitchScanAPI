@@ -89,7 +89,7 @@ namespace TwitchScanAPI.Data.Twitch
             _clientManager.OnUserBanned += ClientManager_OnUserBanned;
             _clientManager.OnMessageCleared += ClientManager_OnMessageCleared;
             _clientManager.OnUserTimedOut += ClientManager_OnUserTimedOut;
-            _clientManager.OnConnected += async (_, isOnline) => await _notificationService.ReceiveOnlineStatusAsync(ChannelName, isOnline);
+            _clientManager.OnConnected += async (_, isOnline) => await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, isOnline, MessageCount));
         }
 
         public void AddTextToObserve(string text)
@@ -138,7 +138,7 @@ namespace TwitchScanAPI.Data.Twitch
 
             var statistics = await GetStatisticsAsync();
             await _notificationService.ReceiveStatisticsAsync(ChannelName, statistics);
-            await _notificationService.ReceiveOnlineStatusAsync(ChannelName, IsConnected);
+            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, IsConnected, MessageCount));
         }
 
         #region Event Handlers
