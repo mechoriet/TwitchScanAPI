@@ -38,7 +38,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public event EventHandler<OnRaidNotificationArgs>? OnRaidNotification;
         public event EventHandler<OnUserBannedArgs>? OnUserBanned;
         public event EventHandler<OnMessageClearedArgs>? OnMessageCleared;
-        public event EventHandler<OnUserTimedoutArgs>? OnUserTimedout;
+        public event EventHandler<OnUserTimedoutArgs>? OnUserTimedOut;
+        public event EventHandler<bool>? OnConnected; 
 
         public TwitchClientManager(string channelName, IConfiguration configuration)
         {
@@ -68,7 +69,10 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         public async Task AttemptConnectionAsync()
         {
-            if (await IsChannelOnlineAsync())
+            var isOnline = await IsChannelOnlineAsync();
+            OnConnected?.Invoke(this, isOnline);
+            
+            if (isOnline)
             {
                 await StartClientAsync();
             }
@@ -129,7 +133,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _client.OnRaidNotification += (sender, args) => OnRaidNotification?.Invoke(sender, args);
             _client.OnUserBanned += (sender, args) => OnUserBanned?.Invoke(sender, args);
             _client.OnMessageCleared += (sender, args) => OnMessageCleared?.Invoke(sender, args);
-            _client.OnUserTimedout += (sender, args) => OnUserTimedout?.Invoke(sender, args);
+            _client.OnUserTimedout += (sender, args) => OnUserTimedOut?.Invoke(sender, args);
         }
 
         private async Task<bool> IsChannelOnlineAsync()
@@ -147,11 +151,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         public void DisconnectClient()
         {
-            if (_client?.IsConnected == true)
-            {
-                _client.Disconnect();
-                _client = null;
-            }
+            if (_client?.IsConnected != true) return;
+            _client.Disconnect();
+            _client = null;
         }
 
         public void Dispose()

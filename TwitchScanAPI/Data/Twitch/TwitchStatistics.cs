@@ -88,7 +88,8 @@ namespace TwitchScanAPI.Data.Twitch
             _clientManager.OnRaidNotification += ClientManager_OnRaidNotification;
             _clientManager.OnUserBanned += ClientManager_OnUserBanned;
             _clientManager.OnMessageCleared += ClientManager_OnMessageCleared;
-            _clientManager.OnUserTimedout += ClientManager_OnUserTimedOut;
+            _clientManager.OnUserTimedOut += ClientManager_OnUserTimedOut;
+            _clientManager.OnConnected += async (_, isOnline) => await _notificationService.ReceiveOnlineStatusAsync(ChannelName, isOnline);
         }
 
         public void AddTextToObserve(string text)
