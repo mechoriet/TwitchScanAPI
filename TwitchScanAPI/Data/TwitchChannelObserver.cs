@@ -47,7 +47,7 @@ namespace TwitchScanAPI.Data
             }
             catch (Exception e)
             {
-                var error = new Error(e.Message, StatusCodes.Status500InternalServerError);
+                var error = new Error(e.Message, StatusCodes.Status403Forbidden);
                 return new ResultMessage<string?>(null, error);
             }
 

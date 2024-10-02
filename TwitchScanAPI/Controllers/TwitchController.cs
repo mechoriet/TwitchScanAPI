@@ -20,7 +20,7 @@ namespace TwitchScanAPI.Controllers
         {
             var added = await _twitchStats.Init(channelName);
             return added.Error != null
-                ? StatusCode(added.Error.StatusCode, added.Error.ErrorMessage)
+                ? StatusCode(added.Error.StatusCode, added.Error)
                 : Ok(added.Result);
         }
 
