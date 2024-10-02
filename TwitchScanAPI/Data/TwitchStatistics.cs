@@ -90,7 +90,7 @@ namespace TwitchScanAPI.Data
             await StartClient();
             
             // Initialize the timer to send statistics at regular intervals
-            _statisticsTimer.Elapsed += async (_, _) => await SendStatistics();
+            _statisticsTimer.Elapsed += async (_, _) => await UserUpdates();
             _statisticsTimer.AutoReset = true;
             _statisticsTimer.Start();
         }
@@ -116,6 +116,7 @@ namespace TwitchScanAPI.Data
             // Subscribe to events
             _client.OnConnected += (_, _) => Console.WriteLine($"Connected to {ChannelName}");
             _client.OnDisconnected += (_, _) => Console.WriteLine($"Disconnected from {ChannelName}");
+            _client.OnReconnected += (_, _) => Console.WriteLine($"Reconnected to {ChannelName}");
             _client.OnConnectionError += (_, e) => Console.WriteLine($"Connection error: {e.Error.Message}");
             _client.OnError += (_, e) => Console.WriteLine($"Error: {e.Exception.Message}");
             _client.OnLog += (_, e) => Console.WriteLine($"Log: {e.Data}");
@@ -124,7 +125,6 @@ namespace TwitchScanAPI.Data
             _client.OnNoPermissionError += (_, _) => Console.WriteLine($"No permission error");
             
             // Subscribe to chat events
-            _client.OnReconnected += (_, _) => Console.WriteLine($"Reconnected to {ChannelName}");
             _client.OnMessageReceived += Client_OnMessageReceived;
             _client.OnNewSubscriber += Client_OnNewSubscriber;
             _client.OnReSubscriber += Client_OnReSubscriber;
@@ -150,10 +150,7 @@ namespace TwitchScanAPI.Data
             }
 
             // Cannot override credentials so we need to recreate the client
-            _client.Disconnect();
-            _client = null;
-            
-            // Start the client
+            DisconnectClient();
             await StartClient();
         }
 
@@ -211,8 +208,22 @@ namespace TwitchScanAPI.Data
             }
         }
 
-        private async Task SendStatistics()
+        private async Task UserUpdates()
         {
+            // Check if the user is still online, if he is not, disconnect the client and wait for him to turn back online to reconnect
+            var isOnline = await CheckUserOnline();
+            if (!isOnline)
+            {
+                DisconnectClient();
+                return;
+            }
+            
+            // Start client if previously disconnected
+            if (_client == null)
+            {
+                await StartClient();
+            }
+            
             await _hubContext.Clients.Group(ChannelName).ReceiveStatistics(await GetStatistics());
         }
 
@@ -378,25 +389,17 @@ namespace TwitchScanAPI.Data
             await _hubContext.Clients.Group(ChannelName).ReceiveElevatedMessage(channelMessage);
         }
 
+        private void DisconnectClient()
+        {
+            if (_client is not { IsConnected: true }) return;
+            _client.Disconnect();
+            _client = null;
+        }
+
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            if (_client is { IsConnected: true })
-            {
-                _client.Disconnect();
-
-                // Unsubscribe from events to prevent memory leaks
-                _client.OnMessageReceived -= Client_OnMessageReceived;
-                _client.OnNewSubscriber -= Client_OnNewSubscriber;
-                _client.OnReSubscriber -= Client_OnReSubscriber;
-                _client.OnGiftedSubscription -= Client_OnGiftedSubscription;
-                _client.OnCommunitySubscription -= Client_OnCommunitySubscription;
-                _client.OnUserTimedout -= Client_OnUserTimedOut;
-                _client.OnMessageCleared -= Client_OnMessageCleared;
-                _client.OnUserBanned -= Client_OnUserBanned;
-                _client.OnUserJoined -= Client_OnUserJoined;
-                _client.OnUserLeft -= Client_OnUserLeft;
-            }
+            DisconnectClient();
 
             _statisticsTimer?.Stop();
             _statisticsTimer?.Dispose();
