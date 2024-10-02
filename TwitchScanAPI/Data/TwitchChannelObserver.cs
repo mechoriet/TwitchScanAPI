@@ -5,11 +5,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Timers;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
+using TwitchScanAPI.Global;
 using TwitchScanAPI.Hubs;
 using TwitchScanAPI.Models;
 using TwitchScanAPI.Models.Dto.Twitch.Channel;
+using TwitchScanAPI.Services;
 
 namespace TwitchScanAPI.Data
 {
@@ -19,10 +22,25 @@ namespace TwitchScanAPI.Data
         private readonly IHubContext<TwitchHub, ITwitchHub> _hubContext;
         private readonly IConfiguration _configuration;
 
-        public TwitchChannelObserver(IHubContext<TwitchHub, ITwitchHub> hubContext, IConfiguration configuration)
+        // Check every 30 minutes if the OAuth token needs to be refreshed
+        private readonly Timer _oauthTimer = new(TimeSpan.FromMinutes(30).TotalMilliseconds);
+        public TwitchChannelObserver(IHubContext<TwitchHub, ITwitchHub> hubContext, IConfiguration configuration, TwitchAuthService authService)
         {
             _hubContext = hubContext;
             _configuration = configuration;
+
+            _oauthTimer.Elapsed += async (_, _) =>
+            {
+                // Update oauth token for all channels
+                var oauth = await authService.GetOAuthTokenAsync();
+                _configuration[Variables.TwitchOauthKey] = oauth;
+                foreach (var channel in _twitchStats)
+                {
+                    await channel.RefreshToken();
+                }
+            };
+            _oauthTimer.AutoReset = true;
+            _oauthTimer.Start();
         }
 
         public async Task<ResultMessage<string?>> Init(string channelName)

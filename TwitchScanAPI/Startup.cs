@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using TwitchScanAPI.Data;
 using TwitchScanAPI.Hubs;
+using TwitchScanAPI.Services;
 
 namespace TwitchScanAPI
 {
@@ -22,6 +23,7 @@ namespace TwitchScanAPI
             });
             
             services.AddSingleton<TwitchChannelObserver>();
+            services.AddHttpClient<TwitchAuthService>();
             
             services.AddCors(options =>
             {

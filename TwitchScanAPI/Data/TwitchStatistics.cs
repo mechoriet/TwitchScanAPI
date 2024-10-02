@@ -72,10 +72,8 @@ namespace TwitchScanAPI.Data
         public async Task InitializeClient()
         {
             // Fetch the OAuth token from the configuration
-            var oauth = _configuration.GetValue<string>(Variables.TwitchOauthKey);
             var clientId = _configuration.GetValue<string>(Variables.TwitchClientId);
             var clientSecret = _configuration.GetValue<string>(Variables.TwitchClientSecret);
-            var twitchChatName = _configuration.GetValue<string>(Variables.TwitchChatName);
 
             // Connect to the Api
             _api.Settings.ClientId = clientId;
@@ -88,7 +86,20 @@ namespace TwitchScanAPI.Data
                 throw new Exception("Channel is offline");
             }
 
+            // Start the client
+            await StartClient();
+            
+            // Initialize the timer to send statistics at regular intervals
+            _statisticsTimer.Elapsed += async (_, _) => await SendStatistics();
+            _statisticsTimer.AutoReset = true;
+            _statisticsTimer.Start();
+        }
+
+        private Task StartClient()
+        {
             // Initialize the client
+            var oauth = _configuration.GetValue<string>(Variables.TwitchOauthKey);
+            var twitchChatName = _configuration.GetValue<string>(Variables.TwitchChatName);
             var credentials = new ConnectionCredentials(twitchChatName, oauth);
             var clientOptions = new ClientOptions
             {
@@ -107,6 +118,12 @@ namespace TwitchScanAPI.Data
             _client.OnDisconnected += (_, _) => Console.WriteLine($"Disconnected from {ChannelName}");
             _client.OnConnectionError += (_, e) => Console.WriteLine($"Connection error: {e.Error.Message}");
             _client.OnError += (_, e) => Console.WriteLine($"Error: {e.Exception.Message}");
+            _client.OnLog += (_, e) => Console.WriteLine($"Log: {e.Data}");
+            _client.OnIncorrectLogin += (_, _) => Console.WriteLine("Incorrect login");
+            _client.OnUnaccountedFor += (_, e) => Console.WriteLine($"Unaccounted for: {e.RawIRC}");
+            _client.OnNoPermissionError += (_, _) => Console.WriteLine($"No permission error");
+            
+            // Subscribe to chat events
             _client.OnReconnected += (_, _) => Console.WriteLine($"Reconnected to {ChannelName}");
             _client.OnMessageReceived += Client_OnMessageReceived;
             _client.OnNewSubscriber += Client_OnNewSubscriber;
@@ -119,12 +136,25 @@ namespace TwitchScanAPI.Data
             _client.OnUserJoined += Client_OnUserJoined;
             _client.OnUserLeft += Client_OnUserLeft;
             _client.OnRaidNotification += Client_OnRaid;
-             _client.Connect();
             
-            // Initialize the timer to send statistics at regular intervals
-            _statisticsTimer.Elapsed += async (_, _) => await SendStatistics();
-            _statisticsTimer.AutoReset = true;
-            _statisticsTimer.Start();
+            // Connect to the channel
+            _client.Connect();
+            return Task.CompletedTask;
+        }
+        
+        public async Task RefreshToken()
+        {
+            if (_client == null)
+            {
+                return;
+            }
+
+            // Cannot override credentials so we need to recreate the client
+            _client.Disconnect();
+            _client = null;
+            
+            // Start the client
+            await StartClient();
         }
 
         private async Task<bool> CheckUserOnline()
