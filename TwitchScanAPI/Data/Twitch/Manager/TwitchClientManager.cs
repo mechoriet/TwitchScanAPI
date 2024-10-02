@@ -70,8 +70,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public async Task AttemptConnectionAsync()
         {
             var isOnline = await IsChannelOnlineAsync();
-            OnConnected?.Invoke(this, isOnline);
-            
             if (isOnline)
             {
                 await StartClientAsync();
@@ -136,12 +134,14 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _client.OnUserTimedout += (sender, args) => OnUserTimedOut?.Invoke(sender, args);
         }
 
-        private async Task<bool> IsChannelOnlineAsync()
+        public async Task<bool> IsChannelOnlineAsync()
         {
             try
             {
                 var streams = await Api.Helix.Streams.GetStreamsAsync(userLogins: new List<string> { _channelName });
-                return streams?.Streams.Any() ?? false;
+                var isOnline = streams?.Streams.Any() ?? false;
+                OnConnected?.Invoke(this, isOnline);
+                return isOnline;
             }
             catch (Exception)
             {
