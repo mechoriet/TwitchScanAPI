@@ -20,5 +20,6 @@ namespace TwitchScanAPI.Hubs
         Task ReceiveUserLeft(string username);
         // Send all statistics regularly to the client
         Task ReceiveStatistics(IDictionary<string, object> statistics);
+        Task ReceiveOnlineStatus(bool isOnline);
     }
 }

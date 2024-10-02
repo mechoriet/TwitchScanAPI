@@ -25,7 +25,7 @@ namespace TwitchScanAPI.Data.Twitch
         public int MessageCount { get; private set; }
         public DateTime StartedAt { get; } = DateTime.Now;
         public bool IsConnected => _clientManager.IsConnected;
-        
+
         private readonly TwitchClientManager _clientManager;
         private readonly StatisticsManager _statisticsManager;
         private readonly ObservedWordsManager _observedWordsManager;
@@ -101,7 +101,9 @@ namespace TwitchScanAPI.Data.Twitch
             try
             {
                 // Fetch the stream data using the Twitch API
-                var streams = await _clientManager.Api.Helix.Streams.GetStreamsAsync(userLogins: new List<string> { ChannelName });
+                var streams =
+                    await _clientManager.Api.Helix.Streams.GetStreamsAsync(userLogins: new List<string>
+                        { ChannelName });
                 var stream = streams?.Streams.FirstOrDefault();
 
                 if (stream == null) return _statisticsManager.GetAllStatistics();
@@ -122,7 +124,7 @@ namespace TwitchScanAPI.Data.Twitch
             catch (Exception ex)
             {
                 Console.WriteLine($"Error fetching statistics for channel '{ChannelName}': {ex.Message}");
-                return new Dictionary<string, object>();  // Return empty if there's an error
+                return new Dictionary<string, object>(); // Return empty if there's an error
             }
         }
 
@@ -130,10 +132,12 @@ namespace TwitchScanAPI.Data.Twitch
 
         private async Task SendStatisticsAsync()
         {
-            if (!IsConnected) return;
-            
+            if (!IsConnected)
+                return;
+
             var statistics = await GetStatisticsAsync();
             await _notificationService.ReceiveStatisticsAsync(ChannelName, statistics);
+            await _notificationService.ReceiveOnlineStatusAsync(ChannelName, IsConnected);
         }
 
         #region Event Handlers
@@ -299,10 +303,10 @@ namespace TwitchScanAPI.Data.Twitch
 
         #region Helper Methods
 
-        private int ParseInt(string? value, int defaultValue) =>
+        private static int ParseInt(string? value, int defaultValue) =>
             int.TryParse(value, out var result) ? result : defaultValue;
 
-        private bool IsElevatedUser(ChatMessage message) =>
+        private static bool IsElevatedUser(ChatMessage message) =>
             message.IsModerator || message.IsPartner || message.IsStaff || message.IsVip;
 
         #endregion
