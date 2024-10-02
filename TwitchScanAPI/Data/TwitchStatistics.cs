@@ -16,9 +16,8 @@ using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
+using TwitchLib.Communication.Enums;
 using TwitchLib.Communication.Models;
-using TwitchLib.PubSub;
-using TwitchLib.PubSub.Events;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Hubs;
 using TwitchScanAPI.Models.Enums;
@@ -43,14 +42,14 @@ namespace TwitchScanAPI.Data
         public ConcurrentDictionary<string, string> Users { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         // Statistics
-        private Statistics.Base.Statistics Statistics { get; }
+        private Statistics.Base.Statistics Statistics { get; } = new();
 
         // Words to observe
         private readonly HashSet<string> _wordsToObserve = new(StringComparer.OrdinalIgnoreCase);
         private Regex? _observePatternRegex;
 
         // Timer for regularly sending statistics
-        private readonly Timer? _statisticsTimer;
+        private readonly Timer _statisticsTimer;
         private readonly TimeSpan _sendInterval = TimeSpan.FromSeconds(60);
 
         public TwitchStatistics(string channelName, IHubContext<TwitchHub, ITwitchHub> hubContext,
@@ -59,12 +58,8 @@ namespace TwitchScanAPI.Data
             ChannelName = channelName;
             _hubContext = hubContext;
             _configuration = configuration;
-            Statistics = new Statistics.Base.Statistics();
-            // Initialize the timer to send statistics at regular intervals
+            
             _statisticsTimer = new Timer(_sendInterval.TotalMilliseconds);
-            _statisticsTimer.Elapsed += async (_, _) => await SendStatistics();
-            _statisticsTimer.AutoReset = true; // Ensures the timer will keep triggering every hour
-            _statisticsTimer.Start();
         }
 
         public void AddTextToObserve(string text)
@@ -81,6 +76,7 @@ namespace TwitchScanAPI.Data
             var oauth = _configuration.GetValue<string>(Variables.TwitchOauthKey);
             var clientId = _configuration.GetValue<string>(Variables.TwitchClientId);
             var clientSecret = _configuration.GetValue<string>(Variables.TwitchClientSecret);
+            var twitchChatName = _configuration.GetValue<string>(Variables.TwitchChatName);
 
             // Connect to the Api
             _api.Settings.ClientId = clientId;
@@ -94,7 +90,6 @@ namespace TwitchScanAPI.Data
             }
 
             // Initialize the client
-            var twitchChatName = _configuration.GetValue<string>(Variables.TwitchChatName);
             var credentials = new ConnectionCredentials(twitchChatName, oauth);
             var clientOptions = new ClientOptions
             {
@@ -104,11 +99,16 @@ namespace TwitchScanAPI.Data
             var customClient = new WebSocketClient(clientOptions);
             _client = new TwitchClient(customClient)
             {
-                AutoReListenOnException = true
+                AutoReListenOnException = true,
             };
             _client.Initialize(credentials, ChannelName);
 
             // Subscribe to events
+            _client.OnConnected += (_, _) => Console.WriteLine($"Connected to {ChannelName}");
+            _client.OnDisconnected += (_, _) => Console.WriteLine($"Disconnected from {ChannelName}");
+            _client.OnConnectionError += (_, e) => Console.WriteLine($"Connection error: {e.Error.Message}");
+            _client.OnError += (_, e) => Console.WriteLine($"Error: {e.Exception.Message}");
+            _client.OnReconnected += (_, _) => Console.WriteLine($"Reconnected to {ChannelName}");
             _client.OnMessageReceived += Client_OnMessageReceived;
             _client.OnNewSubscriber += Client_OnNewSubscriber;
             _client.OnReSubscriber += Client_OnReSubscriber;
@@ -120,8 +120,12 @@ namespace TwitchScanAPI.Data
             _client.OnUserJoined += Client_OnUserJoined;
             _client.OnUserLeft += Client_OnUserLeft;
             _client.OnRaidNotification += Client_OnRaid;
-
             _client.Connect();
+            
+            // Initialize the timer to send statistics at regular intervals
+            _statisticsTimer.Elapsed += async (_, _) => await SendStatistics();
+            _statisticsTimer.AutoReset = true; // Ensures the timer will keep triggering every hour
+            _statisticsTimer.Start();
         }
 
         private async Task<bool> CheckUserOnline()
@@ -348,22 +352,22 @@ namespace TwitchScanAPI.Data
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            if (_client.IsConnected)
+            if (_client is { IsConnected: true })
             {
                 _client.Disconnect();
-            }
 
-            // Unsubscribe from events to prevent memory leaks
-            _client.OnMessageReceived -= Client_OnMessageReceived;
-            _client.OnNewSubscriber -= Client_OnNewSubscriber;
-            _client.OnReSubscriber -= Client_OnReSubscriber;
-            _client.OnGiftedSubscription -= Client_OnGiftedSubscription;
-            _client.OnCommunitySubscription -= Client_OnCommunitySubscription;
-            _client.OnUserTimedout -= Client_OnUserTimedOut;
-            _client.OnMessageCleared -= Client_OnMessageCleared;
-            _client.OnUserBanned -= Client_OnUserBanned;
-            _client.OnUserJoined -= Client_OnUserJoined;
-            _client.OnUserLeft -= Client_OnUserLeft;
+                // Unsubscribe from events to prevent memory leaks
+                _client.OnMessageReceived -= Client_OnMessageReceived;
+                _client.OnNewSubscriber -= Client_OnNewSubscriber;
+                _client.OnReSubscriber -= Client_OnReSubscriber;
+                _client.OnGiftedSubscription -= Client_OnGiftedSubscription;
+                _client.OnCommunitySubscription -= Client_OnCommunitySubscription;
+                _client.OnUserTimedout -= Client_OnUserTimedOut;
+                _client.OnMessageCleared -= Client_OnMessageCleared;
+                _client.OnUserBanned -= Client_OnUserBanned;
+                _client.OnUserJoined -= Client_OnUserJoined;
+                _client.OnUserLeft -= Client_OnUserLeft;
+            }
 
             _statisticsTimer?.Stop();
             _statisticsTimer?.Dispose();
