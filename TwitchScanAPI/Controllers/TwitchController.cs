@@ -23,6 +23,15 @@ namespace TwitchScanAPI.Controllers
                 ? StatusCode(added.Error.StatusCode, added)
                 : Ok(added);
         }
+        
+        [HttpPost]
+        public async Task<ActionResult> InitMultiple([FromBody] string[] channelNames)
+        {
+            var added = await _twitchStats.InitMultiple(channelNames);
+            return added.Error != null
+                ? StatusCode(added.Error.StatusCode, added)
+                : Ok(added);
+        }
 
         [HttpDelete]
         public ActionResult Remove(string channelName)

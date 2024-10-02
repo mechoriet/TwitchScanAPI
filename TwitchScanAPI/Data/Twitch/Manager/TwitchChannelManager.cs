@@ -86,6 +86,21 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             return Task.FromResult(new ResultMessage<string?>(channelName, null));
         }
+        
+        public async Task<ResultMessage<string?>> InitMultiple(string[] channelNames)
+        {
+            var results = new List<ResultMessage<string?>>();
+            foreach (var channelName in channelNames)
+            {
+                var result = await Init(channelName);
+                results.Add(result);
+            }
+
+            var errors = results.Where(x => x.Error != null).Select(x => x.Error!.ErrorMessage);
+            var errorList = errors.ToList();
+            var error = errorList.Any() ? new Error(string.Join(", ", errorList), StatusCodes.Status207MultiStatus) : null;
+            return new ResultMessage<string?>(null, error);
+        }
 
         public ResultMessage<string?> Remove(string channelName)
         {

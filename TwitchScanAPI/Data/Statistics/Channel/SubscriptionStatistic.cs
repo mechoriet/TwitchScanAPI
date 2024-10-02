@@ -12,7 +12,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         public string Name => "SubscriptionStatistic";
 
         private readonly ConcurrentDictionary<SubscriptionType, int> _subscriptionCounts = new();
-        private readonly ConcurrentDictionary<string, int> _subscriberMonths = new();
+        private readonly ConcurrentDictionary<string, int> _topSubscriber = new();
 
         public object GetResult()
         {
@@ -23,8 +23,8 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                 TotalReSubscribers = _subscriptionCounts.GetValueOrDefault(SubscriptionType.Re),
                 TotalGiftedSubscriptions = _subscriptionCounts.GetValueOrDefault(SubscriptionType.Gifted),
                 TotalCommunitySubscriptions = _subscriptionCounts.GetValueOrDefault(SubscriptionType.Community),
-                AverageSubscriptionMonths = !_subscriberMonths.IsEmpty ? _subscriberMonths.Values.Average() : 0,
-                TopSubscribers = _subscriberMonths
+                AverageSubscriptionMonths = !_topSubscriber.IsEmpty ? _topSubscriber.Values.Average() : 0,
+                TopSubscribers = _topSubscriber
                     .OrderByDescending(kv => kv.Value)
                     .Take(10)
                     .ToDictionary(kv => kv.Key, kv => kv.Value),
@@ -37,7 +37,9 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             _subscriptionCounts.AddOrUpdate(channelSubscription.Type, 1, (_, count) => count + 1);
 
             // Track months for resubscribers and gifted subscriptions if applicable
-            _subscriberMonths.AddOrUpdate(channelSubscription.UserName, channelSubscription.Months, (_, oldValue) => oldValue + channelSubscription.Months);
+            if (channelSubscription.Type == SubscriptionType.Gifted)
+                _topSubscriber.AddOrUpdate(channelSubscription.UserName, channelSubscription.Months,
+                    (_, oldValue) => oldValue + channelSubscription.Months);
         }
     }
 }
