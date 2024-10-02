@@ -70,8 +70,11 @@ The system is built around the following core components:
         }
       },
       "AllowedHosts": "*",
-      "oauth": "oauth:YourToken",
-      "chatName": "YourTwitchBotName"
+      "oauth": "your-oauth-token (optional)",
+      "refreshToken": "your-refresh-token (needs chatbot, and helix scopes)",
+      "clientId": "your-client-id",
+      "clientSecret": "your-client-secret",
+      "chatName": "your-twitchbot-name"
     }
     ```
 
