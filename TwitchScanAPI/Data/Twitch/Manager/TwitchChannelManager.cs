@@ -61,6 +61,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         public Task<ResultMessage<string?>> Init(string channelName)
         {
+            channelName = channelName.Trim();
             if (string.IsNullOrWhiteSpace(channelName) || channelName.Length < 2)
             {
                 var error = new Error($"{channelName} is too short", StatusCodes.Status400BadRequest);
