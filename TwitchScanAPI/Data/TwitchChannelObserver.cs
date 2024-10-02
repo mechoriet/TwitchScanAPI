@@ -21,6 +21,7 @@ namespace TwitchScanAPI.Data
         private readonly List<TwitchStatistics> _twitchStats = new();
         private readonly IHubContext<TwitchHub, ITwitchHub> _hubContext;
         private readonly IConfiguration _configuration;
+        private readonly TwitchAuthService _authService;
 
         // Check every 30 minutes if the OAuth token needs to be refreshed
         private readonly Timer _oauthTimer = new(TimeSpan.FromMinutes(30).TotalMilliseconds);
@@ -28,19 +29,26 @@ namespace TwitchScanAPI.Data
         {
             _hubContext = hubContext;
             _configuration = configuration;
+            _authService = authService;
+            
+            // Refresh the OAuth token on startup
+            _ = RefreshAuthToken();
 
-            _oauthTimer.Elapsed += async (_, _) =>
-            {
-                // Update oauth token for all channels
-                var oauth = await authService.GetOAuthTokenAsync();
-                _configuration[Variables.TwitchOauthKey] = oauth;
-                foreach (var channel in _twitchStats)
-                {
-                    await channel.RefreshToken();
-                }
-            };
+            // Initialize the timer to trigger token refresh every 30 minutes
+            _oauthTimer.Elapsed += async (_, _) => await RefreshAuthToken();
             _oauthTimer.AutoReset = true;
             _oauthTimer.Start();
+        }
+        
+        private async Task RefreshAuthToken()
+        {
+            // Update oauth token for all channels
+            var oauth = await _authService.GetOAuthTokenAsync();
+            _configuration[Variables.TwitchOauthKey] = oauth;
+            foreach (var channel in _twitchStats)
+            {
+                await channel.RefreshToken();
+            }
         }
 
         public async Task<ResultMessage<string?>> Init(string channelName)
