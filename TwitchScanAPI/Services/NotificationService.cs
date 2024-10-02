@@ -76,7 +76,7 @@ namespace TwitchScanAPI.Services
         
         public Task ReceiveOnlineStatusAsync(ChannelStatus channelStatus)
         {
-            return _hubContext.Clients.All.ReceiveOnlineStatus(channelStatus);
+            return _hubContext.Clients.All.ReceiveStatus(channelStatus);
         }
     }
 }
