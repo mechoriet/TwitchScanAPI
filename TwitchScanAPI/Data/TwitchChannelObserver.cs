@@ -47,7 +47,7 @@ namespace TwitchScanAPI.Data
             _configuration[Variables.TwitchOauthKey] = oauth;
             foreach (var channel in _twitchStats)
             {
-                await channel.RefreshToken();
+                await channel.AttemptConnectionAsync();
             }
         }
 
@@ -68,7 +68,7 @@ namespace TwitchScanAPI.Data
             try
             {
                 var stats = new TwitchStatistics(channelName, _hubContext, _configuration);
-                await stats.InitializeClient();
+                await stats.InitializeClientAsync();
                 _twitchStats.Add(stats);
             }
             catch (Exception e)
@@ -123,7 +123,7 @@ namespace TwitchScanAPI.Data
             var stats = new Dictionary<string, IDictionary<string, object>?>();
             foreach (var channel in _twitchStats)
             {
-                stats[channel.ChannelName] = await channel.GetStatistics();
+                stats[channel.ChannelName] = await channel.GetStatisticsAsync();
             }
 
             return stats;
@@ -131,7 +131,7 @@ namespace TwitchScanAPI.Data
 
         public async Task<IDictionary<string, object>?> GetAllStatistics(string channelName)
         {
-            var stats = await GetChannelStatistics(channelName)?.GetStatistics()!;
+            var stats = await GetChannelStatistics(channelName)?.GetStatisticsAsync()!;
             return stats;
         }
 
