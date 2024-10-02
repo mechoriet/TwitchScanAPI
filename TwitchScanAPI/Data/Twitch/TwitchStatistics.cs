@@ -104,17 +104,17 @@ namespace TwitchScanAPI.Data.Twitch
                 var streams = await _clientManager.Api.Helix.Streams.GetStreamsAsync(userLogins: new List<string> { ChannelName });
                 var stream = streams?.Streams.FirstOrDefault();
 
+                if (stream == null) return _statisticsManager.GetAllStatistics();
                 // Create a new ChannelInformation object based on the stream data
                 var channelInfo = new ChannelInformation
                 {
-                    Viewers = stream?.ViewerCount ?? 0,
-                    Title = stream?.Title ?? "No Title",
-                    Game = stream?.GameName ?? "No Game",
-                    Uptime = stream?.StartedAt ?? DateTime.MinValue,
-                    Thumbnail = stream?.ThumbnailUrl ?? "No Thumbnail",
-                    StreamType = stream?.Type ?? "Offline"
+                    Viewers = stream.ViewerCount,
+                    Title = stream.Title,
+                    Game = stream.GameName,
+                    Uptime = stream.StartedAt,
+                    Thumbnail = stream.ThumbnailUrl,
+                    StreamType = stream.Type
                 };
-
                 _statisticsManager.Update(channelInfo);
 
                 return _statisticsManager.GetAllStatistics();
@@ -130,6 +130,8 @@ namespace TwitchScanAPI.Data.Twitch
 
         private async Task SendStatisticsAsync()
         {
+            if (!IsConnected) return;
+            
             var statistics = await GetStatisticsAsync();
             await _notificationService.ReceiveStatisticsAsync(ChannelName, statistics);
         }
@@ -164,11 +166,9 @@ namespace TwitchScanAPI.Data.Twitch
 
         private async void ClientManager_OnUserJoined(object? sender, OnUserJoinedArgs e)
         {
-            if (_userManager.AddUser(e.Username))
-            {
-                _statisticsManager.Update(new UserJoined(e.Username));
-                await _notificationService.ReceiveUserJoinedAsync(ChannelName, e.Username, e.Channel);
-            }
+            if (!_userManager.AddUser(e.Username)) return;
+            _statisticsManager.Update(new UserJoined(e.Username));
+            await _notificationService.ReceiveUserJoinedAsync(ChannelName, e.Username, e.Channel);
         }
 
         private async void ClientManager_OnUserLeft(object? sender, OnUserLeftArgs e)
