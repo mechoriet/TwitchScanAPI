@@ -170,6 +170,7 @@ namespace TwitchScanAPI.Data.Twitch
             var chatMessage = e.ChatMessage;
             var channelMessage = new ChannelMessage(ChannelName, chatMessage);
             await _notificationService.ReceiveChannelMessageAsync(ChannelName, channelMessage);
+            await _notificationService.ReceiveMessageCountAsync(ChannelName, MessageCount);
 
             // Update message count and statistics if not a bot
             if (!Variables.BotNames.Contains(chatMessage.DisplayName, StringComparer.OrdinalIgnoreCase))

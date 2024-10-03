@@ -28,6 +28,11 @@ namespace TwitchScanAPI.Services
         {
             return _hubContext.Clients.Group(channelName).ReceiveChannelMessage(message);
         }
+        
+        public Task ReceiveMessageCountAsync(string channelName, long messageCount)
+        {
+            return _hubContext.Clients.Group(channelName).ReceiveMessageCount(messageCount);
+        }
 
         public Task ReceiveObservedMessageAsync(string channelName, ChannelMessage message)
         {
