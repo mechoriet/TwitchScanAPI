@@ -5,16 +5,18 @@ namespace TwitchScanAPI.Models.Dto.Twitch.Channel
     public class InitiatedChannel
     {
         public string ChannelName { get; set; }
-        public int MessageCount { get; set; }
+        public long MessageCount { get; set; }
         public DateTime CreatedAt { get; set; }
         public bool IsOnline { get; set; }
+        public long HistoryLength { get; set; }
         
-        public InitiatedChannel(string channelName, int messageCount, DateTime createdAt, bool isOnline)
+        public InitiatedChannel(string channelName, long messageCount, DateTime createdAt, bool isOnline, long historyLength)
         {
             ChannelName = channelName;
             MessageCount = messageCount;
             CreatedAt = createdAt;
             IsOnline = isOnline;
+            HistoryLength = historyLength;
         }
     }
 }

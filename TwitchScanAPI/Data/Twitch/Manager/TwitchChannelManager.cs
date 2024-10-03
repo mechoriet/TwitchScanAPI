@@ -144,7 +144,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public IEnumerable<InitiatedChannel> GetInitiatedChannels()
         {
-            return _twitchStats.Select(x => new InitiatedChannel(x.ChannelName, x.MessageCount, x.StartedAt, x.IsOnline));
+            return _twitchStats.Select(x => new InitiatedChannel(x.ChannelName, x.MessageCount, x.StartedAt, x.IsOnline, x.StatisticHistory.Count));
         }
 
         /// <summary>

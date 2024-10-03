@@ -13,6 +13,7 @@ using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Models;
 using TwitchScanAPI.Global;
+using TwitchScanAPI.Models.Twitch.Channel;
 
 namespace TwitchScanAPI.Data.Twitch.Manager
 {
@@ -39,8 +40,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public event EventHandler<OnUserBannedArgs>? OnUserBanned;
         public event EventHandler<OnMessageClearedArgs>? OnMessageCleared;
         public event EventHandler<OnUserTimedoutArgs>? OnUserTimedOut;
-        public event EventHandler<bool>? OnConnected; 
-        public event EventHandler OnDisconnected;
+        public event EventHandler<ChannelInformation>? OnConnected;
+        public event EventHandler? OnDisconnected;
 
         public TwitchClientManager(string channelName, IConfiguration configuration)
         {
@@ -70,8 +71,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         public async Task AttemptConnectionAsync()
         {
-            var isOnline = await IsChannelOnlineAsync();
-            if (isOnline)
+            var channelInfo = await GetChannelInfoAsync();
+            if (channelInfo.IsOnline)
             {
                 await StartClientAsync();
             }
@@ -135,7 +136,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _client.OnUserTimedout += (sender, args) => OnUserTimedOut?.Invoke(sender, args);
         }
 
-        public async Task<bool> IsChannelOnlineAsync()
+        public async Task<ChannelInformation> GetChannelInfoAsync()
         {
             try
             {
@@ -145,13 +146,31 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 {
                     OnDisconnected?.Invoke(this, EventArgs.Empty);
                 }
+
                 IsOnline = isOnline;
-                OnConnected?.Invoke(this, IsOnline);
-                return IsOnline;
+                var channelInfo = new ChannelInformation(IsOnline);
+                if (streams != null && IsOnline && streams.Streams.Any())
+                {
+                    channelInfo = new ChannelInformation(
+                        streams.Streams[0].ViewerCount,
+                        streams.Streams[0].Title,
+                        streams.Streams[0].GameName,
+                        streams.Streams[0].StartedAt,
+                        streams.Streams[0].ThumbnailUrl,
+                        streams.Streams[0].Type,
+                        IsOnline);
+                    OnConnected?.Invoke(this, channelInfo);
+                }
+                else
+                {
+                    OnConnected?.Invoke(this, channelInfo);
+                }
+
+                return channelInfo;
             }
             catch (Exception)
             {
-                return false;
+                return new ChannelInformation(false);
             }
         }
 

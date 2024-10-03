@@ -106,9 +106,9 @@ namespace TwitchScanAPI.Data.Twitch
             _statisticsManager.Reset();
         }
 
-        private async void ClientManagerOnConnected(object? sender, bool isOnline)
+        private async void ClientManagerOnConnected(object? sender, ChannelInformation channelInformation)
         {
-            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, isOnline, MessageCount));
+            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, channelInformation.IsOnline, MessageCount, channelInformation.Viewers));
         }
 
         public void AddTextToObserve(string text)
@@ -128,7 +128,7 @@ namespace TwitchScanAPI.Data.Twitch
 
                 if (stream == null) return _statisticsManager.GetAllStatistics();
                 // Create a new ChannelInformation object based on the stream data
-                var channelInfo = new ChannelInformation
+                var channelInfo = new ChannelInformation(IsOnline)
                 {
                     Viewers = stream.ViewerCount,
                     Title = stream.Title,
@@ -152,9 +152,9 @@ namespace TwitchScanAPI.Data.Twitch
 
         private async Task SendStatisticsAsync()
         {
-            var isOnline = await _clientManager.IsChannelOnlineAsync();
-            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, isOnline, MessageCount));
-            if (!isOnline)
+            var channelInformation = await _clientManager.GetChannelInfoAsync();
+            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, channelInformation.IsOnline, MessageCount, channelInformation.Viewers));
+            if (!channelInformation.IsOnline)
                 return;
 
             var statistics = await GetStatisticsAsync();
@@ -198,11 +198,9 @@ namespace TwitchScanAPI.Data.Twitch
 
         private async void ClientManager_OnUserLeft(object? sender, OnUserLeftArgs e)
         {
-            if (_userManager.RemoveUser(e.Username))
-            {
-                _statisticsManager.Update(new UserLeft(e.Username));
-                await _notificationService.ReceiveUserLeftAsync(ChannelName, e.Username);
-            }
+            if (!_userManager.RemoveUser(e.Username)) return;
+            _statisticsManager.Update(new UserLeft(e.Username));
+            await _notificationService.ReceiveUserLeftAsync(ChannelName, e.Username);
         }
 
         private async void ClientManager_OnNewSubscriber(object? sender, OnNewSubscriberArgs e)
