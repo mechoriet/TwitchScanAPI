@@ -15,7 +15,6 @@ namespace TwitchScanAPI.Hubs
         Task ReceiveTimedOutUser(UserTimedOut userTimedOut);
         Task ReceiveClearedMessage(ClearedMessage clearedMessage);
         Task ReceiveSubscription(ChannelSubscription channelSubscription);
-        Task ReceiveRaidEvent(ChannelRaid channelRaid);
         Task ReceiveUserJoined(string username, string channel);
         Task ReceiveUserLeft(string username);
         // Send all statistics regularly to the client

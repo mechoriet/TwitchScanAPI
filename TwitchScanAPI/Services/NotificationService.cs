@@ -54,11 +54,6 @@ namespace TwitchScanAPI.Services
             return _hubContext.Clients.Group(channelName).ReceiveSubscription(subscription);
         }
 
-        public Task ReceiveRaidEventAsync(string channelName, ChannelRaid raidEvent)
-        {
-            return _hubContext.Clients.Group(channelName).ReceiveRaidEvent(raidEvent);
-        }
-
         public Task ReceiveBannedUserAsync(string channelName, UserBanned bannedUser)
         {
             return _hubContext.Clients.Group(channelName).ReceiveBannedUser(bannedUser);

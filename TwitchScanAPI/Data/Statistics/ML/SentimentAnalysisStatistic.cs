@@ -60,7 +60,6 @@ namespace TwitchScanAPI.Data.Statistics.ML
             var result = new SentimentAnalysisResultDTO
             {
                 SentimentOverTime = GetSentimentOverTime(),
-                SentimentOverTimeLabeled = GetLabeledSentimentOverTime(),
                 TopPositiveUsers = GetTopPositiveUsers(),
                 TopNegativeUsers = GetTopNegativeUsers(),
                 TopPositiveMessages = GetTopPositiveMessages(),
@@ -72,8 +71,8 @@ namespace TwitchScanAPI.Data.Statistics.ML
 
         public void Update(ChannelMessage message)
         {
-            var text = message?.ChatMessage?.Message;
-            var username = message?.ChatMessage?.Username;
+            var text = message.ChatMessage.Message;
+            var username = message.ChatMessage.Username;
             if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(username))
                 return;
 
@@ -183,27 +182,6 @@ namespace TwitchScanAPI.Data.Statistics.ML
                     AverageCompound = kvp.Value.MessageCount > 0 ? kvp.Value.Compound / kvp.Value.MessageCount : 0,
                     MessageCount = (int)kvp.Value.MessageCount
                 })
-                .ToList();
-        }
-
-        private List<object> GetLabeledSentimentOverTime()
-        {
-            return _sentimentOverTime
-                .OrderBy(kvp => kvp.Key)
-                .Select(kvp => new
-                {
-                    TimePeriod = kvp.Key.ToString("yyyy-MM-dd HH:mm"), // Formatting the time period for readability
-                    AveragePositive =
-                        $"{(kvp.Value.MessageCount > 0 ? (kvp.Value.Positive / kvp.Value.MessageCount * 100) : 0):F2}% Positive Sentiment",
-                    AverageNegative =
-                        $"{(kvp.Value.MessageCount > 0 ? (kvp.Value.Negative / kvp.Value.MessageCount * 100) : 0):F2}% Negative Sentiment",
-                    AverageNeutral =
-                        $"{(kvp.Value.MessageCount > 0 ? (kvp.Value.Neutral / kvp.Value.MessageCount * 100) : 0):F2}% Neutral Sentiment",
-                    AverageCompound =
-                        $"{(kvp.Value.MessageCount > 0 ? kvp.Value.Compound / kvp.Value.MessageCount : 0):F3} Compound Score",
-                    MessageCount = $"{kvp.Value.MessageCount} Messages"
-                })
-                .Cast<object>() // Cast to object for consistency in return type
                 .ToList();
         }
 

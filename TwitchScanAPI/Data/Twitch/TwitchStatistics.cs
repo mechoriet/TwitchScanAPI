@@ -85,7 +85,6 @@ namespace TwitchScanAPI.Data.Twitch
             _clientManager.OnReSubscriber += ClientManager_OnReSubscriber;
             _clientManager.OnGiftedSubscription += ClientManager_OnGiftedSubscription;
             _clientManager.OnCommunitySubscription += ClientManager_OnCommunitySubscription;
-            _clientManager.OnRaidNotification += ClientManager_OnRaidNotification;
             _clientManager.OnUserBanned += ClientManager_OnUserBanned;
             _clientManager.OnMessageCleared += ClientManager_OnMessageCleared;
             _clientManager.OnUserTimedOut += ClientManager_OnUserTimedOut;
@@ -253,18 +252,6 @@ namespace TwitchScanAPI.Data.Twitch
 
             _statisticsManager.Update(subscription);
             await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
-        }
-
-        private async void ClientManager_OnRaidNotification(object? sender, OnRaidNotificationArgs e)
-        {
-            var raidEvent = new ChannelRaid
-            {
-                Raider = e.RaidNotification.MsgParamDisplayName,
-                ViewerCount = ParseInt(e.RaidNotification.MsgParamViewerCount, 0)
-            };
-
-            _statisticsManager.Update(raidEvent);
-            await _notificationService.ReceiveRaidEventAsync(ChannelName, raidEvent);
         }
 
         private async void ClientManager_OnUserBanned(object? sender, OnUserBannedArgs e)
