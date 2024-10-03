@@ -5,6 +5,11 @@ namespace TwitchScanAPI.Data.Statistics.Base
     public class StatisticsManager
     {
         private readonly Statistics _statistics = new();
+        
+        public void Reset()
+        {
+            _statistics.Reset();
+        }
 
         public void Update<TEvent>(TEvent eventData)
         {

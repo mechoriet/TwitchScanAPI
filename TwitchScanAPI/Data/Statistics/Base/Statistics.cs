@@ -8,7 +8,7 @@ namespace TwitchScanAPI.Data.Statistics.Base
     public class Statistics
     {
         private readonly List<IStatistic> _statistics;
-        private readonly Dictionary<Type, List<(IStatistic Statistic, MethodInfo UpdateMethod)>> _eventHandlers;
+        private Dictionary<Type, List<(IStatistic Statistic, MethodInfo UpdateMethod)>> _eventHandlers;
 
         public Statistics()
         {
@@ -57,6 +57,17 @@ namespace TwitchScanAPI.Data.Statistics.Base
             }
 
             return handlers;
+        }
+        
+        /// <summary>
+        /// Reset all statistics to their initial state.
+        /// </summary>
+        public void Reset()
+        {
+            _statistics.Clear();
+            _statistics.AddRange(DiscoverStatistics());
+            _eventHandlers.Clear();
+            _eventHandlers = BuildEventHandlers();
         }
 
         public IDictionary<string, object> GetAllStatistics()

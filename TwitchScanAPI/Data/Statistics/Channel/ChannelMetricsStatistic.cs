@@ -9,6 +9,45 @@ using Timer = System.Timers.Timer;
 
 namespace TwitchScanAPI.Data.Statistics.Channel
 {
+    public class ViewerStatistics
+    {
+        public long CurrentViewers { get; set; }
+        public long AverageViewers { get; set; }
+        public long PeakViewers { get; set; }
+    }
+
+    public class ChannelMetrics
+    {
+        public ViewerStatistics ViewerStatistics { get; private set; } = new();
+        public string CurrentGame { get; private set; } = string.Empty;
+        public TimeSpan Uptime { get; private set; }
+        public Dictionary<DateTime, long> ViewersOverTime { get; private set; } = new();
+
+        public static ChannelMetrics Create(
+            long currentViewers,
+            long averageViewers,
+            long peakViewersSnapshot,
+            string currentGame,
+            TimeSpan currentUptime,
+            Dictionary<DateTime, long> viewersOverTime)
+        {
+            return new ChannelMetrics
+            {
+                ViewerStatistics = new ViewerStatistics
+                {
+                    CurrentViewers = currentViewers,
+                    AverageViewers = averageViewers,
+                    PeakViewers = peakViewersSnapshot
+                },
+                CurrentGame = currentGame,
+                Uptime = currentUptime,
+                ViewersOverTime = viewersOverTime
+                    .OrderByDescending(kv => kv.Key)
+                    .ToDictionary(kv => kv.Key, kv => kv.Value)
+            };
+        }
+    }
+
     public class ChannelMetricsStatistic : IStatistic
     {
         public string Name => "ChannelMetrics";
@@ -48,20 +87,14 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             var currentViewers = _viewerHistory.LastOrDefault().Viewers;
 
             // Return the result with all necessary metrics
-            return new
-            {
-                ViewerStatistics = new
-                {
-                    CurrentViewers = currentViewers,
-                    AverageViewers = averageViewers,
-                    PeakViewers = peakViewersSnapshot
-                },
-                CurrentGame = _currentGame,
-                Uptime = _currentUptime,
-                ViewersOverTime = _viewersOverTime
-                    .OrderByDescending(kv => kv.Key)
-                    .ToDictionary(kv => kv.Key, kv => kv.Value)
-            };
+            return ChannelMetrics.Create(
+                currentViewers,
+                (int)Math.Round(averageViewers),
+                (int)peakViewersSnapshot,
+                _currentGame ?? string.Empty,
+                _currentUptime,
+                _viewersOverTime.ToDictionary(kv => DateTime.Parse(kv.Key), kv => kv.Value)
+            );
         }
 
         public void Update(ChannelInformation channelInfo)

@@ -25,7 +25,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly Timer _reconnectTimer;
         private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
         private bool _isReconnecting;
-        public bool IsConnected => _client?.IsConnected == true;
+        public bool IsOnline { get; private set; }
 
         // Events to expose
         public event EventHandler<OnMessageReceivedArgs>? OnMessageReceived;
@@ -40,6 +40,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public event EventHandler<OnMessageClearedArgs>? OnMessageCleared;
         public event EventHandler<OnUserTimedoutArgs>? OnUserTimedOut;
         public event EventHandler<bool>? OnConnected; 
+        public event EventHandler OnDisconnected;
 
         public TwitchClientManager(string channelName, IConfiguration configuration)
         {
@@ -140,8 +141,13 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             {
                 var streams = await Api.Helix.Streams.GetStreamsAsync(userLogins: new List<string> { _channelName });
                 var isOnline = streams?.Streams.Any() ?? false;
-                OnConnected?.Invoke(this, isOnline);
-                return isOnline;
+                if (IsOnline && !isOnline)
+                {
+                    OnDisconnected?.Invoke(this, EventArgs.Empty);
+                }
+                IsOnline = isOnline;
+                OnConnected?.Invoke(this, IsOnline);
+                return IsOnline;
             }
             catch (Exception)
             {

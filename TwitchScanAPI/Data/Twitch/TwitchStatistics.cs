@@ -1,6 +1,7 @@
 ﻿// TwitchStatistics.cs
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -9,11 +10,13 @@ using Microsoft.Extensions.Configuration;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
 using TwitchScanAPI.Data.Statistics.Base;
+using TwitchScanAPI.Data.Statistics.Channel;
 using TwitchScanAPI.Data.Twitch.Manager;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Models.Enums;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Chat;
+using TwitchScanAPI.Models.Twitch.Statistics;
 using TwitchScanAPI.Models.Twitch.User;
 using TwitchScanAPI.Services;
 
@@ -23,8 +26,9 @@ namespace TwitchScanAPI.Data.Twitch
     {
         public string ChannelName { get; }
         public int MessageCount { get; private set; }
-        public DateTime StartedAt { get; } = DateTime.Now;
-        public bool IsConnected => _clientManager.IsConnected;
+        public DateTime StartedAt { get; } = DateTime.UtcNow;
+        public bool IsOnline => _clientManager.IsOnline;
+        public ConcurrentDictionary<string, StatisticHistory> StatisticHistory { get; } = new();
 
         private readonly TwitchClientManager _clientManager;
         private readonly StatisticsManager _statisticsManager;
@@ -88,7 +92,23 @@ namespace TwitchScanAPI.Data.Twitch
             _clientManager.OnUserBanned += ClientManager_OnUserBanned;
             _clientManager.OnMessageCleared += ClientManager_OnMessageCleared;
             _clientManager.OnUserTimedOut += ClientManager_OnUserTimedOut;
-            _clientManager.OnConnected += async (_, isOnline) => await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, isOnline, MessageCount));
+            _clientManager.OnConnected += ClientManagerOnConnected;
+            _clientManager.OnDisconnected += ClientManagerOnDisconnected;
+        }
+
+        private void ClientManagerOnDisconnected(object? sender, EventArgs e)
+        {
+            var statistics = _statisticsManager.GetAllStatistics();
+            // Try getting the peak viewers from the statistics
+            statistics.TryGetValue("ChannelMetrics", out var value);
+            var peakViewers = value is ChannelMetrics metrics ? metrics.ViewerStatistics.PeakViewers : 0;
+            StatisticHistory[DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")] = new StatisticHistory(peakViewers, MessageCount, statistics);
+            _statisticsManager.Reset();
+        }
+
+        private async void ClientManagerOnConnected(object? sender, bool isOnline)
+        {
+            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, isOnline, MessageCount));
         }
 
         public void AddTextToObserve(string text)

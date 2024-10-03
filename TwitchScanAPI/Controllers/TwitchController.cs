@@ -56,6 +56,18 @@ namespace TwitchScanAPI.Controllers
         }
 
         [HttpGet]
+        public ActionResult GetViewCountHistory(string channelName)
+        {
+            return Ok(_twitchStats.GetViewCountHistory(channelName));
+        }
+
+        [HttpGet]
+        public ActionResult GetHistoryByKey(string channelName, string key)
+        {
+            return Ok(_twitchStats.GetHistoryByKey(channelName, key));
+        }
+
+        [HttpGet]
         public ActionResult GetUsers(string channelName)
         {
             return Ok(_twitchStats.GetUsers(channelName));

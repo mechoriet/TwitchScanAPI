@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Models;
 using TwitchScanAPI.Models.Dto.Twitch.Channel;
+using TwitchScanAPI.Models.Twitch.Statistics;
 using TwitchScanAPI.Services;
 
 namespace TwitchScanAPI.Data.Twitch.Manager
@@ -59,6 +60,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             }
         }
 
+        /// <summary>
+        /// Initialize a channel to observe
+        /// </summary>
         public Task<ResultMessage<string?>> Init(string channelName)
         {
             channelName = channelName.Trim();
@@ -88,6 +92,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             return Task.FromResult(new ResultMessage<string?>(channelName, null));
         }
         
+        /// <summary>
+        /// Initialize multiple channels at once
+        /// </summary>
         public async Task<ResultMessage<string?>> InitMultiple(string[] channelNames)
         {
             var results = new List<ResultMessage<string?>>();
@@ -103,6 +110,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             return new ResultMessage<string?>(null, error);
         }
 
+        /// <summary>
+        /// Remove a channel from the observer
+        /// </summary>
         public ResultMessage<string?> Remove(string channelName)
         {
             var channel = GetChannel(channelName);
@@ -117,6 +127,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             return new ResultMessage<string?>(channelName, null);
         }
 
+        /// <summary>
+        /// Add a text to observe for a specific channel
+        /// </summary>
         public bool AddTextToObserve(string channelName, string text)
         {
             var channel = GetChannel(channelName);
@@ -126,11 +139,17 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             return true;
         }
 
+        /// <summary>
+        /// Get all initiated channels
+        /// </summary>
         public IEnumerable<InitiatedChannel> GetInitiatedChannels()
         {
-            return _twitchStats.Select(x => new InitiatedChannel(x.ChannelName, x.MessageCount, x.StartedAt, x.IsConnected));
+            return _twitchStats.Select(x => new InitiatedChannel(x.ChannelName, x.MessageCount, x.StartedAt, x.IsOnline));
         }
 
+        /// <summary>
+        /// Get all possible statistics that can be observed
+        /// </summary>
         public async Task<IEnumerable<string>> GetPossibleStatistics()
         {
             var stats = await GetAllStatistics();
@@ -141,6 +160,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             }).Distinct();
         }
 
+        /// <summary>
+        /// Get all statistics for all channels
+        /// </summary>
         public async Task<IDictionary<string, IDictionary<string, object>?>> GetAllStatistics()
         {
             var stats = new Dictionary<string, IDictionary<string, object>?>();
@@ -152,12 +174,39 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             return stats;
         }
 
+        /// <summary>
+        /// Get all statistics for a specific channel
+        /// </summary>
         public async Task<IDictionary<string, object>?> GetAllStatistics(string channelName)
         {
             var stats = await GetChannel(channelName)?.GetStatisticsAsync()!;
             return stats;
         }
+        
+        /// <summary>
+        /// Get the history keys and peak viewers for a channel for heatmap purposes
+        /// </summary>
+        public IDictionary<string, long> GetViewCountHistory(string channelName)
+        {
+            return GetChannel(channelName)?.StatisticHistory.ToDictionary(x => x.Key, x => x.Value.PeakViewers) ?? new Dictionary<string, long>();
+        }
+        
+        /// <summary>
+        /// Get the history of a specific key from the statistic history
+        /// </summary>
+        public StatisticHistory GetHistoryByKey(string channelName, string key)
+        {
+            var channel = GetChannel(channelName);
+            if (channel == null || !channel.StatisticHistory.TryGetValue(key, out var statisticHistory))
+            {
+                return new StatisticHistory();
+            }
+            return statisticHistory;
+        }
 
+        /// <summary>
+        /// Get all users in a channel
+        /// </summary>
         public IEnumerable<string>? GetUsers(string channelName) => GetChannel(channelName)?.GetUsers();
 
         private TwitchStatistics? GetChannel(string channelName)
