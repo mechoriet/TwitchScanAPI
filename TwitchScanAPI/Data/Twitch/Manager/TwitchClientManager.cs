@@ -26,7 +26,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly Timer _reconnectTimer;
         private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
         private bool _isReconnecting;
-        public bool IsOnline { get; private set; }
+        private bool IsOnline { get; set; }
 
         // Events to expose
         public event EventHandler<OnMessageReceivedArgs>? OnMessageReceived;

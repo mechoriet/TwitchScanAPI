@@ -13,10 +13,32 @@ namespace TwitchScanAPI.Controllers
     public class TwitchController : Controller
     {
         private readonly TwitchChannelManager _twitchStats;
+        private readonly MongoDbContext _context;
 
-        public TwitchController(TwitchChannelManager twitchStats)
+        public TwitchController(TwitchChannelManager twitchStats, MongoDbContext context)
         {
             _twitchStats = twitchStats;
+            _context = context;
+        }
+
+        [HttpPost]
+        public async Task<ActionResult> CreateTestEntry()
+        {
+            await _context.StatisticHistory.InsertOneAsync(new StatisticHistory("test", 100, 100, null));
+            return Ok();
+        }
+        
+        [HttpGet]
+        public ActionResult GetAll()
+        {
+            return Ok(_context.StatisticHistory.Find(_ => true).ToList());
+        }
+        
+        [HttpDelete]
+        public ActionResult DeleteAll()
+        {
+            _context.StatisticHistory.DeleteMany(_ => true);
+            return Ok();
         }
 
         [HttpPost]

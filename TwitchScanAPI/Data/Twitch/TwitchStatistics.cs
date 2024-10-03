@@ -28,8 +28,7 @@ namespace TwitchScanAPI.Data.Twitch
         public string ChannelName { get; }
         public int MessageCount { get; private set; }
         public DateTime StartedAt { get; } = DateTime.UtcNow;
-        public bool IsOnline => _clientManager.IsOnline;
-
+        public bool IsOnline = false;
         private readonly TwitchClientManager _clientManager;
         private readonly StatisticsManager _statisticsManager;
         private readonly ObservedWordsManager _observedWordsManager;
@@ -99,10 +98,12 @@ namespace TwitchScanAPI.Data.Twitch
 
         private void ClientManagerOnDisconnected(object? sender, EventArgs e)
         {
-            var statistics = _statisticsManager.GetAllStatistics();
+            IsOnline = false;
             // Try getting the peak viewers from the statistics
+            var statistics = _statisticsManager.GetAllStatistics();
             statistics.TryGetValue("ChannelMetrics", out var value);
             var peakViewers = value is ChannelMetrics metrics ? metrics.ViewerStatistics.PeakViewers : 0;
+            // Save the statistics to the database
             var statisticHistory = new StatisticHistory(ChannelName, peakViewers, MessageCount, statistics);
             _context.StatisticHistory.InsertOne(statisticHistory);
             _statisticsManager.Reset();
@@ -110,6 +111,7 @@ namespace TwitchScanAPI.Data.Twitch
 
         private async void ClientManagerOnConnected(object? sender, ChannelInformation channelInformation)
         {
+            IsOnline = channelInformation.IsOnline;
             await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, channelInformation.IsOnline, MessageCount, channelInformation.Viewers));
         }
 
