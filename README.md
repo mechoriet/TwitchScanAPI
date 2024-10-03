@@ -69,7 +69,10 @@ The system is built around the following core components:
           "Microsoft.Hosting.Lifetime": "Information"
         }
       },
-      "AllowedHosts": "*",
+      "AllowedHosts": "*",,
+      "ConnectionStrings": {
+        "MongoConnection": "mongodb://localhost:27017 (for historical data)"
+      },
       "oauth": "your-oauth-token (optional)",
       "refreshToken": "your-refresh-token (needs chatbot, and helix scopes)",
       "clientId": "your-client-id",
