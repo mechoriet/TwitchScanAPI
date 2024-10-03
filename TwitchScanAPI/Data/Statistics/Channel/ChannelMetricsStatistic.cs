@@ -64,7 +64,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
         // For Viewers Over Time
         private readonly ConcurrentDictionary<string, long> _viewersOverTime = new();
-        private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(24);
+        private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(48);
         private const int BucketSize = 1; // Grouping viewers into 1-minute periods
         private readonly Timer _cleanupTimer;
 
@@ -113,7 +113,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             UpdateViewersOverTime(currentTime, channelInfo.Viewers);
 
             // Clean up old data
-            TrimQueue(_viewerHistory, TimeSpan.FromHours(24), currentTime);
+            TrimQueue(_viewerHistory, TimeSpan.FromHours(48), currentTime);
 
             // Update Current Game
             if (!string.IsNullOrWhiteSpace(channelInfo.Game))

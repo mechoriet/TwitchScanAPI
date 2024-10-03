@@ -12,6 +12,7 @@ using TwitchLib.Client.Models;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Data.Statistics.Channel;
 using TwitchScanAPI.Data.Twitch.Manager;
+using TwitchScanAPI.DbContext;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Models.Enums;
 using TwitchScanAPI.Models.Twitch.Channel;
@@ -28,21 +29,21 @@ namespace TwitchScanAPI.Data.Twitch
         public int MessageCount { get; private set; }
         public DateTime StartedAt { get; } = DateTime.UtcNow;
         public bool IsOnline => _clientManager.IsOnline;
-        public ConcurrentDictionary<string, StatisticHistory> StatisticHistory { get; } = new();
 
         private readonly TwitchClientManager _clientManager;
         private readonly StatisticsManager _statisticsManager;
         private readonly ObservedWordsManager _observedWordsManager;
         private readonly UserManager _userManager;
         private readonly NotificationService _notificationService;
+        private readonly MongoDbContext _context;
         private readonly Timer _statisticsTimer;
 
         public TwitchStatistics(string channelName,
-            IConfiguration configuration, NotificationService notificationService)
+            IConfiguration configuration, NotificationService notificationService, MongoDbContext context)
         {
             ChannelName = channelName;
             _notificationService = notificationService;
-
+            _context = context;
             _clientManager = new TwitchClientManager(channelName, configuration);
             _statisticsManager = new StatisticsManager();
             _observedWordsManager = new ObservedWordsManager();
@@ -102,7 +103,8 @@ namespace TwitchScanAPI.Data.Twitch
             // Try getting the peak viewers from the statistics
             statistics.TryGetValue("ChannelMetrics", out var value);
             var peakViewers = value is ChannelMetrics metrics ? metrics.ViewerStatistics.PeakViewers : 0;
-            StatisticHistory[DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")] = new StatisticHistory(peakViewers, MessageCount, statistics);
+            var statisticHistory = new StatisticHistory(ChannelName, peakViewers, MessageCount, statistics);
+            _context.StatisticHistory.InsertOne(statisticHistory);
             _statisticsManager.Reset();
         }
 

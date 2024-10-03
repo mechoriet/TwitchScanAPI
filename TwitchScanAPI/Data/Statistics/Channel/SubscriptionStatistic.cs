@@ -21,7 +21,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
         // Tracks the number of subscriptions over each minute interval
         private readonly ConcurrentDictionary<string, long> _subscriptionsOverTime = new();
-        private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(24);
+        private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(48);
         private const int BucketSize = 1; // Grouping subscriptions into 1-minute periods
         private readonly Timer _cleanupTimer;
 

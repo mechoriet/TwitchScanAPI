@@ -31,7 +31,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
         // Define the time interval for bucketing (e.g., 5 minutes)
         private readonly TimeSpan _bucketSize = TimeSpan.FromMinutes(1);
         // Define the retention period for the cleanup (e.g., keep data for 24 hours)
-        private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(24);
+        private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(48);
         // Define the cleanup interval for the timer (e.g., every hour)
         private readonly TimeSpan _cleanupInterval = TimeSpan.FromHours(1);
 

@@ -13,7 +13,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         public string Name => "PeakActivityPeriods";
         private readonly ConcurrentDictionary<string, int> _hourlyMessageCounts = new();
 
-        private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(24);
+        private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(48);
         private const int BucketSize = 1; // Grouping messages into 1-minute periods
 
         private readonly Timer _cleanupTimer;

@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using System.Timers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using MongoDB.Driver;
+using TwitchScanAPI.DbContext;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Models;
 using TwitchScanAPI.Models.Dto.Twitch.Channel;
@@ -21,15 +23,17 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly IConfiguration _configuration;
         private readonly TwitchAuthService _authService;
         private readonly NotificationService _notificationService;
+        private readonly MongoDbContext _context;
 
         // Check every 30 minutes if the OAuth token needs to be refreshed
         private readonly Timer _oauthTimer = new(TimeSpan.FromMinutes(30).TotalMilliseconds);
 
-        public TwitchChannelManager(IConfiguration configuration, TwitchAuthService authService, NotificationService notificationService)
+        public TwitchChannelManager(IConfiguration configuration, TwitchAuthService authService, NotificationService notificationService, MongoDbContext context)
         {
             _configuration = configuration;
             _authService = authService;
             _notificationService = notificationService;
+            _context = context;
 
             // Refresh the OAuth token on startup
             _ = RefreshAuthTokenAsync();
@@ -80,7 +84,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             try
             {
-                var stats = new TwitchStatistics(channelName, _configuration, _notificationService);
+                var stats = new TwitchStatistics(channelName, _configuration, _notificationService, _context);
                 _twitchStats.Add(stats);
             }
             catch (Exception e)
@@ -144,7 +148,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public IEnumerable<InitiatedChannel> GetInitiatedChannels()
         {
-            return _twitchStats.Select(x => new InitiatedChannel(x.ChannelName, x.MessageCount, x.StartedAt, x.IsOnline, x.StatisticHistory.Count));
+            return _twitchStats.Select(x => new InitiatedChannel(x.ChannelName, x.MessageCount, x.StartedAt, x.IsOnline, _context.StatisticHistory.CountDocuments(Builders<StatisticHistory>.Filter.Eq(y => y.UserName, x.ChannelName))));
         }
 
         /// <summary>
@@ -184,24 +188,20 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
         
         /// <summary>
-        /// Get the history keys and peak viewers for a channel for heatmap purposes
+        /// Get the history keys and peak viewers
         /// </summary>
         public IDictionary<string, long> GetViewCountHistory(string channelName)
         {
-            return GetChannel(channelName)?.StatisticHistory.ToDictionary(x => x.Key, x => x.Value.PeakViewers) ?? new Dictionary<string, long>();
+            return _context.StatisticHistory.Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName)).ToList()
+                .ToDictionary(x => x.Time.ToString("yyyy-MM-dd HH:mm:ss"), x => x.PeakViewers);
         }
         
         /// <summary>
         /// Get the history of a specific key from the statistic history
         /// </summary>
-        public StatisticHistory GetHistoryByKey(string channelName, string key)
+        public StatisticHistory GetHistoryByKey(string channelName, Guid id)
         {
-            var channel = GetChannel(channelName);
-            if (channel == null || !channel.StatisticHistory.TryGetValue(key, out var statisticHistory))
-            {
-                return new StatisticHistory();
-            }
-            return statisticHistory;
+            return _context.StatisticHistory.Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName) & Builders<StatisticHistory>.Filter.Eq(x => x.Id, id)).FirstOrDefault();
         }
 
         /// <summary>

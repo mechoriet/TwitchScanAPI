@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using TwitchScanAPI.Data.Twitch.Manager;
+using TwitchScanAPI.DbContext;
 using TwitchScanAPI.Hubs;
 using TwitchScanAPI.Services;
 
@@ -39,6 +40,9 @@ namespace TwitchScanAPI
                             .AllowCredentials(); // Allow credentials for SignalR
                     });
             });
+            
+            // Register DbContext
+            services.AddSingleton<MongoDbContext>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

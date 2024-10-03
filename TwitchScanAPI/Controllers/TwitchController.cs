@@ -1,7 +1,11 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using MongoDB.Driver;
 using TwitchScanAPI.Data.Twitch.Manager;
+using TwitchScanAPI.DbContext;
+using TwitchScanAPI.Models.Twitch.Statistics;
 
 namespace TwitchScanAPI.Controllers
 {
@@ -62,7 +66,7 @@ namespace TwitchScanAPI.Controllers
         }
 
         [HttpGet]
-        public ActionResult GetHistoryByKey(string channelName, string key)
+        public ActionResult GetHistoryByKey(string channelName, Guid key)
         {
             return Ok(_twitchStats.GetHistoryByKey(channelName, key));
         }
