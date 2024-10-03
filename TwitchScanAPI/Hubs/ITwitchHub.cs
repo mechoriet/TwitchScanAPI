@@ -9,7 +9,6 @@ namespace TwitchScanAPI.Hubs
     public interface ITwitchHub
     {
         Task ReceiveChannelMessage(ChannelMessage message);
-        Task ReceiveMessageCount(long messageCount);
         Task ReceiveElevatedMessage(ChannelMessage message);
         Task ReceiveObservedMessage(ChannelMessage message);
         Task ReceiveBannedUser(UserBanned userBanned);
@@ -21,5 +20,6 @@ namespace TwitchScanAPI.Hubs
         // Send all statistics regularly to the client
         Task ReceiveStatistics(IDictionary<string, object> statistics);
         Task ReceiveStatus(ChannelStatus channelStatus);
+        Task ReceiveMessageCount(string username, long messageCount);
     }
 }

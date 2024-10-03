@@ -31,7 +31,7 @@ namespace TwitchScanAPI.Services
         
         public Task ReceiveMessageCountAsync(string channelName, long messageCount)
         {
-            return _hubContext.Clients.Group(channelName).ReceiveMessageCount(messageCount);
+            return _hubContext.Clients.All.ReceiveMessageCount(channelName, messageCount);
         }
 
         public Task ReceiveObservedMessageAsync(string channelName, ChannelMessage message)
