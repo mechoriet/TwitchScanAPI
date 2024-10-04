@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using TwitchScanAPI.Controllers.Annotations;
 using TwitchScanAPI.Data.Twitch.Manager;
 
 namespace TwitchScanAPI.Controllers
@@ -16,6 +17,7 @@ namespace TwitchScanAPI.Controllers
         }
 
         [HttpPost]
+        [MasterKey]
         public async Task<ActionResult> Init(string channelName)
         {
             var added = await _twitchStats.Init(channelName);
@@ -25,6 +27,7 @@ namespace TwitchScanAPI.Controllers
         }
         
         [HttpPost]
+        [MasterKey]
         public async Task<ActionResult> InitMultiple([FromBody] string[] channelNames)
         {
             var added = await _twitchStats.InitMultiple(channelNames);
@@ -34,6 +37,7 @@ namespace TwitchScanAPI.Controllers
         }
 
         [HttpDelete]
+        [MasterKey]
         public ActionResult Remove(string channelName)
         {
             var removed = _twitchStats.Remove(channelName);
@@ -43,6 +47,7 @@ namespace TwitchScanAPI.Controllers
         }
 
         [HttpPost]
+        [MasterKey]
         public ActionResult AddTextToObserve(string channelName, string text)
         {
             var added = _twitchStats.AddTextToObserve(channelName, text);
@@ -81,6 +86,7 @@ namespace TwitchScanAPI.Controllers
         }
 
         [HttpGet]
+        [MasterKey]
         public async Task<ActionResult> GetAllStatistics()
         {
             var stats = await _twitchStats.GetAllStatistics();
