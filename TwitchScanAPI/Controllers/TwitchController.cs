@@ -3,8 +3,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
+using TwitchScanAPI.Data.Statistics.Channel;
 using TwitchScanAPI.Data.Twitch.Manager;
 using TwitchScanAPI.DbContext;
+using TwitchScanAPI.Models.Dto.Statistics;
 using TwitchScanAPI.Models.Twitch.Statistics;
 
 namespace TwitchScanAPI.Controllers
@@ -13,32 +15,10 @@ namespace TwitchScanAPI.Controllers
     public class TwitchController : Controller
     {
         private readonly TwitchChannelManager _twitchStats;
-        private readonly MongoDbContext _context;
 
-        public TwitchController(TwitchChannelManager twitchStats, MongoDbContext context)
+        public TwitchController(TwitchChannelManager twitchStats)
         {
             _twitchStats = twitchStats;
-            _context = context;
-        }
-
-        [HttpPost]
-        public async Task<ActionResult> CreateTestEntry()
-        {
-            await _context.StatisticHistory.InsertOneAsync(new StatisticHistory("test", 100, 100, null));
-            return Ok();
-        }
-        
-        [HttpGet]
-        public ActionResult GetAll()
-        {
-            return Ok(_context.StatisticHistory.Find(_ => true).ToList());
-        }
-        
-        [HttpDelete]
-        public ActionResult DeleteAll()
-        {
-            _context.StatisticHistory.DeleteMany(_ => true);
-            return Ok();
         }
 
         [HttpPost]

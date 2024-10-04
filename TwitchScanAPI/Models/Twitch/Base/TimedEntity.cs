@@ -2,7 +2,8 @@
 
 namespace TwitchScanAPI.Models.Twitch.Base
 {
-    public class TimedEntity
+    public class TimedEntity : IdEntity
+
     {
         public DateTime Time { get; set; } = DateTime.UtcNow;
     }

@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Driver;
 using TwitchScanAPI.Models.Twitch.Statistics;
 
@@ -12,6 +14,9 @@ namespace TwitchScanAPI.DbContext
         {
             var client = new MongoClient(configuration.GetConnectionString("MongoConnection"));
             _database = client.GetDatabase("TwitchScanDatabase");
+            
+            var objectSerializer = new ObjectSerializer(type => type.FullName != null && (ObjectSerializer.DefaultAllowedTypes(type) || type.FullName.StartsWith("TwitchScanAPI")));
+            BsonSerializer.RegisterSerializer(typeof(object), objectSerializer);
         }
 
         public IMongoCollection<StatisticHistory> StatisticHistory =>

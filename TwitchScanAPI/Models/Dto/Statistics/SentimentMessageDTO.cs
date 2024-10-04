@@ -2,7 +2,7 @@
 
 namespace TwitchScanAPI.Models.Dto.Statistics
 {
-    public class SentimentMessageDTO
+    public class SentimentMessageDto
     {
         public string Username { get; set; }
         public string Message { get; set; }

@@ -2,13 +2,13 @@
 
 namespace TwitchScanAPI.Models.Dto.Statistics
 {
-    public class SentimentAnalysisResultDTO
+    public class SentimentAnalysisResultDto
     {
-        public List<SentimentOverTimeDTO> SentimentOverTime { get; set; }
-        public List<UserSentimentDTO> TopPositiveUsers { get; set; }
-        public List<UserSentimentDTO> TopNegativeUsers { get; set; }
-        public List<object> SentimentOverTimeLabeled { get; set; }
-        public List<SentimentMessageDTO> TopPositiveMessages { get; set; }
-        public List<SentimentMessageDTO> TopNegativeMessages { get; set; }
+        public List<SentimentOverTimeDto> SentimentOverTime { get; set; } = new();
+        public List<UserSentimentDto> TopPositiveUsers { get; set; } = new();
+        public List<UserSentimentDto> TopNegativeUsers { get; set; } = new();
+        public List<object> SentimentOverTimeLabeled { get; set; } = new();
+        public List<SentimentMessageDto> TopPositiveMessages { get; set; } = new();
+        public List<SentimentMessageDto> TopNegativeMessages { get; set; } = new();
     }
 }

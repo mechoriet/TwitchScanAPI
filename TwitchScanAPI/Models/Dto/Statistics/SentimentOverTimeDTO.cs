@@ -2,7 +2,7 @@
 
 namespace TwitchScanAPI.Models.Dto.Statistics
 {
-    public class SentimentOverTimeDTO
+    public class SentimentOverTimeDto
     {
         public DateTime Time { get; set; }
         public double AveragePositive { get; set; }

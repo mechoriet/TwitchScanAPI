@@ -1,6 +1,6 @@
 ﻿namespace TwitchScanAPI.Models.Dto.Statistics
 {
-    public class UserSentimentDTO
+    public class UserSentimentDto
     {
         public string Username { get; set; }
         public double AveragePositive { get; set; }

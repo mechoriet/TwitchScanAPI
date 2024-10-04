@@ -5,7 +5,6 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
 {
     public class StatisticHistory : TimedEntity
     {
-        public Guid Id { get; set; }
         public string UserName { get; set; }
         public long PeakViewers { get; set; }
         public long TotalMessages { get; set; }

@@ -36,8 +36,8 @@ namespace TwitchScanAPI.Data.Statistics.ML
         private readonly TimeSpan _cleanupInterval = TimeSpan.FromHours(1);
 
         // Collections to store top messages
-        private readonly List<SentimentMessageDTO> _topPositiveMessages = new();
-        private readonly List<SentimentMessageDTO> _topNegativeMessages = new();
+        private readonly List<SentimentMessageDto> _topPositiveMessages = new();
+        private readonly List<SentimentMessageDto> _topNegativeMessages = new();
 
         // Locks for thread-safe operations on message lists
         private readonly object _topPositiveMessagesLock = new();
@@ -57,7 +57,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
 
         public object GetResult()
         {
-            var result = new SentimentAnalysisResultDTO
+            var result = new SentimentAnalysisResultDto
             {
                 SentimentOverTime = GetSentimentOverTime(),
                 TopPositiveUsers = GetTopPositiveUsers(),
@@ -106,7 +106,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
             }
 
             // Update top positive messages
-            var positiveMessage = new SentimentMessageDTO
+            var positiveMessage = new SentimentMessageDto
             {
                 Username = username.Trim(),
                 Message = text,
@@ -122,7 +122,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
             }
 
             // Update top negative messages
-            var negativeMessage = new SentimentMessageDTO
+            var negativeMessage = new SentimentMessageDto
             {
                 Username = username.Trim(),
                 Message = text,
@@ -169,11 +169,11 @@ namespace TwitchScanAPI.Data.Statistics.ML
             return new DateTime(bucketTicks, time.Kind);
         }
 
-        private List<SentimentOverTimeDTO> GetSentimentOverTime()
+        private List<SentimentOverTimeDto> GetSentimentOverTime()
         {
             return _sentimentOverTime
                 .OrderBy(kvp => kvp.Key)
-                .Select(kvp => new SentimentOverTimeDTO
+                .Select(kvp => new SentimentOverTimeDto
                 {
                     Time = kvp.Key,
                     AveragePositive = kvp.Value.MessageCount > 0 ? kvp.Value.Positive / kvp.Value.MessageCount : 0,
@@ -185,13 +185,13 @@ namespace TwitchScanAPI.Data.Statistics.ML
                 .ToList();
         }
 
-        private List<UserSentimentDTO> GetTopPositiveUsers()
+        private List<UserSentimentDto> GetTopPositiveUsers()
         {
             return _userSentiments.Values
                 .Where(u => u.MessageCount >= MinMessages)
                 .OrderByDescending(u => u.AverageCompound)
                 .Take(TopUsersCount)
-                .Select(u => new UserSentimentDTO
+                .Select(u => new UserSentimentDto
                 {
                     Username = u.Username,
                     AveragePositive = Math.Round(u.AveragePositive, 3),
@@ -203,13 +203,13 @@ namespace TwitchScanAPI.Data.Statistics.ML
                 .ToList();
         }
 
-        private List<UserSentimentDTO> GetTopNegativeUsers()
+        private List<UserSentimentDto> GetTopNegativeUsers()
         {
             return _userSentiments.Values
                 .Where(u => u.MessageCount >= MinMessages)
                 .OrderBy(u => u.AverageCompound)
                 .Take(TopUsersCount)
-                .Select(u => new UserSentimentDTO
+                .Select(u => new UserSentimentDto
                 {
                     Username = u.Username,
                     AveragePositive = Math.Round(u.AveragePositive, 3),
@@ -221,7 +221,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
                 .ToList();
         }
 
-        private List<SentimentMessageDTO> GetTopPositiveMessages()
+        private List<SentimentMessageDto> GetTopPositiveMessages()
         {
             lock (_topPositiveMessagesLock)
             {
@@ -232,7 +232,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
             }
         }
 
-        private List<SentimentMessageDTO> GetTopNegativeMessages()
+        private List<SentimentMessageDto> GetTopNegativeMessages()
         {
             lock (_topNegativeMessagesLock)
             {
@@ -243,13 +243,13 @@ namespace TwitchScanAPI.Data.Statistics.ML
             }
         }
 
-        private void AddTopMessage(List<SentimentMessageDTO> topMessages, SentimentMessageDTO newMessage,
-            Comparison<SentimentMessageDTO> comparison)
+        private void AddTopMessage(List<SentimentMessageDto> topMessages, SentimentMessageDto newMessage,
+            Comparison<SentimentMessageDto> comparison)
         {
             lock (topMessages == _topPositiveMessages ? _topPositiveMessagesLock : _topNegativeMessagesLock)
             {
                 // Binary search to find the correct insertion point
-                var index = topMessages.BinarySearch(newMessage, Comparer<SentimentMessageDTO>.Create(comparison));
+                var index = topMessages.BinarySearch(newMessage, Comparer<SentimentMessageDto>.Create(comparison));
                 if (index < 0)
                 {
                     index = ~index;

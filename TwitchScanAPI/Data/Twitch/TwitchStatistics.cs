@@ -1,7 +1,6 @@
 ﻿// TwitchStatistics.cs
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -28,7 +27,7 @@ namespace TwitchScanAPI.Data.Twitch
         public string ChannelName { get; }
         public int MessageCount { get; private set; }
         public DateTime StartedAt { get; } = DateTime.UtcNow;
-        public bool IsOnline = false;
+        public bool IsOnline;
         private readonly TwitchClientManager _clientManager;
         private readonly StatisticsManager _statisticsManager;
         private readonly ObservedWordsManager _observedWordsManager;
@@ -96,7 +95,7 @@ namespace TwitchScanAPI.Data.Twitch
             _clientManager.OnDisconnected += ClientManagerOnDisconnected;
         }
 
-        private void ClientManagerOnDisconnected(object? sender, EventArgs e)
+        private async void ClientManagerOnDisconnected(object? sender, EventArgs e)
         {
             IsOnline = false;
             // Try getting the peak viewers from the statistics
@@ -105,7 +104,7 @@ namespace TwitchScanAPI.Data.Twitch
             var peakViewers = value is ChannelMetrics metrics ? metrics.ViewerStatistics.PeakViewers : 0;
             // Save the statistics to the database
             var statisticHistory = new StatisticHistory(ChannelName, peakViewers, MessageCount, statistics);
-            _context.StatisticHistory.InsertOne(statisticHistory);
+            await _context.StatisticHistory.InsertOneAsync(statisticHistory);
             _statisticsManager.Reset();
         }
 
