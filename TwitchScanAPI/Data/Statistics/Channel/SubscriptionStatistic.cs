@@ -6,6 +6,7 @@ using System.Timers;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Enums;
 using TwitchScanAPI.Models.Twitch.Channel;
+using TwitchScanAPI.Models.Twitch.Statistics;
 
 namespace TwitchScanAPI.Data.Statistics.Channel
 {
@@ -46,7 +47,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                 .ToList();
 
             // Return the result with all necessary metrics
-            return new
+            return new SubscriptionStatisticResult
             {
                 TotalSubscribers = _subscriptionCounts.Values.Sum(),
                 TotalNewSubscribers = _subscriptionCounts.GetValueOrDefault(SubscriptionType.New),
