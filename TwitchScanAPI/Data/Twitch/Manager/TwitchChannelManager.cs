@@ -205,11 +205,11 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// <summary>
         /// Get the history of a specific key from the statistic history
         /// </summary>
-        public StatisticHistory GetHistoryByKey(string channelName, Guid id)
+        public StatisticHistory GetHistoryByKey(string channelName, string id)
         {
             return _context.StatisticHistory
                 .Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName) &
-                      Builders<StatisticHistory>.Filter.Eq(x => x.Id, id)).FirstOrDefault();
+                      Builders<StatisticHistory>.Filter.Eq(x => x.Time.ToString("yyyy-MM-ddTHH:mm:ssZ"), id)).FirstOrDefault();
         }
 
         /// <summary>

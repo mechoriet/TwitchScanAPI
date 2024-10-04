@@ -63,7 +63,7 @@ namespace TwitchScanAPI.Controllers
         }
 
         [HttpGet]
-        public ActionResult GetHistoryByKey(string channelName, Guid key)
+        public ActionResult GetHistoryByKey(string channelName, string key)
         {
             return Ok(_twitchStats.GetHistoryByKey(channelName, key));
         }
