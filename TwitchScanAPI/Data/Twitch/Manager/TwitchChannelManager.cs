@@ -58,10 +58,23 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 {
                     await channel.RefreshConnectionAsync();
                 }
+                await InitiateFromDbAsync();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error refreshing OAuth token: {ex.Message}");
+            }
+        }
+        
+        private async Task InitiateFromDbAsync()
+        {
+            var channels = await _context.StatisticHistory
+                .Distinct(x => x.UserName, Builders<StatisticHistory>.Filter.Empty)
+                .ToListAsync();
+
+            foreach (var channel in channels)
+            {
+                await Init(channel);
             }
         }
 
