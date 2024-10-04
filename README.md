@@ -152,6 +152,63 @@ Adding new statistics is straightforward. Implement the `IStatistic` interface a
 
     Make sure your statistic has `Update` methods that correspond to the events you want to track.
 
+3. **Map complex result types**
+
+   Complex types (nested models) will likely need to be mapped in the MongoDbContext to maintain their relationships across restarts.
+
+   ```csharp
+    public class MongoDbContext
+    {
+        private readonly IMongoDatabase _database;
+
+        public MongoDbContext(IConfiguration configuration)
+        {
+            var client = new MongoClient(configuration.GetConnectionString("MongoConnection"));
+            _database = client.GetDatabase("TwitchScanDatabase");
+            
+            var objectSerializer = new ObjectSerializer(type => type.FullName != null && (ObjectSerializer.DefaultAllowedTypes(type) || type.FullName.StartsWith("TwitchScanAPI")));
+            BsonSerializer.RegisterSerializer(typeof(object), objectSerializer);
+            BsonClassMap.RegisterClassMap<IdEntity>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetDiscriminator("IdEntity");
+                cm.SetIsRootClass(true); // base class for inheritance
+            });
+
+            // TimedEntity
+            BsonClassMap.RegisterClassMap<TimedEntity>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetDiscriminator("TimedEntity");
+            });
+
+            // SentimentAnalysisResult
+            BsonClassMap.RegisterClassMap<SentimentAnalysisResult>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetDiscriminator("SentimentAnalysisResult");
+            });
+
+            // SubscriptionStatisticResult
+            BsonClassMap.RegisterClassMap<SubscriptionStatisticResult>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetDiscriminator("SubscriptionStatisticResult");
+            });
+
+            // ChannelMetrics
+            BsonClassMap.RegisterClassMap<ChannelMetrics>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetDiscriminator("ChannelMetrics");
+            });
+        }
+
+        public IMongoCollection<StatisticHistory> StatisticHistory =>
+            _database.GetCollection<StatisticHistory>("StatisticHistory");
+    }
+   ```
+
 ### Example: Top Chatters Statistic
 
 ```csharp
