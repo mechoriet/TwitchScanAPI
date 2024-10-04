@@ -2,12 +2,7 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using MongoDB.Driver;
-using TwitchScanAPI.Data.Statistics.Channel;
 using TwitchScanAPI.Data.Twitch.Manager;
-using TwitchScanAPI.DbContext;
-using TwitchScanAPI.Models.Dto.Statistics;
-using TwitchScanAPI.Models.Twitch.Statistics;
 
 namespace TwitchScanAPI.Controllers
 {
