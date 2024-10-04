@@ -18,6 +18,8 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
         public string CurrentGame { get; private set; } = string.Empty;
         public TimeSpan Uptime { get; private set; }
         public Dictionary<string, long> ViewersOverTime { get; private set; } = new();
+        public double TotalWatchTime { get; private set; }
+        public Dictionary<string, long> WatchTimeOverTime { get; private set; } = new();
 
         public static ChannelMetrics Create(
             long currentViewers,
@@ -25,7 +27,9 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
             long peakViewersSnapshot,
             string currentGame,
             TimeSpan currentUptime,
-            Dictionary<DateTime, long> viewersOverTime)
+            Dictionary<DateTime, long> viewersOverTime,
+            double totalWatchTime,
+            Dictionary<DateTime,long> watchTimeOverTime)
         {
             return new ChannelMetrics
             {
@@ -39,6 +43,11 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
                 Uptime = currentUptime,
                 ViewersOverTime =
                     viewersOverTime
+                        .OrderByDescending(kv => kv.Key)
+                        .ToDictionary(kv => kv.Key.ToString("yyyy-MM-ddTHH:mm:ssZ"), kv => kv.Value),
+                TotalWatchTime = totalWatchTime,
+                WatchTimeOverTime =
+                    watchTimeOverTime
                         .OrderByDescending(kv => kv.Key)
                         .ToDictionary(kv => kv.Key.ToString("yyyy-MM-ddTHH:mm:ssZ"), kv => kv.Value)
             };

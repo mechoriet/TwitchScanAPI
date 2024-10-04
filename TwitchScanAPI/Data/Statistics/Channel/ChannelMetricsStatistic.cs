@@ -20,6 +20,10 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         private long _totalViewers;
         private long _viewerCountEntries;
 
+        // For Watch Time Tracking
+        private long _totalWatchTimeMinutes; // Total watch time across all minutes
+        private readonly ConcurrentDictionary<string, long> _totalWatchTimeOverTime = new(); // Watch time per minute
+
         // For Current Game and Uptime Tracking
         private string? _currentGame;
         private TimeSpan _currentUptime;
@@ -39,54 +43,79 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             _cleanupTimer.Start();
         }
 
+        /// <summary>
+        /// Gets the result of all tracked metrics, including viewers, watch time, and game/uptime information.
+        /// </summary>
         public object GetResult()
         {
-            // Calculate Viewer Statistics
+            // Calculate average viewers if there are entries, else set to 0
             var averageViewers = _viewerCountEntries == 0 ? 0 : (double)_totalViewers / _viewerCountEntries;
+
+            // Snapshot of the peak viewers
             var peakViewersSnapshot = Interlocked.Read(ref _peakViewers);
 
             // Get the most recent viewers count
             var currentViewers = _viewerHistory.LastOrDefault().Viewers;
 
-            // Return the result with all necessary metrics
+            // Convert total watch time to hours for easier interpretation
+            var totalWatchTimeHours = _totalWatchTimeMinutes / 60.0;
+
+            // Return all metrics, including watch time over time
             return ChannelMetrics.Create(
                 currentViewers,
                 (int)Math.Round(averageViewers),
                 (int)peakViewersSnapshot,
                 _currentGame ?? string.Empty,
                 _currentUptime,
-                _viewersOverTime.ToDictionary(kv => DateTime.Parse(kv.Key), kv => kv.Value)
+                _viewersOverTime.ToDictionary(kv => DateTime.Parse(kv.Key), kv => kv.Value),
+                totalWatchTimeHours, // Total watch time in viewer-hours
+                _totalWatchTimeOverTime.ToDictionary(kv => DateTime.Parse(kv.Key),
+                    kv => kv.Value) // Total watch time per minute
             );
         }
 
+        /// <summary>
+        /// Updates the channel metrics with new channel information, including viewers, uptime, and game.
+        /// This method is called each time new data is fetched from the channel.
+        /// </summary>
         public void Update(ChannelInformation channelInfo)
         {
             var currentTime = DateTime.UtcNow;
 
-            // Update Viewer History
+            // Update Viewer History Queue
             _viewerHistory.Enqueue((currentTime, channelInfo.Viewers));
             Interlocked.Add(ref _totalViewers, channelInfo.Viewers);
             Interlocked.Increment(ref _viewerCountEntries);
 
-            // Update Peak Viewers
+            // Update the total watch time (in viewer-minutes)
+            Interlocked.Add(ref _totalWatchTimeMinutes, channelInfo.Viewers);
+
+            // Update watch time tracking per minute
+            UpdateWatchTimeOverTime(currentTime, channelInfo.Viewers);
+
+            // Update Peak Viewers if the new value exceeds the current peak
             UpdatePeakViewers(channelInfo.Viewers);
 
-            // Add viewers over time
+            // Add viewers to the dictionary that tracks viewers over time
             UpdateViewersOverTime(currentTime, channelInfo.Viewers);
 
-            // Clean up old data
+            // Clean up old data beyond the retention period (48 hours)
             TrimQueue(_viewerHistory, TimeSpan.FromHours(48), currentTime);
 
-            // Update Current Game
+            // Update the currently active game if it's different
             if (!string.IsNullOrWhiteSpace(channelInfo.Game))
             {
                 _currentGame = channelInfo.Game.Trim();
             }
 
-            // Update Current Uptime
+            // Update the uptime based on the channel's reported start time
             _currentUptime = DateTime.UtcNow - channelInfo.Uptime;
         }
 
+        /// <summary>
+        /// Tracks the peak viewers by comparing the current viewer count with the existing peak.
+        /// Updates the peak if the current viewers exceed the peak.
+        /// </summary>
         private void UpdatePeakViewers(long currentViewers)
         {
             long initialValue, computedValue;
@@ -99,9 +128,33 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             } while (computedValue != Interlocked.CompareExchange(ref _peakViewers, computedValue, initialValue));
         }
 
+        /// <summary>
+        /// Updates the dictionary that tracks total watch time per minute.
+        /// Each minute is represented as a rounded time bucket (e.g., nearest minute).
+        /// </summary>
+        private void UpdateWatchTimeOverTime(DateTime timestamp, long viewers)
+        {
+            // Round the timestamp to the nearest 1-minute bucket
+            var roundedMinutes = Math.Floor((double)timestamp.Minute / BucketSize) * BucketSize;
+            var roundedTime = new DateTime(timestamp.Year, timestamp.Month, timestamp.Day, timestamp.Hour,
+                    (int)roundedMinutes, 0)
+                .ToString("yyyy-MM-ddTHH:mm:ssZ");
+
+            // Watch time for this minute is the viewers * 1 minute
+            var watchTimeForThisMinute = viewers;
+
+            // Add or update the total watch time for this time bucket
+            _totalWatchTimeOverTime.AddOrUpdate(roundedTime, watchTimeForThisMinute,
+                (_, existing) => existing + watchTimeForThisMinute);
+        }
+
+        /// <summary>
+        /// Tracks the number of viewers over time, using rounded minute-based buckets.
+        /// Updates the dictionary with the viewer count for each time bucket.
+        /// </summary>
         private void UpdateViewersOverTime(DateTime timestamp, long viewers)
         {
-            // Round the timestamp to the nearest 5-minute bucket
+            // Round the timestamp to the nearest minute
             var roundedMinutes = Math.Floor((double)timestamp.Minute / BucketSize) * BucketSize;
             var roundedTime = new DateTime(timestamp.Year, timestamp.Month, timestamp.Day, timestamp.Hour,
                     (int)roundedMinutes, 0)
@@ -111,12 +164,15 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             _viewersOverTime.AddOrUpdate(roundedTime, viewers, (_, _) => viewers);
         }
 
+        /// <summary>
+        /// Cleans up data older than the retention period (48 hours).
+        /// This ensures the history and metrics remain relevant and do not consume too much memory.
+        /// </summary>
         private void CleanupOldData()
         {
-            // Calculate the expiration time
             var expirationTime = DateTime.UtcNow.Subtract(_retentionPeriod);
 
-            // List to hold the keys that should be removed
+            // List to hold keys that need to be removed
             var keysToRemove = new List<string>();
 
             foreach (var key in _viewersOverTime.Keys)
@@ -132,9 +188,27 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             {
                 _viewersOverTime.TryRemove(key, out _);
             }
+
+            // Same cleanup for watch time over time
+            foreach (var key in _totalWatchTimeOverTime.Keys)
+            {
+                if (DateTime.TryParse(key, out var timeKey) && timeKey < expirationTime)
+                {
+                    keysToRemove.Add(key);
+                }
+            }
+
+            foreach (var key in keysToRemove)
+            {
+                _totalWatchTimeOverTime.TryRemove(key, out _);
+            }
         }
 
-        private void TrimQueue(ConcurrentQueue<(DateTime Timestamp, long Value)> queue, TimeSpan maxAge,
+        /// <summary>
+        /// Trims the queue to remove data older than the max allowed age.
+        /// This prevents the queue from growing indefinitely.
+        /// </summary>
+        private static void TrimQueue(ConcurrentQueue<(DateTime Timestamp, long Value)> queue, TimeSpan maxAge,
             DateTime currentTime)
         {
             while (queue.TryPeek(out var entry))
