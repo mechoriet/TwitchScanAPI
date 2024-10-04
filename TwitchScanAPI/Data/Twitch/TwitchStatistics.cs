@@ -114,7 +114,7 @@ namespace TwitchScanAPI.Data.Twitch
         private async void ClientManagerOnConnected(object? sender, ChannelInformation channelInformation)
         {
             IsOnline = channelInformation.IsOnline;
-            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, channelInformation.IsOnline, MessageCount, channelInformation.Viewers));
+            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, channelInformation.IsOnline, MessageCount, channelInformation.Viewers, channelInformation.Uptime));
         }
 
         public void AddTextToObserve(string text)
@@ -158,7 +158,7 @@ namespace TwitchScanAPI.Data.Twitch
         private async Task SendStatisticsAsync()
         {
             var channelInformation = await _clientManager.GetChannelInfoAsync();
-            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, channelInformation.IsOnline, MessageCount, channelInformation.Viewers));
+            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, channelInformation.IsOnline, MessageCount, channelInformation.Viewers, channelInformation.Uptime));
             if (!channelInformation.IsOnline)
                 return;
 

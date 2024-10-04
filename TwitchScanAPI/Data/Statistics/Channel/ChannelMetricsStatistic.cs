@@ -20,10 +20,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         private long _totalViewers;
         private long _viewerCountEntries;
 
-        // For Watch Time Tracking
-        private long _totalWatchTimeMinutes; // Total watch time across all minutes
-        private readonly ConcurrentDictionary<string, long> _totalWatchTimeOverTime = new(); // Watch time per minute
-
         // For Current Game and Uptime Tracking
         private string? _currentGame;
         private TimeSpan _currentUptime;
@@ -58,7 +54,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             var currentViewers = _viewerHistory.LastOrDefault().Viewers;
 
             // Convert total watch time to hours for easier interpretation
-            var totalWatchTimeHours = _totalWatchTimeMinutes / 60.0;
+            var totalWatchTimeHours = _viewersOverTime.Values.Sum() / 60.0;
 
             // Return all metrics, including watch time over time
             return ChannelMetrics.Create(
@@ -68,9 +64,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                 _currentGame ?? string.Empty,
                 _currentUptime,
                 _viewersOverTime.ToDictionary(kv => DateTime.Parse(kv.Key), kv => kv.Value),
-                totalWatchTimeHours, // Total watch time in viewer-hours
-                _totalWatchTimeOverTime.ToDictionary(kv => DateTime.Parse(kv.Key),
-                    kv => kv.Value) // Total watch time per minute
+                totalWatchTimeHours // Total watch time in viewer-hours
             );
         }
 
@@ -86,12 +80,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             _viewerHistory.Enqueue((currentTime, channelInfo.Viewers));
             Interlocked.Add(ref _totalViewers, channelInfo.Viewers);
             Interlocked.Increment(ref _viewerCountEntries);
-
-            // Update the total watch time (in viewer-minutes)
-            Interlocked.Add(ref _totalWatchTimeMinutes, channelInfo.Viewers);
-
-            // Update watch time tracking per minute
-            UpdateWatchTimeOverTime(currentTime, channelInfo.Viewers);
 
             // Update Peak Viewers if the new value exceeds the current peak
             UpdatePeakViewers(channelInfo.Viewers);
@@ -126,26 +114,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                     break;
                 computedValue = currentViewers;
             } while (computedValue != Interlocked.CompareExchange(ref _peakViewers, computedValue, initialValue));
-        }
-
-        /// <summary>
-        /// Updates the dictionary that tracks total watch time per minute.
-        /// Each minute is represented as a rounded time bucket (e.g., nearest minute).
-        /// </summary>
-        private void UpdateWatchTimeOverTime(DateTime timestamp, long viewers)
-        {
-            // Round the timestamp to the nearest 1-minute bucket
-            var roundedMinutes = Math.Floor((double)timestamp.Minute / BucketSize) * BucketSize;
-            var roundedTime = new DateTime(timestamp.Year, timestamp.Month, timestamp.Day, timestamp.Hour,
-                    (int)roundedMinutes, 0)
-                .ToString("yyyy-MM-ddTHH:mm:ssZ");
-
-            // Watch time for this minute is the viewers * 1 minute
-            var watchTimeForThisMinute = viewers;
-
-            // Add or update the total watch time for this time bucket
-            _totalWatchTimeOverTime.AddOrUpdate(roundedTime, watchTimeForThisMinute,
-                (_, existing) => existing + watchTimeForThisMinute);
         }
 
         /// <summary>
@@ -187,20 +155,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             foreach (var key in keysToRemove)
             {
                 _viewersOverTime.TryRemove(key, out _);
-            }
-
-            // Same cleanup for watch time over time
-            foreach (var key in _totalWatchTimeOverTime.Keys)
-            {
-                if (DateTime.TryParse(key, out var timeKey) && timeKey < expirationTime)
-                {
-                    keysToRemove.Add(key);
-                }
-            }
-
-            foreach (var key in keysToRemove)
-            {
-                _totalWatchTimeOverTime.TryRemove(key, out _);
             }
         }
 
