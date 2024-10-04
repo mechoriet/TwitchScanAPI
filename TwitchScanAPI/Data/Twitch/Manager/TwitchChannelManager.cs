@@ -205,7 +205,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 {
                     Id = x.Id.ToString(),
                     Time = x.Time,
-                    PeakViewers = x.PeakViewers
+                    PeakViewers = x.PeakViewers,
+                    AverageViewers = x.AverageViewers
                 });
         }
 
