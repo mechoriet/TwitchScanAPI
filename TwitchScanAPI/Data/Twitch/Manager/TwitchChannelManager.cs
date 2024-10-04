@@ -196,11 +196,17 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// <summary>
         /// Get the history keys and peak viewers
         /// </summary>
-        public IDictionary<string, long> GetViewCountHistory(string channelName)
+        public IEnumerable<StatisticTimeline> GetViewCountHistory(string channelName)
         {
-            return _context.StatisticHistory.Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName))
+            return _context.StatisticHistory
+                .Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName))
                 .ToList()
-                .ToDictionary(x => x.Time.ToString("yyyy-MM-ddTHH:mm:ssZ"), x => x.PeakViewers);
+                .Select(x => new StatisticTimeline
+                {
+                    Id = x.Id.ToString(),
+                    Time = x.Time,
+                    PeakViewers = x.PeakViewers
+                });
         }
 
         /// <summary>
@@ -208,14 +214,14 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public StatisticHistory GetHistoryByKey(string channelName, string id)
         {
-            if (!DateTime.TryParseExact(id, "yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var timeKey))
+            if (!Guid.TryParse(id, out var guidKey))
             {
-                throw new FormatException("Invalid time format");
+                throw new FormatException("Invalid GUID format");
             }
 
             return _context.StatisticHistory
                 .Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName) &
-                      Builders<StatisticHistory>.Filter.Eq(x => x.Time, timeKey))
+                      Builders<StatisticHistory>.Filter.Eq(x => x.Id, guidKey))
                 .FirstOrDefault();
         }
 

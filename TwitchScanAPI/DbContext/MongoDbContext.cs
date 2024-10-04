@@ -2,6 +2,7 @@
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Driver;
+using TwitchScanAPI.Models.Twitch.Base;
 using TwitchScanAPI.Models.Twitch.Statistics;
 
 namespace TwitchScanAPI.DbContext
@@ -17,6 +18,13 @@ namespace TwitchScanAPI.DbContext
             
             var objectSerializer = new ObjectSerializer(type => type.FullName != null && (ObjectSerializer.DefaultAllowedTypes(type) || type.FullName.StartsWith("TwitchScanAPI")));
             BsonSerializer.RegisterSerializer(typeof(object), objectSerializer);
+            BsonClassMap.RegisterClassMap<IdEntity>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetDiscriminator("IdEntity");
+                cm.SetIsRootClass(true); // base class for inheritance
+            });
+
         }
 
         public IMongoCollection<StatisticHistory> StatisticHistory =>
