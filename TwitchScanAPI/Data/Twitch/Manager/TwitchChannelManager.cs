@@ -199,7 +199,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             return _context.StatisticHistory.Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName))
                 .ToList()
-                .ToDictionary(x => x.Time.ToString("yyyy-MM-ddTHH:mm:ssZ"), x => x.PeakViewers);
+                .ToDictionary(x => x.Time, x => x.PeakViewers);
         }
 
         /// <summary>
@@ -209,7 +209,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             return _context.StatisticHistory
                 .Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName) &
-                      Builders<StatisticHistory>.Filter.Eq(x => x.Time.ToString("yyyy-MM-ddTHH:mm:ssZ"), id)).FirstOrDefault();
+                      Builders<StatisticHistory>.Filter.Eq(x => x.Time, id)).FirstOrDefault();
         }
 
         /// <summary>
