@@ -195,11 +195,11 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// <summary>
         /// Get the history keys and peak viewers
         /// </summary>
-        public IDictionary<string, long> GetViewCountHistory(string channelName)
+        public IDictionary<Guid, long> GetViewCountHistory(string channelName)
         {
             return _context.StatisticHistory.Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName))
                 .ToList()
-                .ToDictionary(x => x.Time.ToString("yyyy-MM-dd HH:mm:ss"), x => x.PeakViewers);
+                .ToDictionary(x => x.Id, x => x.PeakViewers);
         }
 
         /// <summary>

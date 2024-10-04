@@ -24,7 +24,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly string _channelName;
         private readonly IConfiguration _configuration;
         private readonly Timer _reconnectTimer;
-        private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
         private bool _isReconnecting;
         private bool IsOnline { get; set; }
 
