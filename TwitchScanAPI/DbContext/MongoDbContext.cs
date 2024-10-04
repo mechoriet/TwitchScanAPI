@@ -45,6 +45,13 @@ namespace TwitchScanAPI.DbContext
                 cm.AutoMap();
                 cm.SetDiscriminator("SubscriptionStatisticResult");
             });
+
+            // ChannelMetrics
+            BsonClassMap.RegisterClassMap<ChannelMetrics>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetDiscriminator("ChannelMetrics");
+            });
         }
 
         public IMongoCollection<StatisticHistory> StatisticHistory =>
