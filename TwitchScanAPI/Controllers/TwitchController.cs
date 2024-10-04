@@ -17,7 +17,6 @@ namespace TwitchScanAPI.Controllers
         }
 
         [HttpPost]
-        [MasterKey]
         public async Task<ActionResult> Init(string channelName)
         {
             var added = await _twitchStats.Init(channelName);
@@ -27,7 +26,6 @@ namespace TwitchScanAPI.Controllers
         }
         
         [HttpPost]
-        [MasterKey]
         public async Task<ActionResult> InitMultiple([FromBody] string[] channelNames)
         {
             var added = await _twitchStats.InitMultiple(channelNames);
