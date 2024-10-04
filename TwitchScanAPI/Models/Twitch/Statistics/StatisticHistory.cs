@@ -1,5 +1,4 @@
-﻿using System;
-using TwitchScanAPI.Models.Twitch.Base;
+﻿using TwitchScanAPI.Models.Twitch.Base;
 
 namespace TwitchScanAPI.Models.Twitch.Statistics
 {

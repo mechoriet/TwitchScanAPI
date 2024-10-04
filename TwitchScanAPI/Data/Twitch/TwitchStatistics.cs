@@ -9,7 +9,6 @@ using Microsoft.Extensions.Configuration;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
 using TwitchScanAPI.Data.Statistics.Base;
-using TwitchScanAPI.Data.Statistics.Channel;
 using TwitchScanAPI.Data.Twitch.Manager;
 using TwitchScanAPI.DbContext;
 using TwitchScanAPI.Global;
@@ -61,12 +60,23 @@ namespace TwitchScanAPI.Data.Twitch
             // Start the Twitch client connection
             _ = _clientManager.AttemptConnectionAsync();
         }
+        
+        public async Task SaveSnapshotAsync()
+        {
+            // Try getting the peak viewers from the statistics
+            var statistics = _statisticsManager.GetAllStatistics();
+            statistics.TryGetValue("ChannelMetrics", out var value);
+            var viewerStatistics = value is ChannelMetrics metrics ? metrics.ViewerStatistics : null;
+            // Save the statistics to the database
+            var statisticHistory = new StatisticHistory(ChannelName, viewerStatistics?.PeakViewers ?? 0, viewerStatistics?.AverageViewers ?? 0, MessageCount, statistics);
+            await _context.StatisticHistory.InsertOneAsync(statisticHistory);
+            _statisticsManager.Reset();
+        }
 
         public async Task RefreshConnectionAsync()
         {
             _clientManager.DisconnectClient();
 
-            // Attempt to reconnect using the updated OAuth token
             try
             {
                 await _clientManager.AttemptConnectionAsync();
@@ -98,14 +108,7 @@ namespace TwitchScanAPI.Data.Twitch
         private async void ClientManagerOnDisconnected(object? sender, EventArgs e)
         {
             IsOnline = false;
-            // Try getting the peak viewers from the statistics
-            var statistics = _statisticsManager.GetAllStatistics();
-            statistics.TryGetValue("ChannelMetrics", out var value);
-            var viewerStatistics = value is ChannelMetrics metrics ? metrics.ViewerStatistics : null;
-            // Save the statistics to the database
-            var statisticHistory = new StatisticHistory(ChannelName, viewerStatistics?.PeakViewers ?? 0, viewerStatistics?.AverageViewers ?? 0, MessageCount, statistics);
-            await _context.StatisticHistory.InsertOneAsync(statisticHistory);
-            _statisticsManager.Reset();
+            await SaveSnapshotAsync();
         }
 
         private async void ClientManagerOnConnected(object? sender, ChannelInformation channelInformation)
@@ -123,14 +126,13 @@ namespace TwitchScanAPI.Data.Twitch
         {
             try
             {
-                // Fetch the stream data using the Twitch API
                 var streams =
                     await _clientManager.Api.Helix.Streams.GetStreamsAsync(userLogins: new List<string>
                         { ChannelName });
                 var stream = streams?.Streams.FirstOrDefault();
 
                 if (stream == null) return _statisticsManager.GetAllStatistics();
-                // Create a new ChannelInformation object based on the stream data
+                
                 var channelInfo = new ChannelInformation(IsOnline)
                 {
                     Viewers = stream.ViewerCount,

@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
@@ -191,6 +190,17 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             var stats = await GetChannel(channelName)?.GetStatisticsAsync()!;
             return stats;
+        }
+        
+        /// <summary>
+        /// Save snapshots current statistics to the database
+        /// </summary>
+        public async Task SaveSnapshotsAsync()
+        {
+            foreach (var channel in _twitchStats)
+            {
+                await channel.SaveSnapshotAsync();
+            }
         }
 
         /// <summary>
