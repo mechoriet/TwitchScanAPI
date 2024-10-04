@@ -101,9 +101,9 @@ namespace TwitchScanAPI.Data.Twitch
             // Try getting the peak viewers from the statistics
             var statistics = _statisticsManager.GetAllStatistics();
             statistics.TryGetValue("ChannelMetrics", out var value);
-            var peakViewers = value is ChannelMetrics metrics ? metrics.ViewerStatistics.PeakViewers : 0;
+            var viewerStatistics = value is ChannelMetrics metrics ? metrics.ViewerStatistics : null;
             // Save the statistics to the database
-            var statisticHistory = new StatisticHistory(ChannelName, peakViewers, MessageCount, statistics);
+            var statisticHistory = new StatisticHistory(ChannelName, viewerStatistics?.PeakViewers ?? 0, viewerStatistics?.AverageViewers ?? 0, MessageCount, statistics);
             await _context.StatisticHistory.InsertOneAsync(statisticHistory);
             _statisticsManager.Reset();
         }

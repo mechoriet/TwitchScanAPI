@@ -7,13 +7,15 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
     {
         public string UserName { get; set; }
         public long PeakViewers { get; set; }
+        public long AverageViewers { get; set; }
         public long TotalMessages { get; set; }
         public object? Statistics { get; set; }
         
-        public StatisticHistory(string userName, long peakViewers, long totalMessages, object statistics)
+        public StatisticHistory(string userName, long peakViewers, long averageViewers, long totalMessages, object statistics)
         {
             UserName = userName;
             PeakViewers = peakViewers;
+            AverageViewers = averageViewers;
             TotalMessages = totalMessages;
             Statistics = statistics;
         }
