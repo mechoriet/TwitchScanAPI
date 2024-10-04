@@ -5,7 +5,6 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
 {
     public class StatisticHistory : TimedEntity
     {
-        public string Time { get; set; } = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
         public string UserName { get; set; }
         public long PeakViewers { get; set; }
         public long TotalMessages { get; set; }

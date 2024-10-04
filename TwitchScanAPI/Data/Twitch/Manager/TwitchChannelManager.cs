@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
@@ -199,7 +200,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             return _context.StatisticHistory.Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName))
                 .ToList()
-                .ToDictionary(x => x.Time, x => x.PeakViewers);
+                .ToDictionary(x => x.Time.ToString("yyyy-MM-ddTHH:mm:ssZ"), x => x.PeakViewers);
         }
 
         /// <summary>
@@ -207,9 +208,15 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public StatisticHistory GetHistoryByKey(string channelName, string id)
         {
+            if (!DateTime.TryParseExact(id, "yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var timeKey))
+            {
+                throw new FormatException("Invalid time format");
+            }
+
             return _context.StatisticHistory
                 .Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName) &
-                      Builders<StatisticHistory>.Filter.Eq(x => x.Time, id)).FirstOrDefault();
+                      Builders<StatisticHistory>.Filter.Eq(x => x.Time, timeKey))
+                .FirstOrDefault();
         }
 
         /// <summary>
