@@ -51,7 +51,7 @@ namespace TwitchScanAPI.Data.Twitch
             SubscribeToClientEvents();
 
             // Initialize and start the statistics timer
-            _statisticsTimer = new Timer(TimeSpan.FromSeconds(60).TotalMilliseconds)
+            _statisticsTimer = new Timer(TimeSpan.FromSeconds(5).TotalMilliseconds)
             {
                 AutoReset = true
             };
