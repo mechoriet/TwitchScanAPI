@@ -2,10 +2,15 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using MongoDB.Driver;
+using TwitchScanAPI.Controllers.Annotations;
 using TwitchScanAPI.DbContext;
 
 namespace TwitchScanAPI.Controllers
 {
+    /// <summary>
+    /// Controller for database operations. Protected by a master key.
+    /// </summary>
+    [MasterKey]
     [Route("[controller]/[action]")]
     public class DbController : Controller
     {
@@ -21,15 +26,6 @@ namespace TwitchScanAPI.Controllers
         [HttpGet]
         public ActionResult GetDbSize()
         {
-            var masterKey = _configuration["MasterKey"];
-            if (string.IsNullOrEmpty(masterKey))
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError);
-            }
-            if (masterKey != Request.Headers["MasterKey"])
-            {
-                return StatusCode(StatusCodes.Status401Unauthorized);
-            }
             var collection = _context.StatisticHistory;
             var stats = collection.EstimatedDocumentCount();
             return Ok(stats);
@@ -38,15 +34,6 @@ namespace TwitchScanAPI.Controllers
         [HttpDelete]
         public ActionResult CleanDb()
         {
-            var masterKey = _configuration["MasterKey"];
-            if (string.IsNullOrEmpty(masterKey))
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError);
-            }
-            if (masterKey != Request.Headers["MasterKey"])
-            {
-                return StatusCode(StatusCodes.Status401Unauthorized);
-            }
             _context.StatisticHistory.DeleteMany(_ => true);
             return Ok();
         }
