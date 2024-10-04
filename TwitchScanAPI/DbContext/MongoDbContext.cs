@@ -25,6 +25,26 @@ namespace TwitchScanAPI.DbContext
                 cm.SetIsRootClass(true); // base class for inheritance
             });
 
+            // TimedEntity
+            BsonClassMap.RegisterClassMap<TimedEntity>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetDiscriminator("TimedEntity");
+            });
+
+            // SentimentAnalysisResult
+            BsonClassMap.RegisterClassMap<SentimentAnalysisResult>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetDiscriminator("SentimentAnalysisResult");
+            });
+
+            // SubscriptionStatisticResult
+            BsonClassMap.RegisterClassMap<SubscriptionStatisticResult>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetDiscriminator("SubscriptionStatisticResult");
+            });
         }
 
         public IMongoCollection<StatisticHistory> StatisticHistory =>
