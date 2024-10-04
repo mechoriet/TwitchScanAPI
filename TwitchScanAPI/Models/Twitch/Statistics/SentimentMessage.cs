@@ -1,8 +1,8 @@
-﻿using System;
+﻿using TwitchScanAPI.Models.Twitch.Base;
 
-namespace TwitchScanAPI.Models.Dto.Statistics
+namespace TwitchScanAPI.Models.Twitch.Statistics
 {
-    public class SentimentMessageDto
+    public class SentimentMessage : TimedEntity
     {
         public string Username { get; set; }
         public string Message { get; set; }
@@ -10,6 +10,5 @@ namespace TwitchScanAPI.Models.Dto.Statistics
         public double Negative { get; set; }
         public double Neutral { get; set; }
         public double Compound { get; set; }
-        public DateTime Time { get; set; }
     }
 }

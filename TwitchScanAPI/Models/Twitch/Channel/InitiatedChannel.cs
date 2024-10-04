@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace TwitchScanAPI.Models.Dto.Twitch.Channel
+namespace TwitchScanAPI.Models.Twitch.Channel
 {
     public class InitiatedChannel
     {

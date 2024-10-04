@@ -1,10 +1,10 @@
-﻿using System;
+﻿using TwitchScanAPI.Models.Twitch.Base;
 
-namespace TwitchScanAPI.Models.Dto.Statistics
+namespace TwitchScanAPI.Models.Twitch.Statistics
 {
-    public class SentimentOverTimeDto
+    public class UserSentiment : TimedEntity
     {
-        public DateTime Time { get; set; }
+        public string Username { get; set; }
         public double AveragePositive { get; set; }
         public double AverageNegative { get; set; }
         public double AverageNeutral { get; set; }

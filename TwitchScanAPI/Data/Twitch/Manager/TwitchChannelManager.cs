@@ -11,7 +11,7 @@ using MongoDB.Driver;
 using TwitchScanAPI.DbContext;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Models;
-using TwitchScanAPI.Models.Dto.Twitch.Channel;
+using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Statistics;
 using TwitchScanAPI.Services;
 
