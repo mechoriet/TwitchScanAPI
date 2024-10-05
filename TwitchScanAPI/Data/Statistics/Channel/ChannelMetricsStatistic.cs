@@ -22,7 +22,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
         // For Current Game and Uptime Tracking
         private string? _currentGame;
-        private TimeSpan _currentUptime;
+        private DateTime _currentUptime;
 
         // For Viewers Over Time
         private readonly ConcurrentDictionary<string, long> _viewersOverTime = new();
@@ -96,8 +96,8 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                 _currentGame = channelInfo.Game.Trim();
             }
 
-            // Update the uptime based on the channel's reported start time
-            _currentUptime = DateTime.UtcNow - channelInfo.Uptime;
+            // Update the uptime
+            _currentUptime = channelInfo.Uptime;
         }
 
         /// <summary>
