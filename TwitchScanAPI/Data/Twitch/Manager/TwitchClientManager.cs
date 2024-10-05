@@ -40,6 +40,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public event EventHandler<OnUserBannedArgs>? OnUserBanned;
         public event EventHandler<OnMessageClearedArgs>? OnMessageCleared;
         public event EventHandler<OnUserTimedoutArgs>? OnUserTimedOut;
+        public event EventHandler<OnChannelStateChangedArgs>? OnChannelStateChanged;
         public event EventHandler<ChannelInformation>? OnConnected;
         public event EventHandler? OnDisconnected;
 
@@ -134,6 +135,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _client.OnUserBanned += (sender, args) => OnUserBanned?.Invoke(sender, args);
             _client.OnMessageCleared += (sender, args) => OnMessageCleared?.Invoke(sender, args);
             _client.OnUserTimedout += (sender, args) => OnUserTimedOut?.Invoke(sender, args);
+            _client.OnChannelStateChanged += (sender, args) => OnChannelStateChanged?.Invoke(sender, args);
         }
 
         public async Task<ChannelInformation> GetChannelInfoAsync()

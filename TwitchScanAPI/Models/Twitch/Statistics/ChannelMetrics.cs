@@ -5,6 +5,13 @@ using TwitchScanAPI.Models.Twitch.Base;
 
 namespace TwitchScanAPI.Models.Twitch.Statistics
 {
+    public enum ViewerTrend
+    {
+        Increasing,
+        Decreasing,
+        Stable
+    }
+    
     public class ViewerStatistics : TimedEntity
     {
         public long CurrentViewers { get; set; }
@@ -19,6 +26,7 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
         public TimeSpan Uptime { get; private set; }
         public Dictionary<string, long> ViewersOverTime { get; private set; } = new();
         public double TotalWatchTime { get; private set; }
+        public ViewerTrend Trend { get; private set; }
 
         public static ChannelMetrics Create(
             long currentViewers,
@@ -27,7 +35,8 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
             string currentGame,
             TimeSpan currentUptime,
             Dictionary<DateTime, long> viewersOverTime,
-            double totalWatchTime)
+            double totalWatchTime,
+            ViewerTrend trend)
         {
             return new ChannelMetrics
             {
@@ -44,6 +53,7 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
                         .OrderByDescending(kv => kv.Key)
                         .ToDictionary(kv => kv.Key.ToString("yyyy-MM-ddTHH:mm:ssZ"), kv => kv.Value),
                 TotalWatchTime = totalWatchTime,
+                Trend = trend
             };
         }
     }

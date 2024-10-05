@@ -3,79 +3,108 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Timers;
+using TwitchLib.Client.Models;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Chat;
+using TwitchScanAPI.Models.Twitch.Statistics;
 
 namespace TwitchScanAPI.Data.Statistics.Chat
 {
     public class PeakActivityPeriodStatistic : IStatistic
     {
         public string Name => "PeakActivityPeriods";
-        private readonly ConcurrentDictionary<string, int> _hourlyMessageCounts = new();
+        
+        // Dictionaries for tracking message counts in different channel states
+        private readonly ConcurrentDictionary<DateTime, long> _messagesOverTime = new();
+        private readonly ConcurrentDictionary<DateTime, long> _subOnlyMessagesOverTime = new();
+        private readonly ConcurrentDictionary<DateTime, long> _emoteOnlyMessagesOverTime = new();
+        private readonly ConcurrentDictionary<DateTime, long> _slowOnlyMessagesOverTime = new();
 
+        // Retention period to keep only relevant data (48 hours)
         private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(48);
         private const int BucketSize = 1; // Grouping messages into 1-minute periods
 
+        // Timer for periodic cleanup
         private readonly Timer _cleanupTimer;
+
+        // Stores the current channel state
+        private ChannelState? _channelState;
 
         public PeakActivityPeriodStatistic()
         {
-            // Initialize the timer to trigger cleanup every hour
-            _cleanupTimer = new Timer(3600000); // 3600000 ms = 1 hour
+            // Initialize the timer for hourly cleanup
+            _cleanupTimer = new Timer(3600000); // 1 hour in milliseconds
             _cleanupTimer.Elapsed += (_, _) => CleanupOldData();
             _cleanupTimer.AutoReset = true;
             _cleanupTimer.Start();
         }
 
+        /// <summary>
+        /// Returns the result of tracked message counts, including general messages and messages in sub-only, emote-only, and slow modes.
+        /// </summary>
         public object GetResult()
         {
-            return _hourlyMessageCounts
-                .OrderByDescending(kv => kv.Value)
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
+            return PeakActivityPeriods.Create(_messagesOverTime, _subOnlyMessagesOverTime, _emoteOnlyMessagesOverTime,
+                _slowOnlyMessagesOverTime);
         }
 
+        /// <summary>
+        /// Updates the message count based on the received channel message, considering the current channel state (e.g., sub-only mode).
+        /// </summary>
         public void Update(ChannelMessage message)
         {
-            if (message?.Time == null) return; // Handle null message or time
-
-            // Get the time in UTC format
+            // Get the message timestamp
             var dateTime = message.Time;
 
-            // Round the minutes to the nearest 5-minute period
+            // Round the time to the nearest minute (based on BucketSize)
             var roundedMinutes = Math.Floor((double)dateTime.Minute / BucketSize) * BucketSize;
-
-            // Create a new DateTime with the rounded minutes
             var roundedTime = new DateTime(dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour,
-                    (int)roundedMinutes, 0)
-                .ToString("yyyy-MM-ddTHH:mm:ssZ");
+                    (int)roundedMinutes, 0);
 
-            // Add or update the count for the current rounded time in a thread-safe manner
-            _hourlyMessageCounts.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);
+            // Increment message count in the appropriate dictionary based on the channel state
+            if (_channelState?.SubOnly == true)
+                _subOnlyMessagesOverTime.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);
+            else if (_channelState?.EmoteOnly == true)
+                _emoteOnlyMessagesOverTime.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);
+            else if (_channelState?.SlowMode != null)
+                _slowOnlyMessagesOverTime.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);
+            else
+                _messagesOverTime.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);
         }
 
+        /// <summary>
+        /// Updates the internal channel state, which is used to determine how messages are tracked (e.g., sub-only mode).
+        /// </summary>
+        public void Update(ChannelState channelState)
+        {
+            _channelState = channelState;
+        }
+
+        /// <summary>
+        /// Cleans up data older than the retention period (48 hours) to ensure that the dictionaries do not grow indefinitely.
+        /// </summary>
         private void CleanupOldData()
         {
-            // Calculate the expiration time
             var expirationTime = DateTime.UtcNow.Subtract(_retentionPeriod);
 
-            // List to hold the keys that should be removed
-            var keysToRemove = new List<string>();
+            CleanupDictionary(_messagesOverTime, expirationTime);
+            CleanupDictionary(_subOnlyMessagesOverTime, expirationTime);
+            CleanupDictionary(_emoteOnlyMessagesOverTime, expirationTime);
+            CleanupDictionary(_slowOnlyMessagesOverTime, expirationTime);
+        }
 
-            foreach (var key in _hourlyMessageCounts.Keys)
-            {
-                // Parse the key back to DateTime to compare it
-                if (!DateTime.TryParse(key, out var timeKey)) continue;
-                // If the time is older than the expiration time, mark it for removal
-                if (timeKey < expirationTime)
-                {
-                    keysToRemove.Add(key);
-                }
-            }
+        /// <summary>
+        /// Helper method to clean up any dictionary that stores message counts.
+        /// </summary>
+        private static void CleanupDictionary(ConcurrentDictionary<DateTime, long> dictionary, DateTime expirationTime)
+        {
+            var keysToRemove = dictionary.Keys
+                .Where(key => key < expirationTime)
+                .ToList();
 
-            // Remove expired entries
             foreach (var key in keysToRemove)
             {
-                _hourlyMessageCounts.TryRemove(key, out _);
+                dictionary.TryRemove(key, out _);
             }
         }
     }

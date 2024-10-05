@@ -52,6 +52,13 @@ namespace TwitchScanAPI.DbContext
                 cm.AutoMap();
                 cm.SetDiscriminator("ChannelMetrics");
             });
+            
+            // PeakActivityPeriods
+            BsonClassMap.RegisterClassMap<PeakActivityPeriods>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetDiscriminator("PeakActivityPeriods");
+            });
         }
 
         public IMongoCollection<StatisticHistory> StatisticHistory =>

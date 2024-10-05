@@ -55,6 +55,9 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
             // Convert total watch time to hours for easier interpretation
             var totalWatchTimeHours = _viewersOverTime.Values.Sum() / 60.0;
+            
+            // Calculate the trend
+            var trend = CalculateTrend();
 
             // Return all metrics, including watch time over time
             return ChannelMetrics.Create(
@@ -64,7 +67,8 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                 _currentGame ?? string.Empty,
                 _currentUptime,
                 _viewersOverTime.ToDictionary(kv => DateTime.Parse(kv.Key), kv => kv.Value),
-                totalWatchTimeHours // Total watch time in viewer-hours
+                totalWatchTimeHours,
+                trend
             );
         }
 
@@ -177,5 +181,29 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                 }
             }
         }
+        
+        private ViewerTrend CalculateTrend()
+        {
+            if (_viewerHistory.Count < 2) return ViewerTrend.Stable; // Not enough data to calculate trend
+
+            // Compare current viewer count to viewers from 10 minutes ago
+            var currentTime = DateTime.UtcNow;
+            var comparisonTime = currentTime.AddMinutes(-10);
+
+            // Get current viewers
+            var currentViewers = _viewerHistory.Last().Viewers;
+
+            // Find the closest viewer count 10 minutes ago
+            var previousViewers = _viewerHistory
+                .LastOrDefault(v => v.Timestamp <= comparisonTime).Viewers;
+
+            if (currentViewers > previousViewers)
+                return ViewerTrend.Increasing;
+            else if (currentViewers < previousViewers)
+                return ViewerTrend.Decreasing;
+            else
+                return ViewerTrend.Stable;
+        }
+
     }
 }

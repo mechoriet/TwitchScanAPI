@@ -106,6 +106,7 @@ namespace TwitchScanAPI.Data.Twitch
             _clientManager.OnUserTimedOut += ClientManager_OnUserTimedOut;
             _clientManager.OnConnected += ClientManagerOnConnected;
             _clientManager.OnDisconnected += ClientManagerOnDisconnected;
+            _clientManager.OnChannelStateChanged += ClientManagerOnOnChannelStateChanged;
         }
 
         private async void ClientManagerOnDisconnected(object? sender, EventArgs e)
@@ -313,6 +314,11 @@ namespace TwitchScanAPI.Data.Twitch
 
             _statisticsManager.Update(timedOutUser);
             await _notificationService.ReceiveTimedOutUserAsync(ChannelName, timedOutUser);
+        }
+
+        private void ClientManagerOnOnChannelStateChanged(object? sender, OnChannelStateChangedArgs e)
+        {
+            _statisticsManager.Update(e.ChannelState);
         }
 
         #endregion
