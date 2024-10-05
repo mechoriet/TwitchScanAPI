@@ -66,7 +66,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 _subOnlyMessagesOverTime.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);
             else if (_channelState?.EmoteOnly == true)
                 _emoteOnlyMessagesOverTime.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);
-            else if (_channelState?.SlowMode != null)
+            else if (_channelState?.SlowMode is > 0)
                 _slowOnlyMessagesOverTime.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);
             else
                 _messagesOverTime.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);

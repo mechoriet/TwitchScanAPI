@@ -23,6 +23,10 @@ namespace TwitchScanAPI.Data.Twitch
 {
     public class TwitchStatistics : IDisposable
     {
+        // Statistics interval in seconds depending on online status
+        private const int OnlineStatisticInterval = 5;
+        private const int OfflineStatisticInterval = 15;
+        
         public string ChannelName { get; }
         public int MessageCount { get; private set; }
         public DateTime StartedAt { get; } = DateTime.UtcNow;
@@ -34,6 +38,7 @@ namespace TwitchScanAPI.Data.Twitch
         private readonly NotificationService _notificationService;
         private readonly MongoDbContext _context;
         private readonly Timer _statisticsTimer;
+        private TimeSpan _statisticsInterval = TimeSpan.FromSeconds(OnlineStatisticInterval);
 
         public TwitchStatistics(string channelName,
             IConfiguration configuration, NotificationService notificationService, MongoDbContext context)
@@ -50,7 +55,7 @@ namespace TwitchScanAPI.Data.Twitch
             SubscribeToClientEvents();
 
             // Initialize and start the statistics timer
-            _statisticsTimer = new Timer(TimeSpan.FromSeconds(5).TotalMilliseconds)
+            _statisticsTimer = new Timer(_statisticsInterval.TotalMilliseconds)
             {
                 AutoReset = true
             };
@@ -112,12 +117,16 @@ namespace TwitchScanAPI.Data.Twitch
         private async void ClientManagerOnDisconnected(object? sender, EventArgs e)
         {
             IsOnline = false;
+            _statisticsInterval = TimeSpan.FromSeconds(OfflineStatisticInterval);
+            
             await SaveSnapshotAsync();
         }
 
         private async void ClientManagerOnConnected(object? sender, ChannelInformation channelInformation)
         {
             IsOnline = channelInformation.IsOnline;
+            _statisticsInterval = IsOnline ? TimeSpan.FromSeconds(OnlineStatisticInterval) : TimeSpan.FromSeconds(OfflineStatisticInterval);
+            
             await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, channelInformation.IsOnline, MessageCount, channelInformation.Viewers, channelInformation.Uptime));
         }
 
