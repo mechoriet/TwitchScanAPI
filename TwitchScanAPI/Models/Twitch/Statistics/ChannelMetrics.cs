@@ -16,7 +16,7 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
     {
         public ViewerStatistics ViewerStatistics { get; private set; } = new();
         public string CurrentGame { get; private set; } = string.Empty;
-        public DateTime Uptime { get; private set; }
+        public TimeSpan Uptime { get; private set; }
         public Dictionary<string, long> ViewersOverTime { get; private set; } = new();
         public double TotalWatchTime { get; private set; }
 
@@ -25,7 +25,7 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
             long averageViewers,
             long peakViewersSnapshot,
             string currentGame,
-            DateTime currentUptime,
+            TimeSpan currentUptime,
             Dictionary<DateTime, long> viewersOverTime,
             double totalWatchTime)
         {
