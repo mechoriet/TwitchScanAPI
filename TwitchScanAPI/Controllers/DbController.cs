@@ -55,5 +55,12 @@ namespace TwitchScanAPI.Controllers
             await _context.StatisticHistory.DeleteOneAsync(x => x.Id == id);
             return Ok();
         }
+        
+        [HttpDelete]
+        public async Task<ActionResult> DeleteChannel(string channelName)
+        {
+            await _context.StatisticHistory.DeleteManyAsync(x => x.UserName == channelName);
+            return Ok();
+        }
     }
 }
