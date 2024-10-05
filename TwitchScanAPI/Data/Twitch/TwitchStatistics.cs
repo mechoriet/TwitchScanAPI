@@ -70,6 +70,9 @@ namespace TwitchScanAPI.Data.Twitch
             // Save the statistics to the database
             var statisticHistory = new StatisticHistory(ChannelName, viewerStatistics?.PeakViewers ?? 0, viewerStatistics?.AverageViewers ?? 0, MessageCount, statistics);
             await _context.StatisticHistory.InsertOneAsync(statisticHistory);
+            
+            // Reset the message count and statistics
+            MessageCount = 0;
             _statisticsManager.Reset();
         }
 
