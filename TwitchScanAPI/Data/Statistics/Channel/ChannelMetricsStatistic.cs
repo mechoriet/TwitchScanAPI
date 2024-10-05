@@ -193,16 +193,18 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             // Get current viewers
             var currentViewers = _viewerHistory.Last().Viewers;
 
-            // Find the closest viewer count 10 minutes ago
+            // Find the closest viewer count 10 minutes ago or the oldest entry if data is not old enough
             var previousViewers = _viewerHistory
-                .LastOrDefault(v => v.Timestamp <= comparisonTime).Viewers;
+                .FirstOrDefault(v => v.Timestamp <= comparisonTime).Viewers;
+
+            if (previousViewers == 0)
+            {
+                previousViewers = _viewerHistory.First().Viewers;
+            }
 
             if (currentViewers > previousViewers)
                 return ViewerTrend.Increasing;
-            else if (currentViewers < previousViewers)
-                return ViewerTrend.Decreasing;
-            else
-                return ViewerTrend.Stable;
+            return currentViewers < previousViewers ? ViewerTrend.Decreasing : ViewerTrend.Stable;
         }
 
     }
