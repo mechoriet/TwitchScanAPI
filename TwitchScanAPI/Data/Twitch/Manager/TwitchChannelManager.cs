@@ -36,6 +36,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _notificationService = notificationService;
             _context = context;
 
+            // Initialize the observer from the database
+            _ = InitiateFromDbAsync();
+            
             // Refresh the OAuth token on startup
             _ = RefreshAuthTokenAsync();
 
@@ -51,6 +54,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             {
                 // Update OAuth token
                 var oauth = await _authService.GetOAuthTokenAsync();
+                if (string.IsNullOrEmpty(oauth)) throw new Exception("OAuth token is empty");
                 _configuration[Variables.TwitchOauthKey] = oauth;
 
                 // Update OAuth token for all TwitchStatistics instances
@@ -58,14 +62,13 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 {
                     await channel.RefreshConnectionAsync();
                 }
-                await InitiateFromDbAsync();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error refreshing OAuth token: {ex.Message}");
             }
         }
-        
+
         private async Task InitiateFromDbAsync()
         {
             var channels = await _context.StatisticHistory
@@ -98,12 +101,14 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             try
             {
-                var stats = await TwitchStatistics.CreateAsync(channelName, _configuration, _notificationService, _context);
+                var stats = await TwitchStatistics.CreateAsync(channelName, _configuration, _notificationService,
+                    _context);
                 if (stats == null)
                 {
                     var error = new Error($"{channelName} not found", StatusCodes.Status404NotFound);
                     return new ResultMessage<string?>(null, error);
                 }
+
                 _twitchStats.Add(stats);
             }
             catch (Exception e)
@@ -209,7 +214,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             var stats = await GetChannel(channelName)?.GetStatisticsAsync()!;
             return stats;
         }
-        
+
         /// <summary>
         /// Save snapshots current statistics to the database
         /// </summary>
