@@ -50,7 +50,9 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 .Concat(_subOnlyMessagesOverTime)
                 .Concat(_emoteOnlyMessagesOverTime)
                 .Concat(_slowOnlyMessagesOverTime)
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
+                .GroupBy(kv => kv.Key)
+                .ToDictionary(g => g.Key, g => g.Sum(kv => kv.Value));
+            
             var trend = TrendService.CalculateTrend(
                 completeData,
                 d => d.Value,

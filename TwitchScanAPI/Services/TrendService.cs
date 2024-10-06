@@ -40,6 +40,5 @@ namespace TwitchScanAPI.Services
             if (currentValue > averageValue) return Trend.Increasing;
             return currentValue < averageValue ? Trend.Decreasing : Trend.Stable;
         }
-
     }
 }

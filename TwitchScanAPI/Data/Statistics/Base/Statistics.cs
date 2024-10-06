@@ -21,7 +21,7 @@ namespace TwitchScanAPI.Data.Statistics.Base
             var statisticType = typeof(IStatistic);
             var statistics = Assembly.GetExecutingAssembly()
                 .GetTypes()
-                .Where(t => statisticType.IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract)
+                .Where(t => statisticType.IsAssignableFrom(t) && t is { IsInterface: false, IsAbstract: false })
                 .Select(Activator.CreateInstance) // Dynamically create an instance of each discovered statistic class
                 .Cast<IStatistic>()
                 .ToList();
