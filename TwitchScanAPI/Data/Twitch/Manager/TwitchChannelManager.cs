@@ -81,33 +81,38 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// <summary>
         /// Initialize a channel to observe
         /// </summary>
-        public Task<ResultMessage<string?>> Init(string channelName)
+        public async Task<ResultMessage<string?>> Init(string channelName)
         {
             channelName = channelName.Trim();
             if (string.IsNullOrWhiteSpace(channelName) || channelName.Length < 2)
             {
                 var error = new Error($"{channelName} is too short", StatusCodes.Status400BadRequest);
-                return Task.FromResult(new ResultMessage<string?>(null, error));
+                return new ResultMessage<string?>(null, error);
             }
 
             if (_twitchStats.Any(x => string.Equals(x.ChannelName, channelName, StringComparison.OrdinalIgnoreCase)))
             {
                 var error = new Error($"{channelName} already exists in Observer", StatusCodes.Status409Conflict);
-                return Task.FromResult(new ResultMessage<string?>(null, error));
+                return new ResultMessage<string?>(null, error);
             }
 
             try
             {
-                var stats = new TwitchStatistics(channelName, _configuration, _notificationService, _context);
+                var stats = await TwitchStatistics.CreateAsync(channelName, _configuration, _notificationService, _context);
+                if (stats == null)
+                {
+                    var error = new Error($"{channelName} not found", StatusCodes.Status404NotFound);
+                    return new ResultMessage<string?>(null, error);
+                }
                 _twitchStats.Add(stats);
             }
             catch (Exception e)
             {
                 var error = new Error(e.Message, StatusCodes.Status403Forbidden);
-                return Task.FromResult(new ResultMessage<string?>(null, error));
+                return new ResultMessage<string?>(null, error);
             }
 
-            return Task.FromResult(new ResultMessage<string?>(channelName, null));
+            return new ResultMessage<string?>(channelName, null);
         }
 
         /// <summary>

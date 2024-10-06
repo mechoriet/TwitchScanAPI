@@ -1,6 +1,4 @@
-﻿// TwitchClientManager.cs
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -44,7 +42,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public event EventHandler<ChannelInformation>? OnConnected;
         public event EventHandler? OnDisconnected;
 
-        public TwitchClientManager(string channelName, IConfiguration configuration)
+        // Private constructor to be used in the CreateAsync method
+        private TwitchClientManager(string channelName, IConfiguration configuration)
         {
             _channelName = channelName;
             _configuration = configuration;
@@ -59,6 +58,17 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 _isReconnecting = false;
                 await AttemptConnectionAsync();
             };
+        }
+
+        // Async factory method to create the manager and handle connection attempts
+        public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration)
+        {
+            var manager = new TwitchClientManager(channelName, configuration);
+            var channelInfo = await manager.GetChannelInfoAsync();
+
+            if (!channelInfo.IsOnline && string.IsNullOrEmpty(channelInfo.Title)) return null;
+            await manager.StartClientAsync();
+            return manager;
         }
 
         private void ConfigureTwitchApi()
@@ -148,31 +158,26 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 {
                     OnDisconnected?.Invoke(this, EventArgs.Empty);
                 }
-
+                
                 IsOnline = isOnline;
-                var channelInfo = new ChannelInformation(IsOnline);
-                if (streams != null && IsOnline && streams.Streams.Any())
-                {
-                    channelInfo = new ChannelInformation(
-                        streams.Streams[0].ViewerCount,
-                        streams.Streams[0].Title,
-                        streams.Streams[0].GameName,
-                        streams.Streams[0].StartedAt,
-                        streams.Streams[0].ThumbnailUrl,
-                        streams.Streams[0].Type,
-                        IsOnline);
-                    OnConnected?.Invoke(this, channelInfo);
-                }
-                else
-                {
-                    OnConnected?.Invoke(this, channelInfo);
-                }
-
+                if (streams != null && (!isOnline || !streams.Streams.Any())) return new ChannelInformation(false);
+                var stream = streams?.Streams[0];
+                if (stream == null) return new ChannelInformation(false);
+                var channelInfo =  new ChannelInformation(
+                    stream.ViewerCount,
+                    stream.Title,
+                    stream.GameName,
+                    stream.StartedAt,
+                    stream.ThumbnailUrl,
+                    stream.Type,
+                    IsOnline
+                );
+                OnConnected?.Invoke(this, channelInfo);
                 return channelInfo;
             }
             catch (Exception)
             {
-                return new ChannelInformation(false);
+                throw new Exception("Failed to retrieve channel information due to an error.");
             }
         }
 

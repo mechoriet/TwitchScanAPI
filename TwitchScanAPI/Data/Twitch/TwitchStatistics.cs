@@ -26,7 +26,7 @@ namespace TwitchScanAPI.Data.Twitch
         // Statistics interval in seconds depending on online status
         private const int OnlineStatisticInterval = 5;
         private const int OfflineStatisticInterval = 15;
-        
+
         public string ChannelName { get; }
         public int MessageCount { get; private set; }
         public DateTime StartedAt { get; } = DateTime.UtcNow;
@@ -40,16 +40,16 @@ namespace TwitchScanAPI.Data.Twitch
         private readonly Timer _statisticsTimer;
         private TimeSpan _statisticsInterval = TimeSpan.FromSeconds(OnlineStatisticInterval);
 
-        public TwitchStatistics(string channelName,
-            IConfiguration configuration, NotificationService notificationService, MongoDbContext context)
+        private TwitchStatistics(string channelName, TwitchClientManager clientManager,
+            NotificationService notificationService, MongoDbContext context)
         {
             ChannelName = channelName;
-            _notificationService = notificationService;
-            _context = context;
-            _clientManager = new TwitchClientManager(channelName, configuration);
+            _clientManager = clientManager;
             _statisticsManager = new StatisticsManager();
             _observedWordsManager = new ObservedWordsManager();
             _userManager = new UserManager();
+            _notificationService = notificationService;
+            _context = context;
 
             // Subscribe to Twitch client events
             SubscribeToClientEvents();
@@ -61,11 +61,16 @@ namespace TwitchScanAPI.Data.Twitch
             };
             _statisticsTimer.Elapsed += async (_, _) => await SendStatisticsAsync();
             _statisticsTimer.Start();
-
-            // Start the Twitch client connection
-            _ = _clientManager.AttemptConnectionAsync();
         }
-        
+
+        public static async Task<TwitchStatistics?> CreateAsync(string channelName, IConfiguration configuration,
+            NotificationService notificationService, MongoDbContext context)
+        {
+            var clientManager = await TwitchClientManager.CreateAsync(channelName, configuration);
+
+            return clientManager == null ? null : new TwitchStatistics(channelName, clientManager, notificationService, context);
+        }
+
         public async Task SaveSnapshotAsync()
         {
             // Try getting the peak viewers from the statistics
@@ -73,9 +78,10 @@ namespace TwitchScanAPI.Data.Twitch
             statistics.TryGetValue("ChannelMetrics", out var value);
             var viewerStatistics = value is ChannelMetrics metrics ? metrics.ViewerStatistics : null;
             // Save the statistics to the database
-            var statisticHistory = new StatisticHistory(ChannelName, viewerStatistics?.PeakViewers ?? 0, viewerStatistics?.AverageViewers ?? 0, MessageCount, statistics);
+            var statisticHistory = new StatisticHistory(ChannelName, viewerStatistics?.PeakViewers ?? 0,
+                viewerStatistics?.AverageViewers ?? 0, MessageCount, statistics);
             await _context.StatisticHistory.InsertOneAsync(statisticHistory);
-            
+
             // Reset the message count and statistics
             MessageCount = 0;
             _statisticsManager.Reset();
@@ -118,16 +124,19 @@ namespace TwitchScanAPI.Data.Twitch
         {
             IsOnline = false;
             _statisticsInterval = TimeSpan.FromSeconds(OfflineStatisticInterval);
-            
+
             await SaveSnapshotAsync();
         }
 
         private async void ClientManagerOnConnected(object? sender, ChannelInformation channelInformation)
         {
             IsOnline = channelInformation.IsOnline;
-            _statisticsInterval = IsOnline ? TimeSpan.FromSeconds(OnlineStatisticInterval) : TimeSpan.FromSeconds(OfflineStatisticInterval);
-            
-            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, channelInformation.IsOnline, MessageCount, channelInformation.Viewers, channelInformation.Uptime));
+            _statisticsInterval = IsOnline
+                ? TimeSpan.FromSeconds(OnlineStatisticInterval)
+                : TimeSpan.FromSeconds(OfflineStatisticInterval);
+
+            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName,
+                channelInformation.IsOnline, MessageCount, channelInformation.Viewers, channelInformation.Uptime));
         }
 
         public void AddTextToObserve(string text)
@@ -145,7 +154,7 @@ namespace TwitchScanAPI.Data.Twitch
                 var stream = streams?.Streams.FirstOrDefault();
 
                 if (stream == null) return _statisticsManager.GetAllStatistics();
-                
+
                 var channelInfo = new ChannelInformation(IsOnline)
                 {
                     Viewers = stream.ViewerCount,
@@ -171,7 +180,8 @@ namespace TwitchScanAPI.Data.Twitch
         private async Task SendStatisticsAsync()
         {
             var channelInformation = await _clientManager.GetChannelInfoAsync();
-            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName, channelInformation.IsOnline, MessageCount, channelInformation.Viewers, channelInformation.Uptime));
+            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName,
+                channelInformation.IsOnline, MessageCount, channelInformation.Viewers, channelInformation.Uptime));
             if (!channelInformation.IsOnline)
                 return;
 
