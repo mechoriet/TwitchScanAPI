@@ -74,7 +74,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             foreach (var channel in channels)
             {
-                _ = Init(channel);
+                await Init(channel);
             }
         }
 
