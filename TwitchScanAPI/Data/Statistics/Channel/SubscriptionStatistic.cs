@@ -7,6 +7,7 @@ using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Enums;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Statistics;
+using TwitchScanAPI.Services;
 
 namespace TwitchScanAPI.Data.Statistics.Channel
 {
@@ -45,6 +46,12 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                 .Where(kvp => DateTime.Parse(kvp.Key) >= cutoffTime)
                 .OrderBy(kvp => kvp.Key)
                 .ToList();
+            
+            // Calculate the Trend
+            var trend = TrendService.CalculateTrend(
+                subscriptionsOverTime,
+                d => d.Value
+            );
 
             // Return the result with all necessary metrics
             return new SubscriptionStatisticResult
@@ -59,7 +66,8 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                     .OrderByDescending(kv => kv.Value)
                     .Take(10)
                     .ToDictionary(kv => kv.Key, kv => kv.Value),
-                SubscriptionsOverTime = subscriptionsOverTime
+                SubscriptionsOverTime = subscriptionsOverTime,
+                Trend = trend
             };
         }
 

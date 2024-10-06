@@ -7,12 +7,14 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
 {
     public class PeakActivityPeriods : TimedEntity
     {
+        public Trend Trend { get; private set; }
         public Dictionary<string, long> MessagesOverTime { get; private set; } = new();
         public Dictionary<string, long> SubOnlyMessagesOverTime { get; private set; } = new();
         public Dictionary<string, long> EmoteOnlyMessagesOverTime { get; private set; } = new();
         public Dictionary<string, long> SlowModeMessagesOverTime { get; private set; } = new();
 
         public static PeakActivityPeriods Create(
+            Trend trend,
             IDictionary<DateTime, long> messagesOverTime,
             IDictionary<DateTime, long> subOnlyMessagesOverTime,
             IDictionary<DateTime, long> emoteOnlyMessagesOverTime,
@@ -20,6 +22,7 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
         {
             return new PeakActivityPeriods
             {
+                Trend = trend,
                 MessagesOverTime = messagesOverTime
                     .OrderByDescending(kv => kv.Key)
                     .ToDictionary(kv => kv.Key.ToString("yyyy-MM-ddTHH:mm:ssZ"), kv => kv.Value),

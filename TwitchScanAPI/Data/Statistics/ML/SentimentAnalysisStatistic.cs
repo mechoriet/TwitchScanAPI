@@ -7,6 +7,7 @@ using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.ML.SentimentAnalysis;
 using TwitchScanAPI.Models.Twitch.Chat;
 using TwitchScanAPI.Models.Twitch.Statistics;
+using TwitchScanAPI.Services;
 using VaderSharp;
 using UserSentiment = TwitchScanAPI.Models.Twitch.Statistics.UserSentiment;
 
@@ -58,13 +59,22 @@ namespace TwitchScanAPI.Data.Statistics.ML
 
         public object GetResult()
         {
+            var sentimentData = _sentimentOverTime
+                .Select(kv => new { Key = kv.Key, Value = kv.Value.Compound })
+                .ToList();
+            var trend = TrendService.CalculateTrend(
+                sentimentData,
+                d => d.Value
+            );
+            
             var result = new SentimentAnalysisResult
             {
                 SentimentOverTime = GetSentimentOverTime(),
                 TopPositiveUsers = GetTopPositiveUsers(),
                 TopNegativeUsers = GetTopNegativeUsers(),
                 TopPositiveMessages = GetTopPositiveMessages(),
-                TopNegativeMessages = GetTopNegativeMessages()
+                TopNegativeMessages = GetTopNegativeMessages(),
+                Trend = trend
             };
 
             return result;

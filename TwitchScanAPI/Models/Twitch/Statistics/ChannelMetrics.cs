@@ -5,7 +5,7 @@ using TwitchScanAPI.Models.Twitch.Base;
 
 namespace TwitchScanAPI.Models.Twitch.Statistics
 {
-    public enum ViewerTrend
+    public enum Trend
     {
         Increasing,
         Decreasing,
@@ -26,7 +26,7 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
         public TimeSpan Uptime { get; private set; }
         public Dictionary<string, long> ViewersOverTime { get; private set; } = new();
         public double TotalWatchTime { get; private set; }
-        public ViewerTrend Trend { get; private set; }
+        public Trend Trend { get; private set; }
 
         public static ChannelMetrics Create(
             long currentViewers,
@@ -36,7 +36,7 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
             TimeSpan currentUptime,
             Dictionary<DateTime, long> viewersOverTime,
             double totalWatchTime,
-            ViewerTrend trend)
+            Trend trend)
         {
             return new ChannelMetrics
             {

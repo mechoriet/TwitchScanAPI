@@ -7,13 +7,14 @@ using TwitchLib.Client.Models;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Chat;
 using TwitchScanAPI.Models.Twitch.Statistics;
+using TwitchScanAPI.Services;
 
 namespace TwitchScanAPI.Data.Statistics.Chat
 {
     public class PeakActivityPeriodStatistic : IStatistic
     {
         public string Name => "PeakActivityPeriods";
-        
+
         // Dictionaries for tracking message counts in different channel states
         private readonly ConcurrentDictionary<DateTime, long> _messagesOverTime = new();
         private readonly ConcurrentDictionary<DateTime, long> _subOnlyMessagesOverTime = new();
@@ -44,8 +45,23 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         /// </summary>
         public object GetResult()
         {
-            return PeakActivityPeriods.Create(_messagesOverTime, _subOnlyMessagesOverTime, _emoteOnlyMessagesOverTime,
-                _slowOnlyMessagesOverTime);
+            // Calculate messages
+            var completeData = _messagesOverTime
+                .Concat(_subOnlyMessagesOverTime)
+                .Concat(_emoteOnlyMessagesOverTime)
+                .Concat(_slowOnlyMessagesOverTime)
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+            var trend = TrendService.CalculateTrend(
+                completeData,
+                d => d.Value
+            );
+            
+            return PeakActivityPeriods.Create(trend,
+                _messagesOverTime,
+                _subOnlyMessagesOverTime,
+                _emoteOnlyMessagesOverTime,
+                _slowOnlyMessagesOverTime
+            );
         }
 
         /// <summary>
@@ -59,7 +75,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             // Round the time to the nearest minute (based on BucketSize)
             var roundedMinutes = Math.Floor((double)dateTime.Minute / BucketSize) * BucketSize;
             var roundedTime = new DateTime(dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour,
-                    (int)roundedMinutes, 0);
+                (int)roundedMinutes, 0);
 
             // Increment message count in the appropriate dictionary based on the channel state
             if (_channelState?.SubOnly == true)

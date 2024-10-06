@@ -11,5 +11,6 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
         public List<object> SentimentOverTimeLabeled { get; set; } = new();
         public List<SentimentMessage> TopPositiveMessages { get; set; } = new();
         public List<SentimentMessage> TopNegativeMessages { get; set; } = new();
+        public Trend Trend { get; set; }
     }
 }

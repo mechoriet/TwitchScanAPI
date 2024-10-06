@@ -6,6 +6,7 @@ using System.Threading;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Statistics;
+using TwitchScanAPI.Services;
 using Timer = System.Timers.Timer;
 
 namespace TwitchScanAPI.Data.Statistics.Channel
@@ -29,7 +30,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(48);
         private const int BucketSize = 1; // Grouping viewers into 1-minute periods
         private readonly Timer _cleanupTimer;
-
         public ChannelMetricsStatistic()
         {
             // Initialize the timer to trigger cleanup every hour
@@ -57,7 +57,11 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             var totalWatchTimeHours = _viewersOverTime.Values.Sum() / 60.0;
             
             // Calculate the trend
-            var trend = CalculateTrend();
+            var viewerData = _viewerHistory.ToList();
+            var trend = TrendService.CalculateTrend(
+                viewerData,
+                d => d.Viewers
+            );
 
             // Return all metrics, including watch time over time
             return ChannelMetrics.Create(
@@ -181,34 +185,5 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                 }
             }
         }
-        
-        private ViewerTrend CalculateTrend()
-        {
-            if (_viewerHistory.Count < 2) return ViewerTrend.Stable; // Not enough data to calculate trend
-
-            var currentTime = DateTime.UtcNow;
-            var comparisonTime = currentTime.AddMinutes(-10);
-
-            // Get current viewers
-            var currentViewers = _viewerHistory.Last().Viewers;
-
-            // Get viewers in the last 10 minutes
-            var previousViewersInRange = _viewerHistory
-                .Where(v => v.Timestamp <= comparisonTime)
-                .Select(v => v.Viewers)
-                .ToList();
-
-            // Calculate average of the previous viewer counts
-            var averagePreviousViewers = previousViewersInRange.Count > 0
-                ? (long)Math.Round(previousViewersInRange.Average())
-                : 0;
-
-            // Determine trend by comparing current viewers with the average
-            if (currentViewers > averagePreviousViewers)
-                return ViewerTrend.Increasing;
-
-            return currentViewers < averagePreviousViewers ? ViewerTrend.Decreasing : ViewerTrend.Stable;
-        }
-
     }
 }
