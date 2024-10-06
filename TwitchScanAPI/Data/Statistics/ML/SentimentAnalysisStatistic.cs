@@ -64,7 +64,8 @@ namespace TwitchScanAPI.Data.Statistics.ML
                 .ToList();
             var trend = TrendService.CalculateTrend(
                 sentimentData,
-                d => d.Value
+                d => d.Value,
+                d => d.Key
             );
             
             var result = new SentimentAnalysisResult

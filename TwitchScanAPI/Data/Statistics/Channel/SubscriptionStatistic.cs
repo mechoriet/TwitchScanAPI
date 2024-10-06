@@ -50,7 +50,8 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             // Calculate the Trend
             var trend = TrendService.CalculateTrend(
                 subscriptionsOverTime,
-                d => d.Value
+                d => d.Value,
+                d => DateTime.Parse(d.Key)
             );
 
             // Return the result with all necessary metrics

@@ -5,20 +5,29 @@ using TwitchScanAPI.Models.Twitch.Statistics;
 
 namespace TwitchScanAPI.Services
 {
-    public class TrendService
+    public static class TrendService
     {
+        private static readonly TimeSpan TrendTimeSpan = TimeSpan.FromMinutes(5);
+        
         /// <summary>
         /// Calculates the trend based on the provided data.
         /// </summary>
         /// <typeparam name="T">The type of data points.</typeparam>
         /// <param name="data">The collection of data points.</param>
         /// <param name="getValue">Function to extract the value from a data point.</param>
+        /// <param name="timeSpan">The time span to consider for the trend calculation.</param>
+        /// <param name="getTime">Function to extract the time from a data point.</param>
         /// <returns>The calculated trend.</returns>
         public static Trend CalculateTrend<T>(
             IEnumerable<T> data,
-            Func<T, double> getValue)
+            Func<T, double> getValue,
+            Func<T, DateTime> getTime,
+            TimeSpan timeSpan = default)
         {
-            var dataList = data.ToList();
+            timeSpan = timeSpan == default ? TrendTimeSpan : timeSpan;
+            var dataList = data
+                .Where(d => getTime(d) >= DateTime.UtcNow - timeSpan)
+                .ToList();
             if (!dataList.Any()) return Trend.Stable;
 
             // Get the last data point's value

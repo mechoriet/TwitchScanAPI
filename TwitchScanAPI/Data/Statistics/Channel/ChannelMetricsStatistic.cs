@@ -60,7 +60,8 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             var viewerData = _viewerHistory.ToList();
             var trend = TrendService.CalculateTrend(
                 viewerData,
-                d => d.Viewers
+                d => d.Viewers,
+                d => d.Timestamp
             );
 
             // Return all metrics, including watch time over time

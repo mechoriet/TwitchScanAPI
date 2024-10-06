@@ -53,7 +53,8 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
             var trend = TrendService.CalculateTrend(
                 completeData,
-                d => d.Value
+                d => d.Value,
+                d => d.Key
             );
             
             return PeakActivityPeriods.Create(trend,
