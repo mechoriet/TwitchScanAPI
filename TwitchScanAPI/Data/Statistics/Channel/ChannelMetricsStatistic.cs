@@ -199,7 +199,9 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                 .ToList();
 
             // Calculate average of the previous viewer counts
-            var averagePreviousViewers = previousViewersInRange.Average();
+            var averagePreviousViewers = previousViewersInRange.Count > 0
+                ? (long)Math.Round(previousViewersInRange.Average())
+                : 0;
 
             // Determine trend by comparing current viewers with the average
             if (currentViewers > averagePreviousViewers)
