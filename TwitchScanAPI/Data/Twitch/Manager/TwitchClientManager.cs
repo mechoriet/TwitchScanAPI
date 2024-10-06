@@ -64,9 +64,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration)
         {
             var manager = new TwitchClientManager(channelName, configuration);
-            var channelInfo = await manager.GetChannelInfoAsync();
-
-            if (!channelInfo.IsOnline && string.IsNullOrEmpty(channelInfo.Title)) return null;
+            await manager.GetChannelInfoAsync();
             await manager.StartClientAsync();
             return manager;
         }
