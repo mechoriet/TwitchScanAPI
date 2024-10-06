@@ -18,7 +18,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
     public class TwitchClientManager : IDisposable
     {
         private TwitchClient? _client;
-        public readonly TwitchAPI Api = new();
+        private readonly TwitchAPI Api = new();
         private readonly string _channelName;
         private readonly IConfiguration _configuration;
         private readonly Timer _reconnectTimer;

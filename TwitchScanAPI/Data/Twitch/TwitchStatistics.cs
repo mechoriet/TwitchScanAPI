@@ -148,29 +148,14 @@ namespace TwitchScanAPI.Data.Twitch
         {
             try
             {
-                var streams =
-                    await _clientManager.Api.Helix.Streams.GetStreamsAsync(userLogins: new List<string>
-                        { ChannelName });
-                var stream = streams?.Streams.FirstOrDefault();
-
-                if (stream == null) return _statisticsManager.GetAllStatistics();
-
-                var channelInfo = new ChannelInformation(IsOnline)
-                {
-                    Viewers = stream.ViewerCount,
-                    Title = stream.Title,
-                    Game = stream.GameName,
-                    Uptime = stream.StartedAt,
-                    Thumbnail = stream.ThumbnailUrl,
-                    StreamType = stream.Type
-                };
+                var channelInfo = await _clientManager.GetChannelInfoAsync();
                 _statisticsManager.Update(channelInfo);
 
                 return _statisticsManager.GetAllStatistics();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error fetching statistics for channel '{ChannelName}': {ex.Message}");
+                Console.WriteLine($"Error fetching statistics for channel '{ChannelName}': {ex.Message} {ex.StackTrace}");
                 return new Dictionary<string, object>(); // Return empty if there's an error
             }
         }

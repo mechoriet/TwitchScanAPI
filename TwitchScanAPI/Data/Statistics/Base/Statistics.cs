@@ -75,7 +75,7 @@ namespace TwitchScanAPI.Data.Statistics.Base
             return _statistics.ToDictionary(stat => stat.Name, stat => stat.GetResult());
         }
 
-        public object GetStatistic(string name)
+        public object? GetStatistic(string name)
         {
             var stat = _statistics.Find(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
             return stat?.GetResult();
@@ -89,7 +89,7 @@ namespace TwitchScanAPI.Data.Statistics.Base
             // Invoke each statistic's 'Update' method, passing in the event data
             foreach (var (statistic, method) in handlers)
             {
-                method.Invoke(statistic, new object[] { eventData });
+                if (eventData != null) method.Invoke(statistic, new object[] { eventData });
             }
         }
     }
