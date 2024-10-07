@@ -115,7 +115,7 @@ namespace TwitchScanAPI.Data.Twitch
             _clientManager.OnUserBanned += ClientManager_OnUserBanned;
             _clientManager.OnMessageCleared += ClientManager_OnMessageCleared;
             _clientManager.OnUserTimedOut += ClientManager_OnUserTimedOut;
-            _clientManager.OnConnected += ClientManagerOnConnected;
+            _clientManager.OnConnectionChanged += ClientManagerOnConnectionChanged;
             _clientManager.OnDisconnected += ClientManagerOnDisconnected;
             _clientManager.OnChannelStateChanged += ClientManagerOnOnChannelStateChanged;
         }
@@ -127,7 +127,7 @@ namespace TwitchScanAPI.Data.Twitch
             await SaveSnapshotAsync();
         }
 
-        private async void ClientManagerOnConnected(object? sender, ChannelInformation channelInformation)
+        private async void ClientManagerOnConnectionChanged(object? sender, ChannelInformation channelInformation)
         {
             IsOnline = channelInformation.IsOnline;
             _statisticsManager.PropagateEvents = IsOnline;

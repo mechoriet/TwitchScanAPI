@@ -43,7 +43,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public event EventHandler<OnMessageClearedArgs>? OnMessageCleared;
         public event EventHandler<OnUserTimedoutArgs>? OnUserTimedOut;
         public event EventHandler<OnChannelStateChangedArgs>? OnChannelStateChanged;
-        public event EventHandler<ChannelInformation>? OnConnected;
+        public event EventHandler<ChannelInformation>? OnConnectionChanged;
         public event EventHandler? OnDisconnected;
 
         // Private constructor to be used in the CreateAsync method
@@ -186,8 +186,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                         stream.Type,
                         IsOnline
                     );
-                    OnConnected?.Invoke(this, _cachedChannelInformation);
                 }
+                OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
 
                 // Update the last fetch time
                 _lastFetchTime = DateTime.UtcNow;

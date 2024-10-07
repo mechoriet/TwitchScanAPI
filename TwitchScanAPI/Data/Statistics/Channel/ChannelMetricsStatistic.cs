@@ -106,7 +106,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             }
 
             // Update the uptime based on the channel's reported start time
-            _currentUptime = DateTime.UtcNow - channelInfo.Uptime;
+            _currentUptime = currentTime - channelInfo.Uptime;
         }
 
         /// <summary>
