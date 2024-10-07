@@ -18,13 +18,17 @@ namespace TwitchScanAPI.Data.Twitch.Manager
     public class TwitchClientManager : IDisposable
     {
         private TwitchClient? _client;
-        private readonly TwitchAPI Api = new();
+        private readonly TwitchAPI _api = new();
         private readonly string _channelName;
         private readonly IConfiguration _configuration;
         private readonly Timer _reconnectTimer;
         private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
+        private readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(10);
         private bool _isReconnecting;
         private bool IsOnline { get; set; }
+
+        private DateTime _lastFetchTime;
+        private ChannelInformation? _cachedChannelInformation;
 
         // Events to expose
         public event EventHandler<OnMessageReceivedArgs>? OnMessageReceived;
@@ -74,8 +78,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             var clientId = _configuration.GetValue<string>(Variables.TwitchClientId);
             var clientSecret = _configuration.GetValue<string>(Variables.TwitchClientSecret);
 
-            Api.Settings.ClientId = clientId;
-            Api.Settings.Secret = clientSecret;
+            _api.Settings.ClientId = clientId;
+            _api.Settings.Secret = clientSecret;
         }
 
         public async Task AttemptConnectionAsync()
@@ -148,30 +152,47 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         public async Task<ChannelInformation> GetChannelInfoAsync()
         {
+            // Check if cached information is still valid
+            if (_cachedChannelInformation != null && (DateTime.UtcNow - _lastFetchTime) < _cacheDuration)
+            {
+                // Return cached information
+                return _cachedChannelInformation;
+            }
+
+            // Fetch new information since cache is expired
             try
             {
-                var streams = await Api.Helix.Streams.GetStreamsAsync(userLogins: new List<string> { _channelName });
+                var streams = await _api.Helix.Streams.GetStreamsAsync(userLogins: new List<string> { _channelName });
                 var isOnline = streams?.Streams.Any() ?? false;
                 if (IsOnline && !isOnline)
                 {
                     OnDisconnected?.Invoke(this, EventArgs.Empty);
                 }
-                
+
                 IsOnline = isOnline;
-                if (streams != null && (!isOnline || !streams.Streams.Any())) return new ChannelInformation(false);
-                var stream = streams?.Streams[0];
-                if (stream == null) return new ChannelInformation(false);
-                var channelInfo =  new ChannelInformation(
-                    stream.ViewerCount,
-                    stream.Title,
-                    stream.GameName,
-                    stream.StartedAt,
-                    stream.ThumbnailUrl,
-                    stream.Type,
-                    IsOnline
-                );
-                OnConnected?.Invoke(this, channelInfo);
-                return channelInfo;
+                if (streams == null || !isOnline || !streams.Streams.Any())
+                {
+                    _cachedChannelInformation = new ChannelInformation(false);
+                }
+                else
+                {
+                    var stream = streams.Streams[0];
+                    _cachedChannelInformation = new ChannelInformation(
+                        stream.ViewerCount,
+                        stream.Title,
+                        stream.GameName,
+                        stream.StartedAt,
+                        stream.ThumbnailUrl,
+                        stream.Type,
+                        IsOnline
+                    );
+                    OnConnected?.Invoke(this, _cachedChannelInformation);
+                }
+
+                // Update the last fetch time
+                _lastFetchTime = DateTime.UtcNow;
+
+                return _cachedChannelInformation;
             }
             catch (Exception)
             {

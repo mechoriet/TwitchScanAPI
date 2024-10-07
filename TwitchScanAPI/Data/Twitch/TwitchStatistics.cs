@@ -24,9 +24,7 @@ namespace TwitchScanAPI.Data.Twitch
     public class TwitchStatistics : IDisposable
     {
         // Statistics interval in seconds depending on online status
-        private const int OnlineStatisticInterval = 5;
-        private const int OfflineStatisticInterval = 15;
-
+        private const int StatisticInterval = 1;
         public string ChannelName { get; }
         public int MessageCount { get; private set; }
         public DateTime StartedAt { get; } = DateTime.UtcNow;
@@ -38,7 +36,7 @@ namespace TwitchScanAPI.Data.Twitch
         private readonly NotificationService _notificationService;
         private readonly MongoDbContext _context;
         private readonly Timer _statisticsTimer;
-        private TimeSpan _statisticsInterval = TimeSpan.FromSeconds(OnlineStatisticInterval);
+        private readonly TimeSpan _statisticsInterval = TimeSpan.FromSeconds(StatisticInterval);
 
         private TwitchStatistics(string channelName, TwitchClientManager clientManager,
             NotificationService notificationService, MongoDbContext context)
@@ -59,7 +57,13 @@ namespace TwitchScanAPI.Data.Twitch
             {
                 AutoReset = true
             };
-            _statisticsTimer.Elapsed += async (_, _) => await SendStatisticsAsync();
+            _statisticsTimer.Elapsed += async (_, _) =>
+            {
+                if (IsOnline)
+                {
+                    await SendStatisticsAsync();
+                }
+            };
             _statisticsTimer.Start();
         }
 
@@ -123,18 +127,14 @@ namespace TwitchScanAPI.Data.Twitch
         private async void ClientManagerOnDisconnected(object? sender, EventArgs e)
         {
             IsOnline = false;
-            _statisticsInterval = TimeSpan.FromSeconds(OfflineStatisticInterval);
-
+            _statisticsManager.PropagateEvents = false;
             await SaveSnapshotAsync();
         }
 
         private async void ClientManagerOnConnected(object? sender, ChannelInformation channelInformation)
         {
             IsOnline = channelInformation.IsOnline;
-            _statisticsInterval = IsOnline
-                ? TimeSpan.FromSeconds(OnlineStatisticInterval)
-                : TimeSpan.FromSeconds(OfflineStatisticInterval);
-
+            _statisticsManager.PropagateEvents = IsOnline;
             await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName,
                 channelInformation.IsOnline, MessageCount, channelInformation.Viewers, channelInformation.Uptime));
         }
