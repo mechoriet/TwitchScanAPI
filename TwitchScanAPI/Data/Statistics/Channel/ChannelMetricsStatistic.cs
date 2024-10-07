@@ -135,6 +135,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             var roundedMinutes = Math.Floor((double)timestamp.Minute / BucketSize) * BucketSize;
             var roundedTime = new DateTime(timestamp.Year, timestamp.Month, timestamp.Day, timestamp.Hour,
                     (int)roundedMinutes, 0)
+                .ToUniversalTime()
                 .ToString("yyyy-MM-ddTHH:mm:ssZ");
 
             // Add or update the viewer count for the time bucket
