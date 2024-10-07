@@ -57,13 +57,7 @@ namespace TwitchScanAPI.Data.Twitch
             {
                 AutoReset = true
             };
-            _statisticsTimer.Elapsed += async (_, _) =>
-            {
-                if (IsOnline)
-                {
-                    await SendStatisticsAsync();
-                }
-            };
+            _statisticsTimer.Elapsed += async (_, _) => { await SendStatisticsAsync(); };
             _statisticsTimer.Start();
         }
 
@@ -72,7 +66,9 @@ namespace TwitchScanAPI.Data.Twitch
         {
             var clientManager = await TwitchClientManager.CreateAsync(channelName, configuration);
 
-            return clientManager == null ? null : new TwitchStatistics(channelName, clientManager, notificationService, context);
+            return clientManager == null
+                ? null
+                : new TwitchStatistics(channelName, clientManager, notificationService, context);
         }
 
         public async Task SaveSnapshotAsync()
@@ -155,7 +151,8 @@ namespace TwitchScanAPI.Data.Twitch
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error fetching statistics for channel '{ChannelName}': {ex.Message} {ex.StackTrace}");
+                Console.WriteLine(
+                    $"Error fetching statistics for channel '{ChannelName}': {ex.Message} {ex.StackTrace}");
                 return new Dictionary<string, object>(); // Return empty if there's an error
             }
         }
