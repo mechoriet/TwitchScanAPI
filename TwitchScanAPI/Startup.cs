@@ -23,10 +23,6 @@ namespace TwitchScanAPI
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "TwitchScanAPI", Version = "v1" });
             });
             
-            services.AddSingleton<NotificationService>();
-            services.AddSingleton<TwitchChannelManager>();
-            services.AddHttpClient<TwitchAuthService>();
-            
             services.AddCors(options =>
             {
                 options.AddPolicy("AllowSpecificOrigins",
@@ -41,6 +37,10 @@ namespace TwitchScanAPI
                     });
             });
             
+            // Register services
+            services.AddSingleton<NotificationService>();
+            services.AddSingleton<TwitchChannelManager>();
+            services.AddHttpClient<TwitchAuthService>();
             // Register DbContext
             services.AddSingleton<MongoDbContext>();
         }

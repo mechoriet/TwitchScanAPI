@@ -2,6 +2,7 @@
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Driver;
+using TwitchScanAPI.Models.DbUser;
 using TwitchScanAPI.Models.Twitch.Base;
 using TwitchScanAPI.Models.Twitch.Statistics;
 
@@ -63,6 +64,9 @@ namespace TwitchScanAPI.DbContext
 
         public IMongoCollection<StatisticHistory> StatisticHistory =>
             _database.GetCollection<StatisticHistory>("StatisticHistory");
+        
+        public IMongoCollection<TwitchLogin> TwitchLogins =>
+            _database.GetCollection<TwitchLogin>("TwitchLogins");
     }
 
 }
