@@ -62,5 +62,12 @@ namespace TwitchScanAPI.Controllers
             await _context.StatisticHistory.DeleteManyAsync(x => x.UserName == channelName);
             return Ok();
         }
+        
+        [HttpDelete]
+        public async Task<ActionResult> DeleteEmptyViewCounts()
+        {
+            await _context.StatisticHistory.DeleteManyAsync(x => x.AverageViewers == 0 || x.PeakViewers == 0);
+            return Ok();
+        }
     }
 }

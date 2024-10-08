@@ -226,7 +226,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public async Task SaveSnapshotsAsync()
         {
-            foreach (var channel in _twitchStats)
+            foreach (var channel in _twitchStats.Where(channel => channel.IsOnline))
             {
                 await channel.SaveSnapshotAsync();
             }
