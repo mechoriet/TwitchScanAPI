@@ -52,9 +52,10 @@ namespace TwitchScanAPI.Controllers
         }
 
         [HttpGet]
-        public ActionResult GetInitiatedChannels()
+        public async Task<ActionResult> GetInitiatedChannels()
         {
-            return Ok(_twitchStats.GetInitiatedChannels());
+            var channels = await _twitchStats.GetInitiatedChannels();
+            return Ok(channels);
         }
 
         [HttpGet]
