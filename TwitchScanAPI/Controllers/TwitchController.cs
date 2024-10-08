@@ -45,7 +45,6 @@ namespace TwitchScanAPI.Controllers
         }
 
         [HttpPost]
-        [MasterKey]
         public ActionResult AddTextToObserve(string channelName, string text)
         {
             var added = _twitchStats.AddTextToObserve(channelName, text);
