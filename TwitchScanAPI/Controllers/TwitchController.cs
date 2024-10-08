@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
@@ -50,7 +51,10 @@ namespace TwitchScanAPI.Controllers
             var user = await _context.TwitchLogins.Find(x => x.AccessToken == accessToken).FirstOrDefaultAsync();
             if (user == null)
             {
-                return StatusCode(StatusCodes.Status404NotFound, "User not found");
+                // To debug get all users from db and log them
+                var users = await _context.TwitchLogins.Find(_ => true).ToListAsync();
+                Console.WriteLine(users);
+                return StatusCode(StatusCodes.Status404NotFound, users);
             }
             
             var removed = _twitchStats.Remove(user.DisplayName);

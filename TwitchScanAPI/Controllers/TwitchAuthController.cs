@@ -130,6 +130,7 @@ namespace TwitchScanAPI.Controllers
                     .Set(x => x.AccessToken, twitchOAuthResponse.access_token)
                     .Set(x => x.ExpiresIn, TimeSpan.FromSeconds(twitchOAuthResponse.expires_in))
             );
+            twitchLogin.AccessToken = twitchOAuthResponse.access_token;
             
             // Init channel
             await _twitchStats.Init(twitchLogin.DisplayName);
