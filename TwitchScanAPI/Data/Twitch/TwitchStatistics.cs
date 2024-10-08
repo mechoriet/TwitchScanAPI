@@ -139,6 +139,8 @@ namespace TwitchScanAPI.Data.Twitch
         {
             _observedWordsManager.AddTextToObserve(text);
         }
+        
+        public async Task<ChannelInformation> GetChannelInfoAsync() => await _clientManager.GetChannelInfoAsync();
 
         public async Task<IDictionary<string, object>> GetStatisticsAsync()
         {

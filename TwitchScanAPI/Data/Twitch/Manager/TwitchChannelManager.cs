@@ -38,7 +38,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             // Initialize the observer from the database
             _ = InitiateFromDbAsync();
-            
+
             // Refresh the OAuth token on startup
             _ = RefreshAuthTokenAsync();
 
@@ -172,11 +172,17 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// <summary>
         /// Get all initiated channels
         /// </summary>
-        public IEnumerable<InitiatedChannel> GetInitiatedChannels()
+        public async Task<IEnumerable<InitiatedChannel>> GetInitiatedChannels()
         {
-            return _twitchStats.Select(x => new InitiatedChannel(x.ChannelName, x.MessageCount, x.StartedAt, x.IsOnline,
-                _context.StatisticHistory.CountDocuments(
-                    Builders<StatisticHistory>.Filter.Eq(y => y.UserName, x.ChannelName))));
+            var channels = new List<InitiatedChannel>();
+            foreach (var stat in _twitchStats)
+            {
+                var channelInfo = await stat.GetChannelInfoAsync();
+                channels.Add(new InitiatedChannel(stat.ChannelName, stat.MessageCount, stat.StartedAt, channelInfo.Uptime,
+                    channelInfo.IsOnline, channelInfo.Title, channelInfo.Game));
+            }
+
+            return channels;
         }
 
         /// <summary>
