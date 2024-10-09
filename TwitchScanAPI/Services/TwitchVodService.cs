@@ -56,7 +56,7 @@ namespace TwitchScanAPI.Services
                             select comment["node"]
                             into node
                             let createdAt = node?["createdAt"]?.ToObject<DateTime>()
-                            let username = node?["commenter"]?["displayName"]?.ToString() ?? "Unknown"
+                            let username = node?["commenter"]?["displayName"]?.Type == JTokenType.String ? node["commenter"]["displayName"].ToString() : "Unknown"
                             let messageFragments = node?["message"]?["fragments"]
                             let message = messageFragments != null
                                 ? string.Join("", messageFragments.Select(f => f["text"]?.ToString()))
