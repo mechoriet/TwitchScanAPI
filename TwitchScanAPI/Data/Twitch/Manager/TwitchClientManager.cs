@@ -148,6 +148,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _client.OnMessageCleared += (sender, args) => OnMessageCleared?.Invoke(sender, args);
             _client.OnUserTimedout += (sender, args) => OnUserTimedOut?.Invoke(sender, args);
             _client.OnChannelStateChanged += (sender, args) => OnChannelStateChanged?.Invoke(sender, args);
+            _client.OnRaidNotification += (sender, args) => OnRaidNotification?.Invoke(sender, args);
         }
 
         public async Task<ChannelInformation> GetChannelInfoAsync()
