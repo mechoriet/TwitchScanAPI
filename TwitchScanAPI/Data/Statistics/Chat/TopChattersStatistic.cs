@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Threading.Tasks;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Chat;
 
@@ -30,12 +31,11 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 .ToDictionary(kv => kv.Key, kv => kv.Value);
         }
 
-        public void Update(ChannelMessage message)
+        public Task Update(ChannelMessage message)
         {
-            if (string.IsNullOrWhiteSpace(message.ChatMessage?.Username)) return; // Handle null or empty usernames
-
             // Add or update the chatter's message count in a thread-safe manner
             _chatterCounts.AddOrUpdate(message.ChatMessage.Username.Trim(), 1, (_, oldValue) => oldValue + 1);
+            return Task.CompletedTask;
         }
     }
 

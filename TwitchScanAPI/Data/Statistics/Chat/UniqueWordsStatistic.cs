@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Chat;
 
@@ -19,10 +20,8 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             return _uniqueWords.Count;
         }
 
-        public void Update(ChannelMessage message)
+        public Task Update(ChannelMessage message)
         {
-            if (string.IsNullOrWhiteSpace(message.ChatMessage.Message)) return; // Handle empty messages
-
             // Extract words using regex, converting to lower case for consistent comparison
             var words = WordRegex.Matches(message.ChatMessage.Message)
                 .Select(m => m.Value.ToLowerInvariant().Trim())
@@ -33,6 +32,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             {
                 _uniqueWords.TryAdd(word, 0);
             }
+            return Task.CompletedTask;
         }
     }
 

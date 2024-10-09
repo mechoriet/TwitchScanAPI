@@ -139,7 +139,7 @@ Adding new statistics is straightforward. Implement the `IStatistic` interface a
             // Implement your logic to return the statistic result
         }
     
-        public void Update(SomeEventData eventData)
+        public Task Update(SomeEventData eventData)
         {
             // Implement your logic to update the statistic based on event data
         }
@@ -227,7 +227,7 @@ public class TopChattersStatistic : IStatistic
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
     }
 
-    public void Update(ChannelMessage message)
+    public Task Update(ChannelMessage message)
     {
         var username = message?.ChatMessage?.Username;
         if (string.IsNullOrWhiteSpace(username)) return;

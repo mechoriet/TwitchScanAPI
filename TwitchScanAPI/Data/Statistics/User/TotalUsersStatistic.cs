@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Threading.Tasks;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Base;
 using TwitchScanAPI.Models.Twitch.Chat;
@@ -17,14 +18,16 @@ namespace TwitchScanAPI.Data.Statistics.User
             return _users.Count;
         }
 
-        public void Update(ChannelMessage message)
+        public Task Update(ChannelMessage message)
         {
-            AddUser(message?.ChatMessage?.Username);
+            AddUser(message.ChatMessage.Username);
+            return Task.CompletedTask;
         }
         
-        public void Update(UserEntity userEntity)
+        public Task Update(UserEntity userEntity)
         {
-            AddUser(userEntity?.Username);
+            AddUser(userEntity.Username);
+            return Task.CompletedTask;
         }
         
         private void AddUser(string username)

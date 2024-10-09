@@ -1,72 +1,135 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using TwitchScanAPI.Controllers.Annotations;
+using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Data.Twitch.Manager;
 using TwitchScanAPI.DbContext;
+using TwitchScanAPI.Global;
+using TwitchScanAPI.Models.DbUser;
+using TwitchScanAPI.Services;
 
 namespace TwitchScanAPI.Controllers
 {
     [Route("[controller]/[action]")]
     public class TwitchController : Controller
     {
-        private readonly TwitchChannelManager _twitchStats;
+        private readonly TwitchChannelManager _twitchChannelManager;
         private readonly MongoDbContext _context;
+        private readonly TwitchVodService _twitchVodService;
 
-        public TwitchController(TwitchChannelManager twitchStats, MongoDbContext context)
+        public TwitchController(TwitchChannelManager twitchChannelManager, MongoDbContext context,
+            TwitchVodService twitchVodService)
         {
-            _twitchStats = twitchStats;
+            _twitchChannelManager = twitchChannelManager;
             _context = context;
+            _twitchVodService = twitchVodService;
+        }
+        
+        private async Task<TwitchLogin?> GetUserFromAccessToken()
+        {
+            var accessToken = HttpContext.Request.Headers["AccessToken"].ToString();
+            return await _context.TwitchLogins.Find(x => x.AccessToken == accessToken).FirstOrDefaultAsync();
         }
 
         [HttpPost]
         [MasterKey]
         public async Task<ActionResult> Init(string channelName)
         {
-            var added = await _twitchStats.Init(channelName);
-            return added.Error != null
-                ? StatusCode(added.Error.StatusCode, added)
-                : Ok(added);
-        }
-        
-        [HttpPost]
-        [MasterKey]
-        public async Task<ActionResult> InitMultiple([FromBody] string[] channelNames)
-        {
-            var added = await _twitchStats.InitMultiple(channelNames);
+            var added = await _twitchChannelManager.Init(channelName);
             return added.Error != null
                 ? StatusCode(added.Error.StatusCode, added)
                 : Ok(added);
         }
 
         [HttpPost]
+        [MasterKey]
+        public async Task<ActionResult> InitMultiple([FromBody] string[] channelNames)
+        {
+            var added = await _twitchChannelManager.InitMultiple(channelNames);
+            return added.Error != null
+                ? StatusCode(added.Error.StatusCode, added)
+                : Ok(added);
+        }
+
+        
+        [HttpPost]
         [AccessToken]
         public async Task<ActionResult> Remove()
         {
-            var accessToken = HttpContext.Request.Headers["AccessToken"].ToString();
-            // Check if there is a user with the given access token from mongodb using mongodb driver
-            var user = await _context.TwitchLogins.Find(x => x.AccessToken == accessToken).FirstOrDefaultAsync();
+            var user = await GetUserFromAccessToken();
             if (user == null)
             {
-                // To debug get all users from db and log them
-                var users = await _context.TwitchLogins.Find(_ => true).ToListAsync();
-                Console.WriteLine(users);
-                return StatusCode(StatusCodes.Status404NotFound, users);
+                return StatusCode(StatusCodes.Status404NotFound);
             }
-            
-            var removed = _twitchStats.Remove(user.DisplayName);
+
+            var removed = _twitchChannelManager.Remove(user.DisplayName);
             return removed.Error != null
                 ? StatusCode(removed.Error.StatusCode, removed)
                 : Ok(removed);
+        }
+
+        [HttpGet]
+        [AccessToken]
+        public async Task<ActionResult> GetVodsFromChannel(string channelName)
+        {
+            var user = await GetUserFromAccessToken();
+            if (user == null)
+            {
+                return StatusCode(StatusCodes.Status404NotFound);
+            }
+            
+            if (channelName != user.DisplayName && user.DisplayName.ToLower() != "lenbanana0")
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized);
+            }
+
+            var vods = await _twitchVodService.GetVodsFromChannelAsync(channelName);
+            return Ok(vods);
+        }
+
+        [HttpGet]
+        [AccessToken]
+        public async Task<ActionResult> GetChatMessagesFromVod(string vodUrlOrId, string date, string channelName, int viewCount)
+        {
+            var user = await GetUserFromAccessToken();
+            if (user == null)
+            {
+                return StatusCode(StatusCodes.Status404NotFound);
+            }
+
+            if (!DateTime.TryParse(date, out var dateTime))
+            {
+                return BadRequest("Invalid date");
+            }
+            
+            if (channelName != user.DisplayName && user.DisplayName.ToLower() != "lenbanana0")
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized);
+            }
+
+            var chatMessages = await _twitchVodService.GetChatMessagesFromVodAsync(vodUrlOrId, channelName);
+            var stats = new StatisticsManager();
+            foreach (var chatMessage in chatMessages.Where(chatMessage =>
+                         !Variables.BotNames.Contains(chatMessage.ChatMessage.Username,
+                             StringComparer.OrdinalIgnoreCase)))
+            {
+                await stats.Update(chatMessage);
+            }
+
+            var result = stats.GetAllStatistics();
+            await _twitchChannelManager.SaveSnapshotToChannelAsync(channelName, stats, dateTime, viewCount);
+            return Ok(new { Statistics = result });
         }
 
         [HttpPost]
         [MasterKey]
         public ActionResult AddTextToObserve(string channelName, string text)
         {
-            var added = _twitchStats.AddTextToObserve(channelName, text);
+            var added = _twitchChannelManager.AddTextToObserve(channelName, text);
             return added ? Ok() : StatusCode(StatusCodes.Status404NotFound);
         }
 
@@ -74,14 +137,14 @@ namespace TwitchScanAPI.Controllers
         [MasterKey]
         public ActionResult GetUsers(string channelName)
         {
-            return Ok(_twitchStats.GetUsers(channelName));
+            return Ok(_twitchChannelManager.GetUsers(channelName));
         }
 
         [HttpGet]
         [MasterKey]
         public async Task<ActionResult> GetPossibleStatistics()
         {
-            var stats = await _twitchStats.GetPossibleStatistics();
+            var stats = await _twitchChannelManager.GetPossibleStatistics();
             return Ok(stats);
         }
 
@@ -89,21 +152,21 @@ namespace TwitchScanAPI.Controllers
         [MasterKey]
         public async Task<ActionResult> GetAllStatistics()
         {
-            var stats = await _twitchStats.GetAllStatistics();
+            var stats = await _twitchChannelManager.GetAllStatistics();
             return Ok(stats);
         }
 
         [HttpGet]
         public async Task<ActionResult> GetInitiatedChannels()
         {
-            var channels = await _twitchStats.GetInitiatedChannels();
+            var channels = await _twitchChannelManager.GetInitiatedChannels();
             return Ok(channels);
         }
 
         [HttpGet]
         public async Task<ActionResult> GetChannelStatistics(string channelName)
         {
-            var stats = await _twitchStats.GetAllStatistics(channelName);
+            var stats = await _twitchChannelManager.GetAllStatistics(channelName);
 
             return Ok(stats);
         }
@@ -111,13 +174,13 @@ namespace TwitchScanAPI.Controllers
         [HttpGet]
         public ActionResult GetViewCountHistory(string channelName)
         {
-            return Ok(_twitchStats.GetViewCountHistory(channelName));
+            return Ok(_twitchChannelManager.GetViewCountHistory(channelName));
         }
 
         [HttpGet]
         public ActionResult GetHistoryByKey(string channelName, string key)
         {
-            return Ok(_twitchStats.GetHistoryByKey(channelName, key));
+            return Ok(_twitchChannelManager.GetHistoryByKey(channelName, key));
         }
     }
 }

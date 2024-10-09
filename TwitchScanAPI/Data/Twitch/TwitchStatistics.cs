@@ -71,20 +71,25 @@ namespace TwitchScanAPI.Data.Twitch
                 : new TwitchStatistics(channelName, clientManager, notificationService, context);
         }
 
-        public async Task SaveSnapshotAsync()
+        public async Task SaveSnapshotAsync(StatisticsManager? manager = null, DateTime? date = null, int? viewCount = null)
         {
+            manager ??= _statisticsManager;
+
             // Try getting the peak viewers from the statistics
-            var statistics = _statisticsManager.GetAllStatistics();
+            var statistics = manager.GetAllStatistics();
             statistics.TryGetValue("ChannelMetrics", out var value);
             var viewerStatistics = value is ChannelMetrics metrics ? metrics.ViewerStatistics : null;
             // Save the statistics to the database
-            var statisticHistory = new StatisticHistory(ChannelName, viewerStatistics?.PeakViewers ?? 0,
-                viewerStatistics?.AverageViewers ?? 0, MessageCount, statistics);
+            var statisticHistory = new StatisticHistory(ChannelName, viewCount ?? viewerStatistics?.PeakViewers ?? 0,
+                viewCount ?? viewerStatistics?.AverageViewers ?? 0, MessageCount, statistics)
+            {
+                Time = date ?? DateTime.UtcNow
+            };
             await _context.StatisticHistory.InsertOneAsync(statisticHistory);
 
             // Reset the message count and statistics
             MessageCount = 0;
-            _statisticsManager.Reset();
+            manager.Reset();
         }
 
         public async Task RefreshConnectionAsync()
@@ -140,7 +145,7 @@ namespace TwitchScanAPI.Data.Twitch
         {
             _observedWordsManager.AddTextToObserve(text);
         }
-        
+
         public async Task<ChannelInformation> GetChannelInfoAsync() => await _clientManager.GetChannelInfoAsync();
 
         public async Task<IDictionary<string, object>> GetStatisticsAsync()
@@ -148,7 +153,7 @@ namespace TwitchScanAPI.Data.Twitch
             try
             {
                 var channelInfo = await _clientManager.GetChannelInfoAsync();
-                _statisticsManager.Update(channelInfo);
+                await _statisticsManager.Update(channelInfo);
 
                 return _statisticsManager.GetAllStatistics();
             }
@@ -179,7 +184,11 @@ namespace TwitchScanAPI.Data.Twitch
         private async void ClientManager_OnMessageReceived(object? sender, OnMessageReceivedArgs e)
         {
             var chatMessage = e.ChatMessage;
-            var channelMessage = new ChannelMessage(ChannelName, chatMessage);
+            var channelMessage = new ChannelMessage(ChannelName, new TwitchChatMessage
+            {
+                Username = chatMessage.Username,
+                Message = chatMessage.Message,
+            });
             await _notificationService.ReceiveChannelMessageAsync(ChannelName, channelMessage);
             await _notificationService.ReceiveMessageCountAsync(ChannelName, MessageCount);
 
@@ -187,7 +196,7 @@ namespace TwitchScanAPI.Data.Twitch
             if (!Variables.BotNames.Contains(chatMessage.DisplayName, StringComparer.OrdinalIgnoreCase))
             {
                 MessageCount++;
-                _statisticsManager.Update(channelMessage);
+                await _statisticsManager.Update(channelMessage);
             }
 
             // Check for observed words
@@ -206,14 +215,14 @@ namespace TwitchScanAPI.Data.Twitch
         private async void ClientManager_OnUserJoined(object? sender, OnUserJoinedArgs e)
         {
             if (!_userManager.AddUser(e.Username)) return;
-            _statisticsManager.Update(new UserJoined(e.Username));
+            await _statisticsManager.Update(new UserJoined(e.Username));
             await _notificationService.ReceiveUserJoinedAsync(ChannelName, e.Username, e.Channel);
         }
 
         private async void ClientManager_OnUserLeft(object? sender, OnUserLeftArgs e)
         {
             if (!_userManager.RemoveUser(e.Username)) return;
-            _statisticsManager.Update(new UserLeft(e.Username));
+            await _statisticsManager.Update(new UserLeft(e.Username));
             await _notificationService.ReceiveUserLeftAsync(ChannelName, e.Username);
         }
 
@@ -230,7 +239,7 @@ namespace TwitchScanAPI.Data.Twitch
                 MultiMonth = ParseInt(e.Subscriber.MsgParamCumulativeMonths, 1),
             };
 
-            _statisticsManager.Update(subscription);
+            await _statisticsManager.Update(subscription);
             await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
         }
 
@@ -247,7 +256,7 @@ namespace TwitchScanAPI.Data.Twitch
                 MultiMonth = ParseInt(e.ReSubscriber.MsgParamCumulativeMonths, 1)
             };
 
-            _statisticsManager.Update(subscription);
+            await _statisticsManager.Update(subscription);
             await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
         }
 
@@ -267,7 +276,7 @@ namespace TwitchScanAPI.Data.Twitch
                 GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlanName
             };
 
-            _statisticsManager.Update(subscription);
+            await _statisticsManager.Update(subscription);
             await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
         }
 
@@ -282,7 +291,7 @@ namespace TwitchScanAPI.Data.Twitch
                 MultiMonth = ParseInt(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, 1),
             };
 
-            _statisticsManager.Update(subscription);
+            await _statisticsManager.Update(subscription);
             await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
         }
 
@@ -290,7 +299,7 @@ namespace TwitchScanAPI.Data.Twitch
         {
             var bannedUser = new UserBanned(e.UserBan.Username, e.UserBan.BanReason);
 
-            _statisticsManager.Update(bannedUser);
+            await _statisticsManager.Update(bannedUser);
             await _notificationService.ReceiveBannedUserAsync(ChannelName, bannedUser);
         }
 
@@ -303,7 +312,7 @@ namespace TwitchScanAPI.Data.Twitch
                 TmiSentTs = e.TmiSentTs,
             };
 
-            _statisticsManager.Update(clearedMessage);
+            await _statisticsManager.Update(clearedMessage);
             await _notificationService.ReceiveClearedMessageAsync(ChannelName, clearedMessage);
         }
 
@@ -316,7 +325,7 @@ namespace TwitchScanAPI.Data.Twitch
                 TimeoutDuration = e.UserTimeout.TimeoutDuration,
             };
 
-            _statisticsManager.Update(timedOutUser);
+            await _statisticsManager.Update(timedOutUser);
             await _notificationService.ReceiveTimedOutUserAsync(ChannelName, timedOutUser);
         }
 

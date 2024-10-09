@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Timers;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.ML.SentimentAnalysis;
@@ -81,12 +82,10 @@ namespace TwitchScanAPI.Data.Statistics.ML
             return result;
         }
 
-        public void Update(ChannelMessage message)
+        public Task Update(ChannelMessage message)
         {
             var text = message.ChatMessage.Message;
             var username = message.ChatMessage.Username;
-            if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(username))
-                return;
 
             // Analyze sentiment
             var results = _analyzer.PolarityScores(text);
@@ -148,6 +147,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
             {
                 AddTopMessage(_topNegativeMessages, negativeMessage, (a, b) => a.Compound.CompareTo(b.Compound));
             }
+            return Task.CompletedTask;
         }
         
         private void CleanupOldData()

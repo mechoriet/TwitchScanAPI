@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Timers;
 using TwitchLib.Client.Models;
 using TwitchScanAPI.Data.Statistics.Base;
@@ -69,7 +70,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         /// <summary>
         /// Updates the message count based on the received channel message, considering the current channel state (e.g., sub-only mode).
         /// </summary>
-        public void Update(ChannelMessage message)
+        public Task Update(ChannelMessage message)
         {
             // Get the message timestamp
             var dateTime = message.Time;
@@ -88,14 +89,16 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 _slowOnlyMessagesOverTime.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);
             else
                 _messagesOverTime.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);
+            return Task.CompletedTask;
         }
 
         /// <summary>
         /// Updates the internal channel state, which is used to determine how messages are tracked (e.g., sub-only mode).
         /// </summary>
-        public void Update(ChannelState channelState)
+        public Task Update(ChannelState channelState)
         {
             _channelState = channelState;
+            return Task.CompletedTask;
         }
 
         /// <summary>

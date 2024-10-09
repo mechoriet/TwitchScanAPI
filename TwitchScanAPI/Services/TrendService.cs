@@ -7,7 +7,7 @@ namespace TwitchScanAPI.Services
 {
     public static class TrendService
     {
-        private static readonly TimeSpan TrendTimeSpan = TimeSpan.FromMinutes(5);
+        private static readonly TimeSpan TrendTimeSpan = TimeSpan.FromMinutes(30);
         
         /// <summary>
         /// Calculates the trend based on the provided data.

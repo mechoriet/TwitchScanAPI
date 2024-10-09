@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Chat;
 
@@ -36,10 +37,8 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 .ToDictionary(entry => entry.word, entry => entry.count);
         }
 
-        public void Update(ChannelMessage message)
+        public Task Update(ChannelMessage message)
         {
-            if (string.IsNullOrWhiteSpace(message.ChatMessage.Message)) return; // Handle empty messages
-
             var words = WordSplitter.Split(message.ChatMessage.Message);
             foreach (var word in words)
             {
@@ -48,6 +47,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
                 _wordCounts.AddOrUpdate(trimmed.ToLower(), 1, (_, count) => count + 1);
             }
+            return Task.CompletedTask;
         }
     }
 

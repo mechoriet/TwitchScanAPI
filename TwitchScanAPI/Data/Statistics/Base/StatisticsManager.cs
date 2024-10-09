@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace TwitchScanAPI.Data.Statistics.Base
 {
@@ -12,10 +13,10 @@ namespace TwitchScanAPI.Data.Statistics.Base
             _statistics.Reset();
         }
 
-        public void Update<TEvent>(TEvent eventData)
+        public async Task Update<TEvent>(TEvent eventData)
         {
-            if (!PropagateEvents) return;
-            _statistics.Update(eventData);
+            if (!PropagateEvents) return; 
+            await _statistics.Update(eventData);
         }
 
         public IDictionary<string, object> GetAllStatistics()

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace TwitchScanAPI.Data.Statistics.Base
 {
@@ -81,7 +82,7 @@ namespace TwitchScanAPI.Data.Statistics.Base
             return stat?.GetResult();
         }
 
-        public void Update<TEvent>(TEvent eventData)
+        public async Task Update<TEvent>(TEvent eventData)
         {
             var eventType = typeof(TEvent);
             if (!_eventHandlers.TryGetValue(eventType, out var handlers)) return;
@@ -89,7 +90,14 @@ namespace TwitchScanAPI.Data.Statistics.Base
             // Invoke each statistic's 'Update' method, passing in the event data
             foreach (var (statistic, method) in handlers)
             {
-                if (eventData != null) method.Invoke(statistic, new object[] { eventData });
+                if (eventData == null) continue;
+                var result = method.Invoke(statistic, new object[] { eventData });
+
+                // Check if the method returns a Task
+                if (result is Task task)
+                {
+                    await task; // Await if it's a Task
+                }
             }
         }
     }

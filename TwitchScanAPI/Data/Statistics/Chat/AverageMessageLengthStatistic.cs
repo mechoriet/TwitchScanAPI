@@ -1,4 +1,5 @@
 ﻿using System.Threading;
+using System.Threading.Tasks;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Chat;
 
@@ -16,10 +17,11 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             return (double)_totalLength / _messageCount;
         }
 
-        public void Update(ChannelMessage message)
+        public Task Update(ChannelMessage message)
         {
             Interlocked.Add(ref _totalLength, message.ChatMessage.Message.Length);
             Interlocked.Increment(ref _messageCount);
+            return Task.CompletedTask;
         }
     }
 }

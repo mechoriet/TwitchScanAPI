@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using TwitchScanAPI.Data.Twitch.Manager;
 using TwitchScanAPI.DbContext;
+using TwitchScanAPI.HostedServices;
 using TwitchScanAPI.Hubs;
 using TwitchScanAPI.Services;
 
@@ -39,10 +40,12 @@ namespace TwitchScanAPI
             
             // Register services
             services.AddSingleton<NotificationService>();
+            services.AddSingleton<TwitchVodService>();
             services.AddSingleton<TwitchChannelManager>();
             services.AddHttpClient<TwitchAuthService>();
             // Register DbContext
             services.AddSingleton<MongoDbContext>();
+            services.AddHostedService<TwitchChannelManagerHostedService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

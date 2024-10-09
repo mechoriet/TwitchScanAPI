@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Timers;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Enums;
@@ -72,7 +73,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             };
         }
 
-        public void Update(ChannelSubscription channelSubscription)
+        public Task Update(ChannelSubscription channelSubscription)
         {
             // Increment count based on the subscription type
             _subscriptionCounts.AddOrUpdate(channelSubscription.Type, 1, (_, count) => count + 1);
@@ -88,6 +89,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             // Track subscriptions over time (batched by minute)
             var currentTime = DateTime.UtcNow;
             UpdateSubscriptionsOverTime(currentTime);
+            return Task.CompletedTask;
         }
 
         private void UpdateSubscriptionsOverTime(DateTime timestamp)

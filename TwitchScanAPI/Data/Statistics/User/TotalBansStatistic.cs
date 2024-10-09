@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Threading.Tasks;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.User;
 
@@ -22,7 +23,7 @@ namespace TwitchScanAPI.Data.Statistics.User
             };
         }
 
-        public void Update(UserBanned userBanned)
+        public Task Update(UserBanned userBanned)
         {
             _banCount++;
 
@@ -30,6 +31,7 @@ namespace TwitchScanAPI.Data.Statistics.User
             {
                 _banReasons.AddOrUpdate(userBanned.BanReason.Trim(), 1, (_, count) => count + 1);
             }
+            return Task.CompletedTask;
         }
     }
 }

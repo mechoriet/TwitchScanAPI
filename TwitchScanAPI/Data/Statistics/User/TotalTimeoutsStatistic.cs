@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Threading.Tasks;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.User;
 
@@ -25,10 +26,8 @@ namespace TwitchScanAPI.Data.Statistics.User
             };
         }
 
-        public void Update(UserTimedOut userTimedOut)
+        public Task Update(UserTimedOut userTimedOut)
         {
-            if (userTimedOut == null) return;
-
             _timeoutCount++;
             _totalTimeoutDuration += userTimedOut.TimeoutDuration;
 
@@ -36,6 +35,7 @@ namespace TwitchScanAPI.Data.Statistics.User
             {
                 _timeoutReasons.AddOrUpdate(userTimedOut.TimeoutReason.Trim(), 1, (_, count) => count + 1);
             }
+            return Task.CompletedTask;
         }
     }
 

@@ -1,5 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Chat;
 
@@ -16,12 +17,13 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             return _linkCount;
         }
 
-        public void Update(ChannelMessage message)
+        public Task Update(ChannelMessage message)
         {
             if (LinkRegex.IsMatch(message.ChatMessage.Message))
             {
                 Interlocked.Increment(ref _linkCount);
             }
+            return Task.CompletedTask;
         }
     }
 }

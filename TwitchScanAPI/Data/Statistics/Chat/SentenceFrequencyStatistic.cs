@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Chat;
 
@@ -36,9 +37,10 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 .ToDictionary(entry => entry.sentence, entry => entry.count);
         }
 
-        public void Update(ChannelMessage message)
+        public Task Update(ChannelMessage message)
         {
-            if (string.IsNullOrWhiteSpace(message.ChatMessage.Message)) return; // Handle empty messages
+            if (string.IsNullOrWhiteSpace(message.ChatMessage.Message)) 
+                return Task.CompletedTask; // Handle empty messages
 
             // Check if the message has any punctuation at all
             if (!Regex.IsMatch(message.ChatMessage.Message, @"[.!?\n]"))
@@ -49,7 +51,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 {
                     _sentenceCounts.AddOrUpdate(trimmedMessage.ToLower(), 1, (_, count) => count + 1);
                 }
-                return;
+                return Task.CompletedTask;
             }
 
             // Otherwise, split the message using the SentenceSplitter regex
@@ -61,6 +63,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
                 _sentenceCounts.AddOrUpdate(trimmed.ToLower(), 1, (_, count) => count + 1);
             }
+            return Task.CompletedTask;
         }
 
     }

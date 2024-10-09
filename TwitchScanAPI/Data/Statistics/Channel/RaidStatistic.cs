@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Timers;
 using TwitchLib.Client.Models;
 using TwitchScanAPI.Data.Statistics.Base;
@@ -63,7 +64,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             };
         }
 
-        public void Update(RaidNotification raidNotification)
+        public Task Update(RaidNotification raidNotification)
         {
             // Increment raid count for the raider
             if (int.TryParse(raidNotification.MsgParamViewerCount, out var viewerCount))
@@ -86,6 +87,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             // Track the raid over time (batched by minute)
             var currentTime = DateTime.UtcNow;
             UpdateRaidsOverTime(currentTime);
+            return Task.CompletedTask;
         }
 
         private void UpdateRaidsOverTime(DateTime timestamp)

@@ -3,82 +3,35 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using MongoDB.Driver;
+using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.DbContext;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Models;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Statistics;
 using TwitchScanAPI.Services;
+using Timer = System.Timers.Timer;
 
 namespace TwitchScanAPI.Data.Twitch.Manager
 {
     public class TwitchChannelManager : IDisposable
     {
-        private readonly List<TwitchStatistics> _twitchStats = new();
+        public readonly List<TwitchStatistics> TwitchStats = new();
         private readonly IConfiguration _configuration;
-        private readonly TwitchAuthService _authService;
         private readonly NotificationService _notificationService;
         private readonly MongoDbContext _context;
 
-        // Check every 30 minutes if the OAuth token needs to be refreshed
-        private readonly Timer _oauthTimer = new(TimeSpan.FromMinutes(30).TotalMilliseconds);
-
-        public TwitchChannelManager(IConfiguration configuration, TwitchAuthService authService,
-            NotificationService notificationService, MongoDbContext context)
+        public TwitchChannelManager(IConfiguration configuration, NotificationService notificationService, MongoDbContext context)
         {
             _configuration = configuration;
-            _authService = authService;
             _notificationService = notificationService;
             _context = context;
-
-            // Initialize the observer from the database
-            _ = InitiateFromDbAsync();
-
-            // Refresh the OAuth token on startup
-            _ = RefreshAuthTokenAsync();
-
-            // Initialize the timer to trigger token refresh every 30 minutes
-            _oauthTimer.Elapsed += async (_, _) => await RefreshAuthTokenAsync();
-            _oauthTimer.AutoReset = true;
-            _oauthTimer.Start();
-        }
-
-        private async Task RefreshAuthTokenAsync()
-        {
-            try
-            {
-                // Update OAuth token
-                var oauth = await _authService.GetOAuthTokenAsync();
-                if (string.IsNullOrEmpty(oauth)) throw new Exception("OAuth token is empty");
-                _configuration[Variables.TwitchOauthKey] = oauth;
-
-                // Update OAuth token for all TwitchStatistics instances
-                foreach (var channel in _twitchStats)
-                {
-                    await channel.RefreshConnectionAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error refreshing OAuth token: {ex.Message}");
-            }
-        }
-
-        private async Task InitiateFromDbAsync()
-        {
-            var channels = await _context.StatisticHistory
-                .Distinct(x => x.UserName, Builders<StatisticHistory>.Filter.Empty)
-                .ToListAsync();
-
-            foreach (var channel in channels)
-            {
-                await Init(channel);
-            }
         }
 
         /// <summary>
@@ -93,7 +46,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 return new ResultMessage<string?>(null, error);
             }
 
-            if (_twitchStats.Any(x => string.Equals(x.ChannelName, channelName, StringComparison.OrdinalIgnoreCase)))
+            if (TwitchStats.Any(x => string.Equals(x.ChannelName, channelName, StringComparison.OrdinalIgnoreCase)))
             {
                 var error = new Error($"{channelName} already exists in Observer", StatusCodes.Status409Conflict);
                 return new ResultMessage<string?>(null, error);
@@ -109,7 +62,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     return new ResultMessage<string?>(null, error);
                 }
 
-                _twitchStats.Add(stats);
+                TwitchStats.Add(stats);
             }
             catch (Exception e)
             {
@@ -153,7 +106,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             }
 
             channel.Dispose();
-            _twitchStats.Remove(channel);
+            TwitchStats.Remove(channel);
             return new ResultMessage<string?>(channelName, null);
         }
 
@@ -175,7 +128,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public async Task<IEnumerable<InitiatedChannel>> GetInitiatedChannels()
         {
             var channels = new List<InitiatedChannel>();
-            foreach (var stat in _twitchStats)
+            foreach (var stat in TwitchStats)
             {
                 var channelInfo = await stat.GetChannelInfoAsync();
                 channels.Add(new InitiatedChannel(stat.ChannelName, stat.MessageCount, stat.StartedAt, channelInfo.Uptime,
@@ -191,7 +144,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public async Task<IEnumerable<string>> GetPossibleStatistics()
         {
             var stats = await GetAllStatistics();
-            return _twitchStats.SelectMany(_ =>
+            return TwitchStats.SelectMany(_ =>
             {
                 var collection = stats.Keys;
                 return collection;
@@ -204,7 +157,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public async Task<IDictionary<string, IDictionary<string, object>?>> GetAllStatistics()
         {
             var stats = new Dictionary<string, IDictionary<string, object>?>();
-            foreach (var channel in _twitchStats)
+            foreach (var channel in TwitchStats)
             {
                 stats[channel.ChannelName] = await channel.GetStatisticsAsync();
             }
@@ -226,10 +179,17 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public async Task SaveSnapshotsAsync()
         {
-            foreach (var channel in _twitchStats.Where(channel => channel.IsOnline))
+            foreach (var channel in TwitchStats.Where(channel => channel.IsOnline))
             {
                 await channel.SaveSnapshotAsync();
             }
+        }
+        
+        public async Task SaveSnapshotToChannelAsync(string channelName, StatisticsManager? manager = null, DateTime? date = null, int? viewCount = null)
+        {
+            var channel = GetChannel(channelName);
+            if (channel == null) return;
+            await channel.SaveSnapshotAsync(manager, date, viewCount);
         }
 
         /// <summary>
@@ -272,19 +232,17 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         private TwitchStatistics? GetChannel(string channelName)
         {
-            return _twitchStats.FirstOrDefault(x =>
+            return TwitchStats.FirstOrDefault(x =>
                 string.Equals(x.ChannelName, channelName, StringComparison.OrdinalIgnoreCase));
         }
 
         public void Dispose()
         {
-            foreach (var channel in _twitchStats)
+            foreach (var channel in TwitchStats)
             {
                 channel.Dispose();
             }
-
-            _oauthTimer.Stop();
-            _oauthTimer.Dispose();
+            
             GC.SuppressFinalize(this);
         }
     }

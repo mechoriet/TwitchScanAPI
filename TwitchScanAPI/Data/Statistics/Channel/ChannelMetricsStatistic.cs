@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Statistics;
@@ -81,7 +82,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         /// Updates the channel metrics with new channel information, including viewers, uptime, and game.
         /// This method is called each time new data is fetched from the channel.
         /// </summary>
-        public void Update(ChannelInformation channelInfo)
+        public Task Update(ChannelInformation channelInfo)
         {
             var currentTime = DateTime.UtcNow;
 
@@ -107,6 +108,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
             // Update the uptime based on the channel's reported start time
             _currentUptime = currentTime - channelInfo.Uptime;
+            return Task.CompletedTask;
         }
 
         /// <summary>
