@@ -66,7 +66,22 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         public void Update(RaidNotification raidNotification)
         {
             // Increment raid count for the raider
-            _raidCounts.AddOrUpdate(raidNotification.MsgParamLogin, 1, (_, count) => count + 1);
+            if (int.TryParse(raidNotification.MsgParamViewerCount, out var viewerCount))
+            {
+                _raidCounts.AddOrUpdate(
+                    raidNotification.MsgParamLogin, 
+                    viewerCount, 
+                    (_, count) => count + viewerCount
+                );
+            }
+            else
+            {
+                _raidCounts.AddOrUpdate(
+                    raidNotification.MsgParamLogin, 
+                    1, 
+                    (_, count) => count + 1
+                );
+            }
 
             // Track the raid over time (batched by minute)
             var currentTime = DateTime.UtcNow;

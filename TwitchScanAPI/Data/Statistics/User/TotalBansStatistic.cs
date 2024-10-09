@@ -24,8 +24,6 @@ namespace TwitchScanAPI.Data.Statistics.User
 
         public void Update(UserBanned userBanned)
         {
-            if (userBanned == null) return;
-
             _banCount++;
 
             if (!string.IsNullOrWhiteSpace(userBanned.BanReason))
