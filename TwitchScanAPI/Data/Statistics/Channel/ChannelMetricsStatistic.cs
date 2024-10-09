@@ -141,7 +141,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                 .ToString("yyyy-MM-ddTHH:mm:ssZ");
 
             // Add or update the viewer count for the time bucket
-            _viewersOverTime.AddOrUpdate(roundedTime, viewers, (_, _) => viewers);
+            _viewersOverTime.AddOrUpdate(roundedTime, viewers, (_, value) => viewers > value ? viewers : value);
         }
 
         /// <summary>
