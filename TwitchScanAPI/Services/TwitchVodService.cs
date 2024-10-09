@@ -56,7 +56,8 @@ namespace TwitchScanAPI.Services
                             select comment["node"]
                             into node
                             let createdAt = node?["createdAt"]?.ToObject<DateTime>()
-                            let username = node?["commenter"]?["displayName"]?.Type == JTokenType.String ? node["commenter"]["displayName"].ToString() : "Unknown"
+                            let commenterNode = node?["commenter"] as JObject
+                            let username = commenterNode?["displayName"]?.ToString() ?? "Unknown"
                             let messageFragments = node?["message"]?["fragments"]
                             let message = messageFragments != null
                                 ? string.Join("", messageFragments.Select(f => f["text"]?.ToString()))
@@ -65,8 +66,11 @@ namespace TwitchScanAPI.Services
                                 .Where(f => !string.IsNullOrEmpty(f["emote"]?["emoteID"]?.ToString()))
                                 .Select(f => f["text"]?.ToString())
                                 .ToArray()
-                            select new ChannelMessage(channelName, new TwitchChatMessage() { Username = username, Message = message, Emotes = emotes }) { Time = createdAt ?? DateTime.MinValue });
-                    } catch (Exception e)
+                            select new ChannelMessage(channelName,
+                                    new TwitchChatMessage() { Username = username, Message = message, Emotes = emotes })
+                                { Time = createdAt ?? DateTime.MinValue });
+                    }
+                    catch (Exception e)
                     {
                         Console.WriteLine("Error parsing chat message: " + e.Message + "\n" + e.StackTrace);
                     }
