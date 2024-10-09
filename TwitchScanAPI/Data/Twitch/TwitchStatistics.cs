@@ -189,7 +189,7 @@ namespace TwitchScanAPI.Data.Twitch
                 Username = chatMessage.Username,
                 Message = chatMessage.Message,
             });
-            await _notificationService.ReceiveChannelMessageAsync(ChannelName, channelMessage);
+            await _notificationService.ReceiveChannelMessageAsync(ChannelName, e.ChatMessage);
             await _notificationService.ReceiveMessageCountAsync(ChannelName, MessageCount);
 
             // Update message count and statistics if not a bot
@@ -202,13 +202,13 @@ namespace TwitchScanAPI.Data.Twitch
             // Check for observed words
             if (_observedWordsManager.IsMatch(chatMessage.Message))
             {
-                await _notificationService.ReceiveObservedMessageAsync(ChannelName, channelMessage);
+                await _notificationService.ReceiveObservedMessageAsync(ChannelName, e.ChatMessage);
             }
 
             // Check for elevated users
             if (IsElevatedUser(chatMessage))
             {
-                await _notificationService.ReceiveElevatedMessageAsync(ChannelName, channelMessage);
+                await _notificationService.ReceiveElevatedMessageAsync(ChannelName, e.ChatMessage);
             }
         }
 

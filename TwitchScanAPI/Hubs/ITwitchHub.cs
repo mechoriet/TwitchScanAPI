@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using TwitchLib.Client.Models;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Chat;
 using TwitchScanAPI.Models.Twitch.User;
@@ -8,9 +9,9 @@ namespace TwitchScanAPI.Hubs
 {
     public interface ITwitchHub
     {
-        Task ReceiveChannelMessage(ChannelMessage message);
-        Task ReceiveElevatedMessage(ChannelMessage message);
-        Task ReceiveObservedMessage(ChannelMessage message);
+        Task ReceiveChannelMessage(ChatMessage message);
+        Task ReceiveElevatedMessage(ChatMessage message);
+        Task ReceiveObservedMessage(ChatMessage message);
         Task ReceiveBannedUser(UserBanned userBanned);
         Task ReceiveTimedOutUser(UserTimedOut userTimedOut);
         Task ReceiveClearedMessage(ClearedMessage clearedMessage);

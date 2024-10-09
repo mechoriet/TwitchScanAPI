@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
+using TwitchLib.Client.Models;
 using TwitchScanAPI.Hubs;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Chat;
@@ -24,7 +25,7 @@ namespace TwitchScanAPI.Services
             return _hubContext.Clients.Group(channelName).ReceiveStatistics(statistics);
         }
 
-        public Task ReceiveChannelMessageAsync(string channelName, ChannelMessage message)
+        public Task ReceiveChannelMessageAsync(string channelName, ChatMessage message)
         {
             return _hubContext.Clients.Group(channelName).ReceiveChannelMessage(message);
         }
@@ -34,12 +35,12 @@ namespace TwitchScanAPI.Services
             return _hubContext.Clients.All.ReceiveMessageCount(channelName, messageCount);
         }
 
-        public Task ReceiveObservedMessageAsync(string channelName, ChannelMessage message)
+        public Task ReceiveObservedMessageAsync(string channelName, ChatMessage message)
         {
             return _hubContext.Clients.Group(channelName).ReceiveObservedMessage(message);
         }
 
-        public Task ReceiveElevatedMessageAsync(string channelName, ChannelMessage message)
+        public Task ReceiveElevatedMessageAsync(string channelName, ChatMessage message)
         {
             return _hubContext.Clients.Group(channelName).ReceiveElevatedMessage(message);
         }
