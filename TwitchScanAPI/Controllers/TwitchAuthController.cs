@@ -2,12 +2,10 @@
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using MongoDB.Driver;
 using TwitchLib.Api;
-using TwitchScanAPI.Controllers.Annotations;
 using TwitchScanAPI.Data.Twitch.Manager;
 using TwitchScanAPI.DbContext;
 using TwitchScanAPI.Global;
@@ -99,14 +97,17 @@ namespace TwitchScanAPI.Controllers
         }
         
         [HttpGet]
-        public async Task<IActionResult> RefreshToken(string refreshToken)
+        public async Task<IActionResult> RefreshToken()
         {
+            var refreshHeader = Request.Headers["Authorization"];
+            if (refreshHeader.Count == 0) return BadRequest("No refresh token provided");
+            var refreshToken = refreshHeader[0];
             var clientId = _configuration[Variables.TwitchClientId];
             var clientSecret = _configuration[Variables.TwitchClientSecret];
             
-            if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret))
+            if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret) || string.IsNullOrEmpty(refreshToken))
             {
-                return StatusCode(500, "Twitch API credentials not found");
+                return StatusCode(500);
             }
 
             var client = _httpClientFactory.CreateClient();
@@ -125,7 +126,7 @@ namespace TwitchScanAPI.Controllers
             
             // Save new TwitchLogin
             var twitchLogin = await _context.TwitchLogins.FindOneAndUpdateAsync(
-                Builders<TwitchLogin>.Filter.Eq(x => x.RefreshToken, refreshToken),
+                Builders<TwitchLogin>.Filter.Eq(x => x.RefreshToken, refreshToken.ToString()),
                 Builders<TwitchLogin>.Update
                     .Set(x => x.AccessToken, twitchOAuthResponse.access_token)
                     .Set(x => x.ExpiresIn, TimeSpan.FromSeconds(twitchOAuthResponse.expires_in))

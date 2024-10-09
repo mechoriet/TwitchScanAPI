@@ -6,7 +6,6 @@ using MongoDB.Driver;
 using TwitchScanAPI.Controllers.Annotations;
 using TwitchScanAPI.Data.Twitch.Manager;
 using TwitchScanAPI.DbContext;
-using TwitchScanAPI.Models.DbUser;
 
 namespace TwitchScanAPI.Controllers
 {

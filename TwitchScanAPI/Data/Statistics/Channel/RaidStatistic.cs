@@ -5,8 +5,6 @@ using System.Linq;
 using System.Timers;
 using TwitchLib.Client.Models;
 using TwitchScanAPI.Data.Statistics.Base;
-using TwitchScanAPI.Models.Enums;
-using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Statistics;
 using TwitchScanAPI.Services;
 
