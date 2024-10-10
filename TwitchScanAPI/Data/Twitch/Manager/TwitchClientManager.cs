@@ -194,9 +194,10 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
                 return _cachedChannelInformation;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                throw new Exception("Failed to retrieve channel information due to an error.");
+                Console.WriteLine(ex);
+                return new ChannelInformation(false);
             }
         }
 

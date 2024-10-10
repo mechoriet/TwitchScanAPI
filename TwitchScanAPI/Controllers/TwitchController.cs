@@ -57,7 +57,7 @@ namespace TwitchScanAPI.Controllers
 
         
         [HttpPost]
-        [AccessToken]
+        [MasterKey]
         public async Task<ActionResult> Remove()
         {
             var user = await GetUserFromAccessToken();
