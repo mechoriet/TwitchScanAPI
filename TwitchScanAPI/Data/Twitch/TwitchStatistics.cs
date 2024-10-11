@@ -271,8 +271,8 @@ namespace TwitchScanAPI.Data.Twitch
                 RecipientDisplayName = e.GiftedSubscription.MsgParamRecipientDisplayName,
                 SubscriptionPlanName = e.GiftedSubscription.MsgParamSubPlanName,
                 SubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString(),
-                Months = ParseInt(e.GiftedSubscription.MsgParamMonths, 1),
-                MultiMonth = ParseInt(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, 1),
+                Months = ParseInt(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, 1),
+                MultiMonth = ParseInt(e.GiftedSubscription.MsgParamMonths, 1),
                 Message = e.GiftedSubscription.SystemMsg,
                 GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlanName
             };
