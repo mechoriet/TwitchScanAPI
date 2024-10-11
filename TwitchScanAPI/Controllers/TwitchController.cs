@@ -159,6 +159,7 @@ namespace TwitchScanAPI.Controllers
         [HttpGet]
         public async Task<ActionResult> GetInitiatedChannels()
         {
+            Console.WriteLine("Initiated channels requested by " + HttpContext.Connection.RemoteIpAddress);
             var channels = await _twitchChannelManager.GetInitiatedChannels();
             return Ok(channels);
         }
@@ -166,20 +167,22 @@ namespace TwitchScanAPI.Controllers
         [HttpGet]
         public async Task<ActionResult> GetChannelStatistics(string channelName)
         {
+            Console.WriteLine("Channel statistics requested by " + HttpContext.Connection.RemoteIpAddress);
             var stats = await _twitchChannelManager.GetAllStatistics(channelName);
-
             return Ok(stats);
         }
 
         [HttpGet]
         public ActionResult GetViewCountHistory(string channelName)
         {
+            Console.WriteLine("View count history requested by " + HttpContext.Connection.RemoteIpAddress);
             return Ok(_twitchChannelManager.GetViewCountHistory(channelName));
         }
 
         [HttpGet]
         public ActionResult GetHistoryByKey(string channelName, string key)
         {
+            Console.WriteLine("History by key requested by " + HttpContext.Connection.RemoteIpAddress);
             return Ok(_twitchChannelManager.GetHistoryByKey(channelName, key));
         }
     }
