@@ -10,6 +10,7 @@ namespace TwitchScanAPI.Data.Statistics.Base
     {
         private readonly List<IStatistic> _statistics;
         private Dictionary<Type, List<(IStatistic Statistic, MethodInfo UpdateMethod)>> _eventHandlers;
+        private readonly object _lock = new object();
 
         public Statistics()
         {
@@ -73,7 +74,10 @@ namespace TwitchScanAPI.Data.Statistics.Base
 
         public IDictionary<string, object> GetAllStatistics()
         {
-            return _statistics.ToDictionary(stat => stat.Name, stat => stat.GetResult());
+            lock (_lock)
+            {
+                return _statistics.ToDictionary(stat => stat.Name, stat => stat.GetResult());
+            }
         }
 
         public object? GetStatistic(string name)
