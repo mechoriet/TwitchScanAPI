@@ -188,6 +188,7 @@ namespace TwitchScanAPI.Data.Twitch
             {
                 Username = chatMessage.Username,
                 Message = chatMessage.Message,
+                Emotes = e.ChatMessage.EmoteSet.Emotes.Select(em => new TwitchEmote(em.Id, em.Name, em.ImageUrl)).ToList()
             });
             await _notificationService.ReceiveChannelMessageAsync(ChannelName, e.ChatMessage);
             await _notificationService.ReceiveMessageCountAsync(ChannelName, MessageCount);

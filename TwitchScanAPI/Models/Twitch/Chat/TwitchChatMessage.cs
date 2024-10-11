@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace TwitchScanAPI.Models.Twitch.Chat
 {
@@ -6,6 +7,34 @@ namespace TwitchScanAPI.Models.Twitch.Chat
     {
         public string Username { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
-        public string?[]? Emotes { get; set; } = Array.Empty<string>();
+        public List<TwitchEmote> Emotes { get; set; } = new();
+    }
+
+    public class TwitchEmote
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public string ImageUrl { get; set; }
+
+        public TwitchEmote(string name)
+        {
+            Name = name;
+            Id = Guid.NewGuid().ToString();
+            ImageUrl = $"https://static-cdn.jtvnw.net/emoticons/v1/{Id}/1.0";
+        }
+        
+        public TwitchEmote(string id, string name)
+        {
+            Id = id;
+            Name = name;
+            ImageUrl = $"https://static-cdn.jtvnw.net/emoticons/v1/{Id}/1.0";
+        }
+        
+        public TwitchEmote(string id, string name, string imageUrl)
+        {
+            Id = id;
+            Name = name;
+            ImageUrl = imageUrl;
+        }
     }
 }

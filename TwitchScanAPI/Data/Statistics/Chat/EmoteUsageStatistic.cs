@@ -23,12 +23,10 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         public Task Update(ChannelMessage message)
         {
             var emotes = message.ChatMessage.Emotes;
-            if (emotes == null || !emotes.Any()) return Task.CompletedTask;
 
-            foreach (var emote in emotes)
+            foreach (var emote in emotes.Where(emote => !string.IsNullOrWhiteSpace(emote.Name)))
             {
-                if (string.IsNullOrWhiteSpace(emote)) continue;
-                _emoteCounts.AddOrUpdate(emote, 1, (_, count) => count + 1);
+                _emoteCounts.AddOrUpdate(emote.Name, 1, (_, count) => count + 1);
             }
             return Task.CompletedTask;
         }
