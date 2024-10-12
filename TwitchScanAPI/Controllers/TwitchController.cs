@@ -57,7 +57,7 @@ namespace TwitchScanAPI.Controllers
 
         
         [HttpPost]
-        [MasterKey]
+        [AccessToken]
         public async Task<ActionResult> Remove()
         {
             var user = await GetUserFromAccessToken();
@@ -72,6 +72,17 @@ namespace TwitchScanAPI.Controllers
                 : Ok(removed);
         }
 
+        
+        [HttpPost]
+        [MasterKey]
+        public ActionResult RemoveByChannelName(string channelName)
+        {
+            var removed = _twitchChannelManager.Remove(channelName);
+            return removed.Error != null
+                ? StatusCode(removed.Error.StatusCode, removed)
+                : Ok(removed);
+        }
+        
         [HttpGet]
         [AccessToken]
         public async Task<ActionResult> GetVodsFromChannel(string channelName)
