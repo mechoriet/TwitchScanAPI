@@ -20,21 +20,30 @@ namespace TwitchScanAPI.Models.Twitch.Chat
         public int StartIndex { get; private set; }
         public int EndIndex { get; private set; }
 
-        public TwitchEmote(string name, string message)
-            : this(name, name, GenerateImageUrl(name), message)
+        public TwitchEmote(string name, int startIndex, int endIndex)
+            : this(name, name, GenerateImageUrl(name), startIndex, endIndex)
         {
         }
 
-        public TwitchEmote(string id, string name, string message)
-            : this(id, name, GenerateImageUrl(id), message)
+        public TwitchEmote(string id, string name, int startIndex, int endIndex)
+            : this(id, name, GenerateImageUrl(id), startIndex, endIndex)
         {
         }
 
-        private TwitchEmote(string id, string name, string imageUrl, string message)
+        private TwitchEmote(string id, string name, string imageUrl, int startIndex, int endIndex)
         {
             Id = id;
             Name = name;
             ImageUrl = imageUrl;
+            StartIndex = startIndex;
+            EndIndex = endIndex;
+        }
+        
+        public TwitchEmote(string id, string message)
+        {
+            Id = id;
+            Name = message;
+            ImageUrl = GenerateImageUrl(id);
             SetIndices(message);
         }
         

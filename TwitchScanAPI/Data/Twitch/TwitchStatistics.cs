@@ -194,7 +194,7 @@ namespace TwitchScanAPI.Data.Twitch
                 Message = chatMessage.Message,
                 ColorHex = chatMessage.ColorHex,
                 Emotes = e.ChatMessage.EmoteSet.Emotes
-                    .Select(em => new TwitchEmote(em.Id, em.Name, chatMessage.Message))
+                    .Select(em => new TwitchEmote(em.Id, em.Name, em.StartIndex, em.EndIndex))
                     .ToList()
             });
 
