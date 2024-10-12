@@ -13,8 +13,6 @@ using TwitchLib.Communication.Models;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Emotes;
-using TwitchScanAPI.Models.Twitch.Emotes.Bttv;
-using TwitchScanAPI.Models.Twitch.Emotes.SevenTV;
 using TwitchScanAPI.Services;
 
 namespace TwitchScanAPI.Data.Twitch.Manager
@@ -33,7 +31,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         private DateTime _lastFetchTime;
         private ChannelInformation? _cachedChannelInformation;
-        
+
         // BetterTTV & 7TV
         private readonly EmoteService _emoteService;
         public List<MergedEmote>? ExternalChannelEmotes;
@@ -67,7 +65,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         // Factory method
-        public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration, EmoteService emoteService)
+        public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration,
+            EmoteService emoteService)
         {
             var manager = new TwitchClientManager(channelName, configuration, emoteService);
             var channelInformation = await manager.GetChannelInfoAsync();
@@ -93,6 +92,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             {
                 ScheduleReconnect();
             }
+
             return channelInfo;
         }
 
@@ -227,15 +227,12 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             {
                 var streams = await _api.Helix.Streams.GetStreamsAsync(userLogins: new List<string> { _channelName });
                 var isOnline = streams?.Streams.Any() ?? false;
+                if (isOnline)
+                    ExternalChannelEmotes = await _emoteService.GetChannelEmotesAsync(streams!.Streams[0].UserId);
 
-                switch (IsOnline)
+                if (IsOnline && !isOnline)
                 {
-                    case true when !isOnline:
-                        OnDisconnected?.Invoke(this, EventArgs.Empty);
-                        break;
-                    case false when isOnline && streams?.Streams.Any() == true:
-                        ExternalChannelEmotes = await _emoteService.GetChannelEmotesAsync(streams.Streams[0].UserId);
-                        break;
+                    OnDisconnected?.Invoke(this, EventArgs.Empty);
                 }
 
                 IsOnline = isOnline;

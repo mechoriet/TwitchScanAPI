@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using TwitchScanAPI.Models.Twitch.Chat;
 using TwitchScanAPI.Models.Twitch.Emotes;
