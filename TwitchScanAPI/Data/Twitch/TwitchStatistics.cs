@@ -71,7 +71,8 @@ namespace TwitchScanAPI.Data.Twitch
                 : new TwitchStatistics(channelName, clientManager, notificationService, context);
         }
 
-        public async Task SaveSnapshotAsync(StatisticsManager? manager = null, DateTime? date = null, int? viewCount = null)
+        public async Task SaveSnapshotAsync(StatisticsManager? manager = null, DateTime? date = null,
+            int? viewCount = null)
         {
             manager ??= _statisticsManager;
 
@@ -188,14 +189,18 @@ namespace TwitchScanAPI.Data.Twitch
             {
                 Username = chatMessage.Username,
                 Message = chatMessage.Message,
-                Emotes = e.ChatMessage.EmoteSet.Emotes.Select(em => new TwitchEmote(em.Id, em.Name, em.ImageUrl)).ToList()
+                Emotes = e.ChatMessage.EmoteSet.Emotes.Select(em => new TwitchEmote(em.Id, em.Name, em.ImageUrl))
+                    .ToList()
             });
             // Add further emotes to the channelMessage depending on the ChannelEmotes in clientManager, based on the channel message and the emotes names
-            if (_clientManager.BttvChannelEmotes != null)
-                foreach (var emote in _clientManager.BttvChannelEmotes.Where(emote => channelMessage.ChatMessage.Message.Contains(emote.Name)))
+            if (_clientManager.BttvChannelEmotes != null && _clientManager.BttvChannelEmotes.Any())
+            {
+                foreach (var emote in _clientManager.BttvChannelEmotes.Where(emote =>
+                             channelMessage.ChatMessage.Message.Contains(emote.Name)))
                 {
                     channelMessage.ChatMessage.Emotes.Add(emote);
                 }
+            }
 
             await _notificationService.ReceiveChannelMessageAsync(ChannelName, e.ChatMessage);
             await _notificationService.ReceiveMessageCountAsync(ChannelName, MessageCount);
@@ -337,14 +342,14 @@ namespace TwitchScanAPI.Data.Twitch
             await _notificationService.ReceiveTimedOutUserAsync(ChannelName, timedOutUser);
         }
 
-        private void ClientManagerOnChannelStateChanged(object? sender, OnChannelStateChangedArgs e)
+        private async void ClientManagerOnChannelStateChanged(object? sender, OnChannelStateChangedArgs e)
         {
-            _statisticsManager.Update(e.ChannelState);
+            await _statisticsManager.Update(e.ChannelState);
         }
 
-        private void ClientManagerOnOnRaidNotification(object? sender, OnRaidNotificationArgs e)
+        private async void ClientManagerOnOnRaidNotification(object? sender, OnRaidNotificationArgs e)
         {
-            _statisticsManager.Update(e.RaidNotification);
+            await _statisticsManager.Update(e.RaidNotification);
         }
 
         #endregion
