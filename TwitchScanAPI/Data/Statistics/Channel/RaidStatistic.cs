@@ -19,7 +19,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         private readonly ConcurrentDictionary<string, int> _raidCounts = new(StringComparer.OrdinalIgnoreCase);
 
         // Tracks raids over time (bucketed by minute)
-        private readonly ConcurrentDictionary<string, long> _raidsOverTime = new();
+        private readonly ConcurrentDictionary<string, string> _raidsOverTime = new();
         private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(48);
         private const int BucketSize = 1; // Grouping raids into 1-minute periods
         private readonly Timer _cleanupTimer;
@@ -44,13 +44,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                 .OrderBy(kvp => kvp.Key)
                 .ToList();
 
-            // Calculate the Trend
-            var trend = TrendService.CalculateTrend(
-                raidsOverTime,
-                d => d.Value,
-                d => DateTime.Parse(d.Key)
-            );
-
             // Return the result with all necessary metrics
             return new RaidStatisticResult
             {
@@ -60,7 +53,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                     .Take(10)
                     .ToDictionary(kv => kv.Key, kv => kv.Value),
                 RaidsOverTime = raidsOverTime,
-                Trend = trend
             };
         }
 
@@ -86,11 +78,11 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
             // Track the raid over time (batched by minute)
             var currentTime = DateTime.UtcNow;
-            UpdateRaidsOverTime(currentTime);
+            UpdateRaidsOverTime(currentTime, raidNotification.MsgParamLogin);
             return Task.CompletedTask;
         }
 
-        private void UpdateRaidsOverTime(DateTime timestamp)
+        private void UpdateRaidsOverTime(DateTime timestamp, string username)
         {
             // Round the timestamp to the nearest minute
             var roundedMinutes = Math.Floor((double)timestamp.Minute / BucketSize) * BucketSize;
@@ -99,7 +91,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                 .ToString("yyyy-MM-ddTHH:mm:ssZ");
 
             // Add or update the raid count for the time bucket
-            _raidsOverTime.AddOrUpdate(roundedTime, 1, (_, count) => count + 1);
+            _raidsOverTime.AddOrUpdate(roundedTime, username, (_, _) => username);
         }
 
         private void CleanupOldData()

@@ -6,7 +6,6 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
     {
         public int TotalRaids { get; set; }
         public Dictionary<string, int> TopRaiders { get; set; } = new();
-        public List<KeyValuePair<string, long>> RaidsOverTime { get; set; } = new();
-        public Trend Trend { get; set; }
+        public List<KeyValuePair<string, string>> RaidsOverTime { get; set; } = new();
     }
 }
