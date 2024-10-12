@@ -27,13 +27,15 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly NotificationService _notificationService;
         private readonly MongoDbContext _context;
         private readonly BetterTtvService _betterTtvService;
+        private readonly SevenTvService _sevenTvService;
 
-        public TwitchChannelManager(IConfiguration configuration, NotificationService notificationService, MongoDbContext context, BetterTtvService betterTtvService)
+        public TwitchChannelManager(IConfiguration configuration, NotificationService notificationService, MongoDbContext context, BetterTtvService betterTtvService, SevenTvService sevenTvService)
         {
             _configuration = configuration;
             _notificationService = notificationService;
             _context = context;
             _betterTtvService = betterTtvService;
+            _sevenTvService = sevenTvService;
         }
 
         /// <summary>
@@ -57,7 +59,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             try
             {
                 var stats = await TwitchStatistics.CreateAsync(channelName, _configuration, _notificationService,
-                    _context, _betterTtvService);
+                    _context, _betterTtvService, _sevenTvService);
                 if (stats == null)
                 {
                     var error = new Error($"{channelName} not found", StatusCodes.Status404NotFound);

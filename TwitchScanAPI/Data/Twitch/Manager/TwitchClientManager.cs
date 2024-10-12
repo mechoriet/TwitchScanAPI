@@ -34,6 +34,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         
         // BetterTTV
         public List<TwitchEmote>? BttvChannelEmotes;
+        // 7TV
+        public List<TwitchEmote>? SevenTvChannelEmotes;
 
         // Events to expose
         public event EventHandler<OnMessageReceivedArgs>? OnMessageReceived;
@@ -63,12 +65,14 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         // Factory method
-        public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration, BetterTtvService betterTtvService)
+        public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration, BetterTtvService betterTtvService, SevenTvService sevenTvService)
         {
             var manager = new TwitchClientManager(channelName, configuration);
             var channelInformation = await manager.GetChannelInfoAsync();
             var betterTtvEmotes = await betterTtvService.GetChannelEmotesAsync(channelInformation.Id);
             manager.BttvChannelEmotes = betterTtvEmotes?.Select(e => e.ToTwitchEmote()).ToList();
+            var sevenTvEmotes = await sevenTvService.GetChannelEmotesAsync(channelInformation.Id);
+            manager.SevenTvChannelEmotes = sevenTvEmotes?.Select(e => e.ToTwitchEmote()).ToList();
             await manager.StartClientAsync();
             return manager;
         }

@@ -62,9 +62,11 @@ namespace TwitchScanAPI.Data.Twitch
         }
 
         public static async Task<TwitchStatistics?> CreateAsync(string channelName, IConfiguration configuration,
-            NotificationService notificationService, MongoDbContext context, BetterTtvService betterTtvService)
+            NotificationService notificationService, MongoDbContext context, BetterTtvService betterTtvService,
+            SevenTvService sevenTvService)
         {
-            var clientManager = await TwitchClientManager.CreateAsync(channelName, configuration, betterTtvService);
+            var clientManager =
+                await TwitchClientManager.CreateAsync(channelName, configuration, betterTtvService, sevenTvService);
 
             return clientManager == null
                 ? null
@@ -192,10 +194,20 @@ namespace TwitchScanAPI.Data.Twitch
                 Emotes = e.ChatMessage.EmoteSet.Emotes.Select(em => new TwitchEmote(em.Id, em.Name, em.ImageUrl))
                     .ToList()
             });
-            // Add further emotes to the channelMessage depending on the ChannelEmotes in clientManager, based on the channel message and the emotes names
+            
+            // Add BTTV and 7TV emotes to the message
             if (_clientManager.BttvChannelEmotes != null && _clientManager.BttvChannelEmotes.Any())
             {
                 foreach (var emote in _clientManager.BttvChannelEmotes.Where(emote =>
+                             channelMessage.ChatMessage.Message.Contains(emote.Name)))
+                {
+                    channelMessage.ChatMessage.Emotes.Add(emote);
+                }
+            }
+
+            if (_clientManager.SevenTvChannelEmotes != null && _clientManager.SevenTvChannelEmotes.Any())
+            {
+                foreach (var emote in _clientManager.SevenTvChannelEmotes.Where(emote =>
                              channelMessage.ChatMessage.Message.Contains(emote.Name)))
                 {
                     channelMessage.ChatMessage.Emotes.Add(emote);
