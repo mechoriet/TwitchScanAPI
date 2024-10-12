@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace TwitchScanAPI.Models.Twitch.Chat
 {
@@ -29,12 +30,26 @@ namespace TwitchScanAPI.Models.Twitch.Chat
         {
         }
 
-        public TwitchEmote(string id, string name, string imageUrl, string message)
+        private TwitchEmote(string id, string name, string imageUrl, string message)
         {
             Id = id;
             Name = name;
             ImageUrl = imageUrl;
             SetIndices(message);
+        }
+        
+        public TwitchEmote(string id, string name, string imageUrl, Match match)
+        {
+            Id = id;
+            Name = name;
+            ImageUrl = imageUrl;
+            SetIndicesFromMatch(match);
+        }
+        
+        private void SetIndicesFromMatch(Match match)
+        {
+            StartIndex = match.Index;
+            EndIndex = StartIndex + match.Length;
         }
 
         private static string GenerateImageUrl(string id)

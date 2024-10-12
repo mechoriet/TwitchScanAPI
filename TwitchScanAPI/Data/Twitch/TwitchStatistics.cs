@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Timers;
 using Microsoft.Extensions.Configuration;
@@ -192,28 +193,26 @@ namespace TwitchScanAPI.Data.Twitch
                 Username = chatMessage.Username,
                 Message = chatMessage.Message,
                 ColorHex = chatMessage.ColorHex,
-                Emotes = e.ChatMessage.EmoteSet.Emotes.Select(em => new TwitchEmote(em.Id, em.Name, chatMessage.Message))
+                Emotes = e.ChatMessage.EmoteSet.Emotes
+                    .Select(em => new TwitchEmote(em.Id, em.Name, chatMessage.Message))
                     .ToList()
             });
-            
-            // Add BTTV and 7TV emotes to the message
-            if (_clientManager.BttvChannelEmotes != null && _clientManager.BttvChannelEmotes.Any())
-            {
-                foreach (var emote in _clientManager.BttvChannelEmotes.Where(emote =>
-                             channelMessage.ChatMessage.Message.Contains(emote.code)))
-                {
-                    channelMessage.ChatMessage.Emotes.Add(new TwitchEmote(emote.id, emote.code, emote.url, channelMessage.ChatMessage.Message));
-                }
-            }
 
-            if (_clientManager.SevenTvChannelEmotes != null && _clientManager.SevenTvChannelEmotes.Any())
-            {
-                foreach (var emote in _clientManager.SevenTvChannelEmotes.Where(emote =>
-                             channelMessage.ChatMessage.Message.Contains(emote.name)))
-                {
-                    channelMessage.ChatMessage.Emotes.Add(new TwitchEmote(emote.id, emote.name, emote.url, channelMessage.ChatMessage.Message));
-                }
-            }
+            // Add BTTV and 7TV emotes to the message
+            StaticTwitchHelper.AddEmotesToMessage(
+                channelMessage,
+                _clientManager.BttvChannelEmotes,
+                emote => emote.code,
+                emote => emote.id,
+                emote => emote.url
+            );
+            StaticTwitchHelper.AddEmotesToMessage(
+                channelMessage,
+                _clientManager.SevenTvChannelEmotes,
+                emote => emote.name,
+                emote => emote.id,
+                emote => emote.url
+            );
 
             await _notificationService.ReceiveChannelMessageAsync(ChannelName, channelMessage);
             await _notificationService.ReceiveMessageCountAsync(ChannelName, MessageCount);
