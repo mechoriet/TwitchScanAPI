@@ -48,8 +48,7 @@ namespace TwitchScanAPI
 
             // Register services
             services.AddSingleton<MongoDbContext>();
-            services.AddSingleton(BetterTtvService.CreateAsync().GetAwaiter().GetResult());
-            services.AddSingleton(SevenTvService.CreateAsync().GetAwaiter().GetResult());
+            services.AddSingleton(EmoteService.CreateAsync().GetAwaiter().GetResult());
             services.AddSingleton<NotificationService>();
             services.AddSingleton<TwitchVodService>();
             services.AddSingleton<TwitchChannelManager>();

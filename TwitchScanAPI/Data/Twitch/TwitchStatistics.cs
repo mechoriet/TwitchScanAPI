@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Timers;
 using Microsoft.Extensions.Configuration;
@@ -63,11 +62,10 @@ namespace TwitchScanAPI.Data.Twitch
         }
 
         public static async Task<TwitchStatistics?> CreateAsync(string channelName, IConfiguration configuration,
-            NotificationService notificationService, MongoDbContext context, BetterTtvService betterTtvService,
-            SevenTvService sevenTvService)
+            NotificationService notificationService, MongoDbContext context, EmoteService emoteService)
         {
             var clientManager =
-                await TwitchClientManager.CreateAsync(channelName, configuration, betterTtvService, sevenTvService);
+                await TwitchClientManager.CreateAsync(channelName, configuration, emoteService);
 
             return clientManager == null
                 ? null
@@ -199,21 +197,7 @@ namespace TwitchScanAPI.Data.Twitch
             });
 
             // Add BTTV and 7TV emotes to the message
-            StaticTwitchHelper.AddEmotesToMessage(
-                channelMessage,
-                _clientManager.BttvChannelEmotes,
-                emote => emote.code,
-                emote => emote.id,
-                emote => emote.url
-            );
-            StaticTwitchHelper.AddEmotesToMessage(
-                channelMessage,
-                _clientManager.SevenTvChannelEmotes,
-                emote => emote.name,
-                emote => emote.id,
-                emote => emote.url
-            );
-
+            StaticTwitchHelper.AddEmotesToMessage(channelMessage, _clientManager.ExternalChannelEmotes);
             await _notificationService.ReceiveChannelMessageAsync(ChannelName, channelMessage);
             await _notificationService.ReceiveMessageCountAsync(ChannelName, MessageCount);
 

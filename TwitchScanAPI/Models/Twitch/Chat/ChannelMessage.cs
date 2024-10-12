@@ -1,6 +1,4 @@
-﻿using TwitchLib.Client.Models;
-using TwitchScanAPI.Models.Twitch.Base;
-using TwitchScanAPI.Services;
+﻿using TwitchScanAPI.Models.Twitch.Base;
 
 namespace TwitchScanAPI.Models.Twitch.Chat
 {

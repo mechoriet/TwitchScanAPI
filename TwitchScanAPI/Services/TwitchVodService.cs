@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
 using TwitchLib.Api;
-using TwitchLib.Api.Helix.Models.Chat.Emotes;
 using TwitchLib.Api.Helix.Models.Videos.GetVideos;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Models.Twitch.Chat;

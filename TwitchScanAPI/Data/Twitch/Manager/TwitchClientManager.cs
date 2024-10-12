@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Timers;
 using Microsoft.Extensions.Configuration;
@@ -13,7 +12,9 @@ using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Models;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Models.Twitch.Channel;
-using TwitchScanAPI.Models.Twitch.Chat;
+using TwitchScanAPI.Models.Twitch.Emotes;
+using TwitchScanAPI.Models.Twitch.Emotes.Bttv;
+using TwitchScanAPI.Models.Twitch.Emotes.SevenTV;
 using TwitchScanAPI.Services;
 
 namespace TwitchScanAPI.Data.Twitch.Manager
@@ -33,10 +34,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private DateTime _lastFetchTime;
         private ChannelInformation? _cachedChannelInformation;
         
-        // BetterTTV
-        public List<BetterTtvEmote>? BttvChannelEmotes;
-        // 7TV
-        public List<SevenTvEmote>? SevenTvChannelEmotes;
+        // BetterTTV & 7TV
+        private readonly EmoteService _emoteService;
+        public List<MergedEmote>? ExternalChannelEmotes;
 
         // Events to expose
         public event EventHandler<OnMessageReceivedArgs>? OnMessageReceived;
@@ -55,8 +55,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public event EventHandler? OnDisconnected;
 
         // Constructor
-        private TwitchClientManager(string channelName, IConfiguration configuration)
+        private TwitchClientManager(string channelName, IConfiguration configuration, EmoteService emoteService)
         {
+            _emoteService = emoteService;
             _channelName = channelName;
             _configuration = configuration;
             ConfigureTwitchApi();
@@ -66,13 +67,11 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         // Factory method
-        public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration, BetterTtvService betterTtvService, SevenTvService sevenTvService)
+        public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration, EmoteService emoteService)
         {
-            var manager = new TwitchClientManager(channelName, configuration);
+            var manager = new TwitchClientManager(channelName, configuration, emoteService);
             var channelInformation = await manager.GetChannelInfoAsync();
-            manager.BttvChannelEmotes = await betterTtvService.GetChannelEmotesAsync(channelInformation.Id);
-            manager.SevenTvChannelEmotes = await sevenTvService.GetChannelEmotesAsync(channelInformation.Id);
-            manager.SevenTvChannelEmotes = manager.SevenTvChannelEmotes?.Where(e => manager.BttvChannelEmotes?.All(b => b.code != e.name) == true).ToList();
+            manager.ExternalChannelEmotes = await emoteService.GetChannelEmotesAsync(channelInformation.Id);
             await manager.StartClientAsync();
             return manager;
         }
@@ -229,13 +228,18 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 var streams = await _api.Helix.Streams.GetStreamsAsync(userLogins: new List<string> { _channelName });
                 var isOnline = streams?.Streams.Any() ?? false;
 
-                if (IsOnline && !isOnline)
+                switch (IsOnline)
                 {
-                    OnDisconnected?.Invoke(this, EventArgs.Empty);
+                    case true when !isOnline:
+                        OnDisconnected?.Invoke(this, EventArgs.Empty);
+                        break;
+                    case false when isOnline && streams?.Streams.Any() == true:
+                        ExternalChannelEmotes = await _emoteService.GetChannelEmotesAsync(streams.Streams[0].UserId);
+                        break;
                 }
 
                 IsOnline = isOnline;
-                _cachedChannelInformation = isOnline && streams?.Streams.Any() == true
+                _cachedChannelInformation = streams?.Streams.Any() == true
                     ? new ChannelInformation(
                         streams.Streams[0].ViewerCount,
                         streams.Streams[0].Title,

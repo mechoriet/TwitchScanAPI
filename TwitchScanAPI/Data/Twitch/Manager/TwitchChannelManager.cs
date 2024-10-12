@@ -3,20 +3,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
 using MongoDB.Driver;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.DbContext;
-using TwitchScanAPI.Global;
 using TwitchScanAPI.Models;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Statistics;
 using TwitchScanAPI.Services;
-using Timer = System.Timers.Timer;
 
 namespace TwitchScanAPI.Data.Twitch.Manager
 {
@@ -26,16 +22,14 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly IConfiguration _configuration;
         private readonly NotificationService _notificationService;
         private readonly MongoDbContext _context;
-        private readonly BetterTtvService _betterTtvService;
-        private readonly SevenTvService _sevenTvService;
+        private readonly EmoteService _emoteService;
 
-        public TwitchChannelManager(IConfiguration configuration, NotificationService notificationService, MongoDbContext context, BetterTtvService betterTtvService, SevenTvService sevenTvService)
+        public TwitchChannelManager(IConfiguration configuration, NotificationService notificationService, MongoDbContext context, EmoteService emoteService)
         {
             _configuration = configuration;
             _notificationService = notificationService;
             _context = context;
-            _betterTtvService = betterTtvService;
-            _sevenTvService = sevenTvService;
+            _emoteService = emoteService;
         }
 
         /// <summary>
@@ -59,7 +53,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             try
             {
                 var stats = await TwitchStatistics.CreateAsync(channelName, _configuration, _notificationService,
-                    _context, _betterTtvService, _sevenTvService);
+                    _context, _emoteService);
                 if (stats == null)
                 {
                     var error = new Error($"{channelName} not found", StatusCodes.Status404NotFound);
