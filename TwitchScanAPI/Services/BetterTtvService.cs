@@ -12,7 +12,7 @@ namespace TwitchScanAPI.Services
     public class BetterTtvService
     {
         private readonly HttpClient _httpClient;
-        public List<BetterTtvEmote>? GlobalEmotes { get; private set; } = new();
+        private List<BetterTtvEmote>? GlobalEmotes { get; set; } = new();
 
         private BetterTtvService()
         {
@@ -44,6 +44,7 @@ namespace TwitchScanAPI.Services
             if (channelEmotes == null) return emotes;
             emotes.AddRange(channelEmotes.channelEmotes);
             emotes.AddRange(channelEmotes.sharedEmotes);
+            if (GlobalEmotes != null) emotes.AddRange(GlobalEmotes);
             return emotes;
         }
     }
