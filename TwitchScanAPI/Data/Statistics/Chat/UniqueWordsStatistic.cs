@@ -35,5 +35,4 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             return Task.CompletedTask;
         }
     }
-
 }
