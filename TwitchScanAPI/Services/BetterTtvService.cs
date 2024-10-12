@@ -42,10 +42,10 @@ namespace TwitchScanAPI.Services
             var content = await response.Content.ReadAsStringAsync();
             var channelEmotes = JsonConvert.DeserializeObject<ChannelEmotes>(content);
             var emotes = new List<BetterTtvEmote>();
+            if (GlobalEmotes != null) emotes.AddRange(GlobalEmotes);
             if (channelEmotes == null) return emotes;
             emotes.AddRange(channelEmotes.channelEmotes);
             emotes.AddRange(channelEmotes.sharedEmotes);
-            if (GlobalEmotes != null) emotes.AddRange(GlobalEmotes);
             
             var distinctEmotes = new List<BetterTtvEmote>();
             foreach (var emote in emotes.Where(emote => !distinctEmotes.Exists(e => e.code == emote.code)))
