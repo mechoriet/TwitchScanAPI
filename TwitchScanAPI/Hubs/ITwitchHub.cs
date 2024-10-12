@@ -9,9 +9,9 @@ namespace TwitchScanAPI.Hubs
 {
     public interface ITwitchHub
     {
-        Task ReceiveChannelMessage(ChatMessage message);
-        Task ReceiveElevatedMessage(ChatMessage message);
-        Task ReceiveObservedMessage(ChatMessage message);
+        Task ReceiveChannelMessage(ChannelMessage message);
+        Task ReceiveElevatedMessage(ChannelMessage message);
+        Task ReceiveObservedMessage(ChannelMessage message);
         Task ReceiveBannedUser(UserBanned userBanned);
         Task ReceiveTimedOutUser(UserTimedOut userTimedOut);
         Task ReceiveClearedMessage(ClearedMessage clearedMessage);

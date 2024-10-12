@@ -19,7 +19,7 @@ namespace TwitchScanAPI.Models.Twitch.Chat
         public TwitchEmote(string name)
         {
             Name = name;
-            Id = Guid.NewGuid().ToString();
+            Id = name;
             ImageUrl = $"https://static-cdn.jtvnw.net/emoticons/v2/{Id}/default/dark/1.0";
         }
         

@@ -191,7 +191,7 @@ namespace TwitchScanAPI.Data.Twitch
             {
                 Username = chatMessage.Username,
                 Message = chatMessage.Message,
-                Emotes = e.ChatMessage.EmoteSet.Emotes.Select(em => new TwitchEmote(em.Id, em.Name, em.ImageUrl))
+                Emotes = e.ChatMessage.EmoteSet.Emotes.Select(em => new TwitchEmote(em.Id, em.Name))
                     .ToList()
             });
             
@@ -214,7 +214,7 @@ namespace TwitchScanAPI.Data.Twitch
                 }
             }
 
-            await _notificationService.ReceiveChannelMessageAsync(ChannelName, e.ChatMessage);
+            await _notificationService.ReceiveChannelMessageAsync(ChannelName, channelMessage);
             await _notificationService.ReceiveMessageCountAsync(ChannelName, MessageCount);
 
             // Update message count and statistics if not a bot
@@ -227,13 +227,13 @@ namespace TwitchScanAPI.Data.Twitch
             // Check for observed words
             if (_observedWordsManager.IsMatch(chatMessage.Message))
             {
-                await _notificationService.ReceiveObservedMessageAsync(ChannelName, e.ChatMessage);
+                await _notificationService.ReceiveObservedMessageAsync(ChannelName, channelMessage);
             }
 
             // Check for elevated users
             if (IsElevatedUser(chatMessage))
             {
-                await _notificationService.ReceiveElevatedMessageAsync(ChannelName, e.ChatMessage);
+                await _notificationService.ReceiveElevatedMessageAsync(ChannelName, channelMessage);
             }
         }
 

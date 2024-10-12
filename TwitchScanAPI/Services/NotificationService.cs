@@ -25,7 +25,7 @@ namespace TwitchScanAPI.Services
             return _hubContext.Clients.Group(channelName).ReceiveStatistics(statistics);
         }
 
-        public Task ReceiveChannelMessageAsync(string channelName, ChatMessage message)
+        public Task ReceiveChannelMessageAsync(string channelName, ChannelMessage message)
         {
             return _hubContext.Clients.Group(channelName).ReceiveChannelMessage(message);
         }
@@ -35,12 +35,12 @@ namespace TwitchScanAPI.Services
             return _hubContext.Clients.All.ReceiveMessageCount(channelName, messageCount);
         }
 
-        public Task ReceiveObservedMessageAsync(string channelName, ChatMessage message)
+        public Task ReceiveObservedMessageAsync(string channelName, ChannelMessage message)
         {
             return _hubContext.Clients.Group(channelName).ReceiveObservedMessage(message);
         }
 
-        public Task ReceiveElevatedMessageAsync(string channelName, ChatMessage message)
+        public Task ReceiveElevatedMessageAsync(string channelName, ChannelMessage message)
         {
             return _hubContext.Clients.Group(channelName).ReceiveElevatedMessage(message);
         }
