@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -8,14 +9,14 @@ namespace TwitchScanAPI.Data.Statistics.Base
 {
     public class Statistics
     {
-        private readonly List<IStatistic> _statistics;
-        private Dictionary<Type, List<(IStatistic Statistic, MethodInfo UpdateMethod)>> _eventHandlers;
-        private readonly object _lock = new object();
+        private ImmutableList<IStatistic> _statistics;
+
+        private ImmutableDictionary<Type, ImmutableList<(IStatistic Statistic, MethodInfo UpdateMethod)>> _eventHandlers;
 
         public Statistics()
         {
-            _statistics = DiscoverStatistics();
-            _eventHandlers = BuildEventHandlers();
+            _statistics = DiscoverStatistics().ToImmutableList();
+            _eventHandlers = BuildEventHandlers().ToImmutableDictionary();
         }
 
         private List<IStatistic> DiscoverStatistics()
@@ -31,9 +32,9 @@ namespace TwitchScanAPI.Data.Statistics.Base
             return statistics;
         }
 
-        private Dictionary<Type, List<(IStatistic, MethodInfo)>> BuildEventHandlers()
+        private ImmutableDictionary<Type, ImmutableList<(IStatistic, MethodInfo)>> BuildEventHandlers()
         {
-            var handlers = new Dictionary<Type, List<(IStatistic, MethodInfo)>>();
+            var handlers = new Dictionary<Type, ImmutableList<(IStatistic, MethodInfo)>>();
 
             foreach (var statistic in _statistics)
             {
@@ -50,39 +51,35 @@ namespace TwitchScanAPI.Data.Statistics.Base
                     // Initialize the handler list for this event type if it doesn't already exist
                     if (!handlers.ContainsKey(eventType))
                     {
-                        handlers[eventType] = new List<(IStatistic, MethodInfo)>();
+                        handlers[eventType] = ImmutableList<(IStatistic, MethodInfo)>.Empty;
                     }
 
                     // Add the statistic and its corresponding 'Update' method to the list for this event type
-                    handlers[eventType].Add((statistic, method));
+                    handlers[eventType] = handlers[eventType].Add((statistic, method)); // Return a new ImmutableList
                 }
             }
 
-            return handlers;
+            return handlers.ToImmutableDictionary(); // Convert the Dictionary to an ImmutableDictionary
         }
-        
+
         /// <summary>
         /// Reset all statistics to their initial state.
         /// </summary>
         public void Reset()
         {
-            _statistics.Clear();
-            _statistics.AddRange(DiscoverStatistics());
-            _eventHandlers.Clear();
-            _eventHandlers = BuildEventHandlers();
+            // Reassign with a new immutable list and immutable dictionary
+            _statistics = DiscoverStatistics().ToImmutableList();
+            _eventHandlers = BuildEventHandlers().ToImmutableDictionary();
         }
 
         public IDictionary<string, object> GetAllStatistics()
         {
-            lock (_lock)
-            {
-                return _statistics.ToDictionary(stat => stat.Name, stat => stat.GetResult());
-            }
+            return _statistics.ToDictionary(stat => stat.Name, stat => stat.GetResult());
         }
 
         public object? GetStatistic(string name)
         {
-            var stat = _statistics.Find(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            var stat = _statistics.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
             return stat?.GetResult();
         }
 
