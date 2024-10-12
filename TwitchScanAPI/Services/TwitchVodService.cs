@@ -67,7 +67,7 @@ namespace TwitchScanAPI.Services
                                 .Select(f => f["text"]?.ToString())
                                 .ToArray()
                             select new ChannelMessage(channelName,
-                                    new TwitchChatMessage() { Username = username, Message = message, Emotes = emotes.Select(em => new TwitchEmote(em)).ToList() })
+                                    new TwitchChatMessage() { Username = username, Message = message, Emotes = emotes.Select(em => new TwitchEmote(em, message)).ToList() })
                                 { Time = createdAt ?? DateTime.MinValue });
                     }
                     catch (Exception e)

@@ -52,11 +52,6 @@ namespace TwitchScanAPI.Services
         public string name { get; set; }
         public SevenTvEmoteData data { get; set; }
         public string Url => $"https://cdn.7tv.app/emote/{id}/1x.webp";
-
-        public TwitchEmote ToTwitchEmote()
-        {
-            return new TwitchEmote(id, name, Url);
-        }
     }
 
     public class SevenTvEmoteData

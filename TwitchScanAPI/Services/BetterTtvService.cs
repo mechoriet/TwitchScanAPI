@@ -60,11 +60,6 @@ namespace TwitchScanAPI.Services
         public int width { get; set; }
         public int height { get; set; }
         public string url => $"https://cdn.betterttv.net/emote/{id}/1x.{imageType}";
-        
-        public TwitchEmote ToTwitchEmote()
-        {
-            return new TwitchEmote(id, code, url);
-        }
     }
     
     public class ChannelEmotes

@@ -191,7 +191,7 @@ namespace TwitchScanAPI.Data.Twitch
             {
                 Username = chatMessage.Username,
                 Message = chatMessage.Message,
-                Emotes = e.ChatMessage.EmoteSet.Emotes.Select(em => new TwitchEmote(em.Id, em.Name))
+                Emotes = e.ChatMessage.EmoteSet.Emotes.Select(em => new TwitchEmote(em.Id, em.Name, chatMessage.Message))
                     .ToList()
             });
             
@@ -199,18 +199,18 @@ namespace TwitchScanAPI.Data.Twitch
             if (_clientManager.BttvChannelEmotes != null && _clientManager.BttvChannelEmotes.Any())
             {
                 foreach (var emote in _clientManager.BttvChannelEmotes.Where(emote =>
-                             channelMessage.ChatMessage.Message.Contains(emote.Name)))
+                             channelMessage.ChatMessage.Message.Contains(emote.code)))
                 {
-                    channelMessage.ChatMessage.Emotes.Add(emote);
+                    channelMessage.ChatMessage.Emotes.Add(new TwitchEmote(emote.id, emote.code, channelMessage.ChatMessage.Message));
                 }
             }
 
             if (_clientManager.SevenTvChannelEmotes != null && _clientManager.SevenTvChannelEmotes.Any())
             {
                 foreach (var emote in _clientManager.SevenTvChannelEmotes.Where(emote =>
-                             channelMessage.ChatMessage.Message.Contains(emote.Name)))
+                             channelMessage.ChatMessage.Message.Contains(emote.name)))
                 {
-                    channelMessage.ChatMessage.Emotes.Add(emote);
+                    channelMessage.ChatMessage.Emotes.Add(new TwitchEmote(emote.id, emote.name, channelMessage.ChatMessage.Message));
                 }
             }
 
