@@ -218,14 +218,14 @@ namespace TwitchScanAPI.Data.Twitch
             await _notificationService.ReceiveMessageCountAsync(ChannelName, MessageCount);
 
             // Update message count and statistics if not a bot
-            if (!Variables.BotNames.Contains(chatMessage.DisplayName, StringComparer.OrdinalIgnoreCase))
+            if (!Variables.BotNames.Contains(channelMessage.ChatMessage.Username, StringComparer.OrdinalIgnoreCase))
             {
                 MessageCount++;
                 await _statisticsManager.Update(channelMessage);
             }
 
             // Check for observed words
-            if (_observedWordsManager.IsMatch(chatMessage.Message))
+            if (_observedWordsManager.IsMatch(channelMessage.ChatMessage.Message))
             {
                 await _notificationService.ReceiveObservedMessageAsync(ChannelName, channelMessage);
             }

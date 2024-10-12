@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -41,7 +42,13 @@ namespace TwitchScanAPI.Services
             if (channelEmoteSet?.emote_set?.emotes == null) return emotes;
             emotes.AddRange(channelEmoteSet.emote_set.emotes);
             if (GlobalEmotes != null) emotes.AddRange(GlobalEmotes);
-            return emotes;
+            
+            var distinctEmotes = new List<SevenTvEmote>();
+            foreach (var emote in emotes.Where(emote => !distinctEmotes.Exists(e => e.name == emote.name)))
+            {
+                distinctEmotes.Add(emote);
+            }
+            return distinctEmotes;
         }
     }
 

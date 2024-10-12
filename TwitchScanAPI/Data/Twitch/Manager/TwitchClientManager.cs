@@ -72,6 +72,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             var channelInformation = await manager.GetChannelInfoAsync();
             manager.BttvChannelEmotes = await betterTtvService.GetChannelEmotesAsync(channelInformation.Id);
             manager.SevenTvChannelEmotes = await sevenTvService.GetChannelEmotesAsync(channelInformation.Id);
+            manager.SevenTvChannelEmotes = manager.SevenTvChannelEmotes?.Where(e => manager.BttvChannelEmotes?.All(b => b.code != e.name) == true).ToList();
             await manager.StartClientAsync();
             return manager;
         }

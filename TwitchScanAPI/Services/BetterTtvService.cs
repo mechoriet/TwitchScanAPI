@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -45,7 +46,13 @@ namespace TwitchScanAPI.Services
             emotes.AddRange(channelEmotes.channelEmotes);
             emotes.AddRange(channelEmotes.sharedEmotes);
             if (GlobalEmotes != null) emotes.AddRange(GlobalEmotes);
-            return emotes;
+            
+            var distinctEmotes = new List<BetterTtvEmote>();
+            foreach (var emote in emotes.Where(emote => !distinctEmotes.Exists(e => e.code == emote.code)))
+            {
+                distinctEmotes.Add(emote);
+            }
+            return distinctEmotes;
         }
     }
 
