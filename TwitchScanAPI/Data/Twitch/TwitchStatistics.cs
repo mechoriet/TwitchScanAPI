@@ -62,9 +62,9 @@ namespace TwitchScanAPI.Data.Twitch
         }
 
         public static async Task<TwitchStatistics?> CreateAsync(string channelName, IConfiguration configuration,
-            NotificationService notificationService, MongoDbContext context)
+            NotificationService notificationService, MongoDbContext context, BetterTtvService betterTtvService)
         {
-            var clientManager = await TwitchClientManager.CreateAsync(channelName, configuration);
+            var clientManager = await TwitchClientManager.CreateAsync(channelName, configuration, betterTtvService);
 
             return clientManager == null
                 ? null
@@ -190,6 +190,13 @@ namespace TwitchScanAPI.Data.Twitch
                 Message = chatMessage.Message,
                 Emotes = e.ChatMessage.EmoteSet.Emotes.Select(em => new TwitchEmote(em.Id, em.Name, em.ImageUrl)).ToList()
             });
+            // Add further emotes to the channelMessage depending on the ChannelEmotes in clientManager, based on the channel message and the emotes names
+            if (_clientManager.BttvChannelEmotes != null)
+                foreach (var emote in _clientManager.BttvChannelEmotes.Where(emote => channelMessage.ChatMessage.Message.Contains(emote.Name)))
+                {
+                    channelMessage.ChatMessage.Emotes.Add(emote);
+                }
+
             await _notificationService.ReceiveChannelMessageAsync(ChannelName, e.ChatMessage);
             await _notificationService.ReceiveMessageCountAsync(ChannelName, MessageCount);
 

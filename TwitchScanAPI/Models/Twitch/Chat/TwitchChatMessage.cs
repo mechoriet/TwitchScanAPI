@@ -20,14 +20,14 @@ namespace TwitchScanAPI.Models.Twitch.Chat
         {
             Name = name;
             Id = Guid.NewGuid().ToString();
-            ImageUrl = $"https://static-cdn.jtvnw.net/emoticons/v1/{Id}/1.0";
+            ImageUrl = $"https://static-cdn.jtvnw.net/emoticons/v2/{Id}/default/dark/1.0";
         }
         
         public TwitchEmote(string id, string name)
         {
             Id = id;
             Name = name;
-            ImageUrl = $"https://static-cdn.jtvnw.net/emoticons/v1/{Id}/1.0";
+            ImageUrl = $"https://static-cdn.jtvnw.net/emoticons/v2/{Id}/default/dark/1.0";
         }
         
         public TwitchEmote(string id, string name, string imageUrl)

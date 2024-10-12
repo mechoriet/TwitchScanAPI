@@ -12,6 +12,8 @@ using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Models;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Models.Twitch.Channel;
+using TwitchScanAPI.Models.Twitch.Chat;
+using TwitchScanAPI.Services;
 
 namespace TwitchScanAPI.Data.Twitch.Manager
 {
@@ -29,6 +31,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         private DateTime _lastFetchTime;
         private ChannelInformation? _cachedChannelInformation;
+        
+        // BetterTTV
+        public List<TwitchEmote>? BttvChannelEmotes;
 
         // Events to expose
         public event EventHandler<OnMessageReceivedArgs>? OnMessageReceived;
@@ -58,10 +63,12 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         // Factory method
-        public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration)
+        public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration, BetterTtvService betterTtvService)
         {
             var manager = new TwitchClientManager(channelName, configuration);
-            await manager.GetChannelInfoAsync();
+            var channelInformation = await manager.GetChannelInfoAsync();
+            var betterTtvEmotes = await betterTtvService.GetChannelEmotesAsync(channelInformation.Id);
+            manager.BttvChannelEmotes = betterTtvEmotes?.Select(e => e.ToTwitchEmote()).ToList();
             await manager.StartClientAsync();
             return manager;
         }
@@ -72,7 +79,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _api.Settings.Secret = _configuration.GetValue<string>(Variables.TwitchClientSecret);
         }
 
-        public async Task AttemptConnectionAsync()
+        public async Task<ChannelInformation> AttemptConnectionAsync()
         {
             var channelInfo = await GetChannelInfoAsync();
             if (channelInfo.IsOnline)
@@ -83,6 +90,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             {
                 ScheduleReconnect();
             }
+            return channelInfo;
         }
 
         private Task HandleReconnectAsync()
@@ -231,7 +239,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                         streams.Streams[0].StartedAt,
                         streams.Streams[0].ThumbnailUrl,
                         streams.Streams[0].Type,
-                        IsOnline)
+                        IsOnline,
+                        streams.Streams[0].UserId)
                     : new ChannelInformation(false);
 
                 OnConnectionChanged?.Invoke(this, _cachedChannelInformation);

@@ -4,6 +4,7 @@ namespace TwitchScanAPI.Models.Twitch.Channel
 {
     public class ChannelInformation
     {
+        public string Id { get; set; }
         public long Viewers { get; set; }
         public string Title { get; set; }
         public string Game { get; set; }
@@ -12,7 +13,7 @@ namespace TwitchScanAPI.Models.Twitch.Channel
         public string StreamType { get; set; }
         public bool IsOnline { get; set; }
         
-        public ChannelInformation(long viewers, string title, string game, DateTime uptime, string thumbnail, string streamType, bool isOnline)
+        public ChannelInformation(long viewers, string title, string game, DateTime uptime, string thumbnail, string streamType, bool isOnline, string id)
         {
             Viewers = viewers;
             Title = title;
@@ -21,6 +22,7 @@ namespace TwitchScanAPI.Models.Twitch.Channel
             Thumbnail = thumbnail;
             StreamType = streamType;
             IsOnline = isOnline;
+            Id = id;
         }
         
         public ChannelInformation(bool isOnline)
@@ -32,6 +34,7 @@ namespace TwitchScanAPI.Models.Twitch.Channel
             Thumbnail = string.Empty;
             StreamType = string.Empty;
             IsOnline = isOnline;
+            Id = string.Empty;
         }
     }
 }
