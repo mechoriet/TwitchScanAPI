@@ -43,7 +43,7 @@ namespace TwitchScanAPI.Services
             var channelEmotes = JsonConvert.DeserializeObject<ChannelEmotes>(content);
             var emotes = new List<BetterTtvEmote>();
             if (GlobalEmotes != null) emotes.AddRange(GlobalEmotes);
-            if (channelEmotes == null) return emotes;
+            if (channelEmotes?.channelEmotes == null || channelEmotes.sharedEmotes == null) return emotes;
             emotes.AddRange(channelEmotes.channelEmotes);
             emotes.AddRange(channelEmotes.sharedEmotes);
             
@@ -74,7 +74,7 @@ namespace TwitchScanAPI.Services
         public string id { get; set; }
         public object[] bots { get; set; }
         public string avatar { get; set; }
-        public BetterTtvEmote[] channelEmotes { get; set; }
-        public BetterTtvEmote[] sharedEmotes { get; set; }
+        public BetterTtvEmote[]? channelEmotes { get; set; }
+        public BetterTtvEmote[]? sharedEmotes { get; set; }
     }
 }
