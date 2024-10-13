@@ -24,27 +24,14 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
         // Tracks the number of subscriptions over each minute interval
         private readonly ConcurrentDictionary<string, long> _subscriptionsOverTime = new();
-        private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(48);
         private const int BucketSize = 1; // Grouping subscriptions into 1-minute periods
-        private readonly Timer _cleanupTimer;
-
-        public SubscriptionStatistic()
-        {
-            // Initialize the timer to trigger cleanup every hour
-            _cleanupTimer = new Timer(3600000); // 3600000 ms = 1 hour
-            _cleanupTimer.Elapsed += (_, _) => CleanupOldData();
-            _cleanupTimer.AutoReset = true;
-            _cleanupTimer.Start();
-        }
 
         public object GetResult()
         {
             var currentTime = DateTime.UtcNow;
-            var cutoffTime = currentTime - _retentionPeriod;
 
             // Aggregate subscriptions over time, ordered chronologically
             var subscriptionsOverTime = _subscriptionsOverTime
-                .Where(kvp => DateTime.Parse(kvp.Key) >= cutoffTime)
                 .OrderBy(kvp => kvp.Key)
                 .ToList();
             
@@ -102,29 +89,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
             // Add or update the subscription count for the time bucket
             _subscriptionsOverTime.AddOrUpdate(roundedTime, 1, (_, count) => count + 1);
-        }
-
-        private void CleanupOldData()
-        {
-            // Calculate the expiration time
-            var expirationTime = DateTime.UtcNow.Subtract(_retentionPeriod);
-
-            // List to hold the keys that should be removed
-            var keysToRemove = new List<string>();
-
-            foreach (var key in _subscriptionsOverTime.Keys)
-            {
-                if (DateTime.TryParse(key, out var timeKey) && timeKey < expirationTime)
-                {
-                    keysToRemove.Add(key);
-                }
-            }
-
-            // Remove expired entries
-            foreach (var key in keysToRemove)
-            {
-                _subscriptionsOverTime.TryRemove(key, out _);
-            }
         }
     }
 }

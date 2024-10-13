@@ -87,7 +87,6 @@ namespace TwitchScanAPI.Data.Twitch
             {
                 Time = date ?? DateTime.UtcNow
             };
-            // Check if there is already an entry for this channel within the last 24 hours if so merge the statistics
             
             await _context.StatisticHistory.InsertOneAsync(statisticHistory);
 

@@ -28,18 +28,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
         // For Viewers Over Time
         private readonly ConcurrentDictionary<string, long> _viewersOverTime = new();
-        private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(48);
         private const int BucketSize = 1; // Grouping viewers into 1-minute periods
-        private readonly Timer _cleanupTimer;
-        public ChannelMetricsStatistic()
-        {
-            // Initialize the timer to trigger cleanup every hour
-            _cleanupTimer = new Timer(3600000); // 3600000 ms = 1 hour
-            _cleanupTimer.Elapsed += (_, _) => CleanupOldData();
-            _cleanupTimer.AutoReset = true;
-            _cleanupTimer.Start();
-        }
-
         /// <summary>
         /// Gets the result of all tracked metrics, including viewers, watch time, and game/uptime information.
         /// </summary>
@@ -97,9 +86,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             // Add viewers to the dictionary that tracks viewers over time
             UpdateViewersOverTime(currentTime, channelInfo.Viewers);
 
-            // Clean up old data beyond the retention period (48 hours)
-            TrimQueue(_viewerHistory, TimeSpan.FromHours(48), currentTime);
-
             // Update the currently active game if it's different
             if (!string.IsNullOrWhiteSpace(channelInfo.Game))
             {
@@ -142,52 +128,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
             // Add or update the viewer count for the time bucket
             _viewersOverTime.AddOrUpdate(roundedTime, viewers, (_, value) => viewers > value ? viewers : value);
-        }
-
-        /// <summary>
-        /// Cleans up data older than the retention period (48 hours).
-        /// This ensures the history and metrics remain relevant and do not consume too much memory.
-        /// </summary>
-        private void CleanupOldData()
-        {
-            var expirationTime = DateTime.UtcNow.Subtract(_retentionPeriod);
-
-            // List to hold keys that need to be removed
-            var keysToRemove = new List<string>();
-
-            foreach (var key in _viewersOverTime.Keys)
-            {
-                if (DateTime.TryParse(key, out var timeKey) && timeKey < expirationTime)
-                {
-                    keysToRemove.Add(key);
-                }
-            }
-
-            // Remove expired entries
-            foreach (var key in keysToRemove)
-            {
-                _viewersOverTime.TryRemove(key, out _);
-            }
-        }
-
-        /// <summary>
-        /// Trims the queue to remove data older than the max allowed age.
-        /// This prevents the queue from growing indefinitely.
-        /// </summary>
-        private static void TrimQueue(ConcurrentQueue<(DateTime Timestamp, long Value)> queue, TimeSpan maxAge,
-            DateTime currentTime)
-        {
-            while (queue.TryPeek(out var entry))
-            {
-                if ((currentTime - entry.Timestamp) > maxAge)
-                {
-                    queue.TryDequeue(out _);
-                }
-                else
-                {
-                    break;
-                }
-            }
         }
     }
 }

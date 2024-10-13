@@ -10,9 +10,12 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public static void AddEmotesToMessage(ChannelMessage channelMessage, IEnumerable<MergedEmote>? emotes)
         {
             if (emotes == null) return;
+    
             foreach (var emote in emotes)
             {
-                var emoteRegex = new Regex($@"\b{Regex.Escape(emote.Name)}\b");
+                // Custom regex to match emote names, allowing for emotes with non-alphanumeric characters
+                var emoteRegex = new Regex($@"(?<!\S){Regex.Escape(emote.Name)}(?!\S)");
+        
                 if (!emoteRegex.IsMatch(channelMessage.ChatMessage.Message)) continue;
 
                 var matches = emoteRegex.Matches(channelMessage.ChatMessage.Message);

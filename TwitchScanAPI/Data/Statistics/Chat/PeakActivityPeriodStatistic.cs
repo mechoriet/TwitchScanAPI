@@ -21,24 +21,10 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         private readonly ConcurrentDictionary<DateTime, long> _emoteOnlyMessagesOverTime = new();
         private readonly ConcurrentDictionary<DateTime, long> _slowOnlyMessagesOverTime = new();
 
-        // Retention period to keep only relevant data (48 hours)
-        private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(48);
         private const int BucketSize = 1; // Grouping messages into 1-minute periods
-
-        // Timer for periodic cleanup
-        private readonly Timer _cleanupTimer;
 
         // Stores the current channel state
         private ChannelState? _channelState;
-
-        public PeakActivityPeriodStatistic()
-        {
-            // Initialize the timer for hourly cleanup
-            _cleanupTimer = new Timer(3600000); // 1 hour in milliseconds
-            _cleanupTimer.Elapsed += (_, _) => CleanupOldData();
-            _cleanupTimer.AutoReset = true;
-            _cleanupTimer.Start();
-        }
 
         /// <summary>
         /// Returns the result of tracked message counts, including general messages and messages in sub-only, emote-only, and slow modes.
@@ -99,19 +85,6 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         {
             _channelState = channelState;
             return Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// Cleans up data older than the retention period (48 hours) to ensure that the dictionaries do not grow indefinitely.
-        /// </summary>
-        private void CleanupOldData()
-        {
-            var expirationTime = DateTime.UtcNow.Subtract(_retentionPeriod);
-
-            CleanupDictionary(_messagesOverTime, expirationTime);
-            CleanupDictionary(_subOnlyMessagesOverTime, expirationTime);
-            CleanupDictionary(_emoteOnlyMessagesOverTime, expirationTime);
-            CleanupDictionary(_slowOnlyMessagesOverTime, expirationTime);
         }
 
         /// <summary>

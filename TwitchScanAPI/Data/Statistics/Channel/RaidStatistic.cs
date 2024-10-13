@@ -20,27 +20,12 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
         // Tracks raids over time (bucketed by minute)
         private readonly ConcurrentDictionary<string, string> _raidsOverTime = new();
-        private readonly TimeSpan _retentionPeriod = TimeSpan.FromHours(48);
         private const int BucketSize = 1; // Grouping raids into 1-minute periods
-        private readonly Timer _cleanupTimer;
-
-        public RaidStatistic()
-        {
-            // Initialize the timer to trigger cleanup every hour
-            _cleanupTimer = new Timer(3600000); // 3600000 ms = 1 hour
-            _cleanupTimer.Elapsed += (_, _) => CleanupOldData();
-            _cleanupTimer.AutoReset = true;
-            _cleanupTimer.Start();
-        }
 
         public object GetResult()
         {
-            var currentTime = DateTime.UtcNow;
-            var cutoffTime = currentTime - _retentionPeriod;
-
             // Aggregate raids over time, ordered chronologically
             var raidsOverTime = _raidsOverTime
-                .Where(kvp => DateTime.Parse(kvp.Key) >= cutoffTime)
                 .OrderBy(kvp => kvp.Key)
                 .ToList();
 
@@ -92,29 +77,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
             // Add or update the raid count for the time bucket
             _raidsOverTime.AddOrUpdate(roundedTime, username, (_, _) => username);
-        }
-
-        private void CleanupOldData()
-        {
-            // Calculate the expiration time
-            var expirationTime = DateTime.UtcNow.Subtract(_retentionPeriod);
-
-            // List to hold the keys that should be removed
-            var keysToRemove = new List<string>();
-
-            foreach (var key in _raidsOverTime.Keys)
-            {
-                if (DateTime.TryParse(key, out var timeKey) && timeKey < expirationTime)
-                {
-                    keysToRemove.Add(key);
-                }
-            }
-
-            // Remove expired entries
-            foreach (var key in keysToRemove)
-            {
-                _raidsOverTime.TryRemove(key, out _);
-            }
         }
     }
 }
