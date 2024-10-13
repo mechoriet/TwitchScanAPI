@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using TwitchScanAPI.Models.Twitch.Emotes;
 using TwitchScanAPI.Models.Twitch.Emotes.Bttv;
 using TwitchScanAPI.Models.Twitch.Emotes.SevenTV;
+using TwitchScanAPI.Models.Twitch.Emotes.FrankerFaceZ;
 
 namespace TwitchScanAPI.Services
 {
@@ -32,6 +33,11 @@ namespace TwitchScanAPI.Services
             return await FetchEmotesAsync<List<BetterTtvEmote>>("https://api.betterttv.net/3/cached/emotes/global");
         }
 
+        private async Task<List<FrankerFaceZEmote>?> GetFrankerFaceZGlobalEmotesAsync()
+        {
+            return (await FetchEmotesAsync<FrankerFaceZEmoteSet>("https://api.frankerfacez.com/v1/set/global"))?.Sets.Values.SelectMany(s => s.Emoticons).ToList();
+        }
+
         // Public method to get merged emotes for a channel
         public async Task<List<MergedEmote>?> GetChannelEmotesAsync(string channelId)
         {
@@ -39,6 +45,8 @@ namespace TwitchScanAPI.Services
 
             var sevenTvChannelEmotes = await GetSevenTvChannelEmotesAsync(channelId);
             var bttvChannelEmotes = await GetBetterTtvChannelEmotesAsync(channelId);
+            var ffzChannelEmotes = await GetFrankerFaceZChannelEmotesAsync(channelId);
+
             var allChannelEmotes = new List<MergedEmote>(_cachedGlobalEmotes ?? new List<MergedEmote>());
 
             if (sevenTvChannelEmotes != null)
@@ -46,6 +54,9 @@ namespace TwitchScanAPI.Services
 
             if (bttvChannelEmotes != null)
                 allChannelEmotes.AddRange(bttvChannelEmotes);
+
+            if (ffzChannelEmotes != null)
+                allChannelEmotes.AddRange(ffzChannelEmotes);
 
             return allChannelEmotes.GroupBy(e => e.Name).Select(g => g.First()).ToList(); // Remove duplicates by name
         }
@@ -55,6 +66,7 @@ namespace TwitchScanAPI.Services
         {
             var sevenTvEmotes = await GetSevenTvGlobalEmotesAsync();
             var bttvEmotes = await GetBetterTtvGlobalEmotesAsync();
+            var ffzEmotes = await GetFrankerFaceZGlobalEmotesAsync();
 
             var mergedEmotes = new List<MergedEmote>();
 
@@ -66,6 +78,11 @@ namespace TwitchScanAPI.Services
             if (bttvEmotes != null)
             {
                 mergedEmotes.AddRange(bttvEmotes.Select(e => new MergedEmote(e.id, e.code, e.url)));
+            }
+
+            if (ffzEmotes != null)
+            {
+                mergedEmotes.AddRange(ffzEmotes.Select(e => new MergedEmote(e.Id.ToString(), e.Name, e.Urls.First().Value)));
             }
 
             return mergedEmotes;
@@ -100,6 +117,23 @@ namespace TwitchScanAPI.Services
             if (channelEmotes.sharedEmotes != null)
             {
                 emotes.AddRange(channelEmotes.sharedEmotes.Select(e => new MergedEmote(e.id, e.code, e.url)));
+            }
+
+            return emotes;
+        }
+
+        // Fetch channel-specific FrankerFaceZ emotes
+        private async Task<List<MergedEmote>?> GetFrankerFaceZChannelEmotesAsync(string channelId)
+        {
+            var channelEmoteSet =
+                await FetchEmotesAsync<FrankerFaceZChannelEmoteSet>($"https://api.frankerfacez.com/v1/room/id/{channelId}");
+            if (channelEmoteSet?.Sets == null) return null;
+
+            var emotes = new List<MergedEmote>();
+
+            foreach (var set in channelEmoteSet.Sets.Values)
+            {
+                emotes.AddRange(set.Emoticons.Select(e => new MergedEmote(e.Id.ToString(), e.Name, e.Urls.First().Value)));
             }
 
             return emotes;
