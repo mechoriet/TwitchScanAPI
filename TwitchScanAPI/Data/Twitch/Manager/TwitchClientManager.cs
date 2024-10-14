@@ -20,7 +20,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
     public class TwitchClientManager : IDisposable
     {
         private TwitchClient? _client;
-        private readonly TwitchAPI _api = new();
+        private TwitchAPI _api = new();
         private readonly string _channelName;
         private readonly IConfiguration _configuration;
         private readonly Timer _reconnectTimer;
@@ -230,9 +230,15 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 if (isOnline)
                     ExternalChannelEmotes = await _emoteService.GetChannelEmotesAsync(streams!.Streams[0].UserId);
 
-                if (IsOnline && !isOnline)
+                switch (IsOnline)
                 {
-                    OnDisconnected?.Invoke(this, EventArgs.Empty);
+                    case true when !isOnline:
+                        OnDisconnected?.Invoke(this, EventArgs.Empty);
+                        break;
+                    case false when isOnline:
+                        _api = new TwitchAPI();
+                        ConfigureTwitchApi();
+                        break;
                 }
 
                 IsOnline = isOnline;
