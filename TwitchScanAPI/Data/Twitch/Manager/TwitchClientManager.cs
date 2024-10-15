@@ -227,8 +227,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             {
                 var streams = await _api.Helix.Streams.GetStreamsAsync(userLogins: new List<string> { _channelName });
                 var isOnline = streams?.Streams.Any() ?? false;
-                if (isOnline)
-                    ExternalChannelEmotes = await _emoteService.GetChannelEmotesAsync(streams!.Streams[0].UserId);
 
                 switch (IsOnline)
                 {
@@ -238,6 +236,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     case false when isOnline:
                         _api = new TwitchAPI();
                         ConfigureTwitchApi();
+                        ExternalChannelEmotes = await _emoteService.GetChannelEmotesAsync(streams!.Streams[0].UserId);
+                        Console.WriteLine($"{_channelName} is now online.");
                         break;
                 }
 
