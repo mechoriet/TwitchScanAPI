@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -18,24 +19,57 @@ namespace TwitchScanAPI.Services
         public static async Task<EmoteService> CreateAsync()
         {
             var service = new EmoteService();
-            _cachedGlobalEmotes ??= await service.GetMergedGlobalEmotesAsync();
+            try
+            {
+                _cachedGlobalEmotes ??= await service.GetMergedGlobalEmotesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in CreateAsync: {ex.Message}");
+            }
+
             return service;
         }
 
         // Fetch global emotes with caching
         private async Task<List<SevenTvEmote>?> GetSevenTvGlobalEmotesAsync()
         {
-            return (await FetchEmotesAsync<SevenTvEmoteSet>("https://7tv.io/v3/emote-sets/global"))?.emotes;
+            try
+            {
+                return (await FetchEmotesAsync<SevenTvEmoteSet>("https://7tv.io/v3/emote-sets/global"))?.emotes;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching SevenTV global emotes: {ex.Message}");
+                return null;
+            }
         }
 
         private async Task<List<BetterTtvEmote>?> GetBetterTtvGlobalEmotesAsync()
         {
-            return await FetchEmotesAsync<List<BetterTtvEmote>>("https://api.betterttv.net/3/cached/emotes/global");
+            try
+            {
+                return await FetchEmotesAsync<List<BetterTtvEmote>>("https://api.betterttv.net/3/cached/emotes/global");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching BetterTTV global emotes: {ex.Message}");
+                return null;
+            }
         }
 
         private async Task<List<FrankerFaceZEmote>?> GetFrankerFaceZGlobalEmotesAsync()
         {
-            return (await FetchEmotesAsync<FrankerFaceZEmoteSet>("https://api.frankerfacez.com/v1/set/global"))?.Sets.Values.SelectMany(s => s.Emoticons).ToList();
+            try
+            {
+                return (await FetchEmotesAsync<FrankerFaceZEmoteSet>("https://api.frankerfacez.com/v1/set/global"))
+                    ?.Sets.Values.SelectMany(s => s.Emoticons).ToList();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching FrankerFaceZ global emotes: {ex.Message}");
+                return null;
+            }
         }
 
         // Public method to get merged emotes for a channel
@@ -43,110 +77,167 @@ namespace TwitchScanAPI.Services
         {
             if (string.IsNullOrWhiteSpace(channelId)) return null;
 
-            var sevenTvChannelEmotes = await GetSevenTvChannelEmotesAsync(channelId);
-            var bttvChannelEmotes = await GetBetterTtvChannelEmotesAsync(channelId);
-            var ffzChannelEmotes = await GetFrankerFaceZChannelEmotesAsync(channelId);
+            try
+            {
+                var sevenTvChannelEmotes = await GetSevenTvChannelEmotesAsync(channelId);
+                var bttvChannelEmotes = await GetBetterTtvChannelEmotesAsync(channelId);
+                var ffzChannelEmotes = await GetFrankerFaceZChannelEmotesAsync(channelId);
 
-            var allChannelEmotes = new List<MergedEmote>(_cachedGlobalEmotes ?? new List<MergedEmote>());
+                var allChannelEmotes = new List<MergedEmote>(_cachedGlobalEmotes ?? new List<MergedEmote>());
 
-            if (sevenTvChannelEmotes != null)
-                allChannelEmotes.AddRange(sevenTvChannelEmotes);
+                if (sevenTvChannelEmotes != null)
+                    allChannelEmotes.AddRange(sevenTvChannelEmotes);
 
-            if (bttvChannelEmotes != null)
-                allChannelEmotes.AddRange(bttvChannelEmotes);
+                if (bttvChannelEmotes != null)
+                    allChannelEmotes.AddRange(bttvChannelEmotes);
 
-            if (ffzChannelEmotes != null)
-                allChannelEmotes.AddRange(ffzChannelEmotes);
+                if (ffzChannelEmotes != null)
+                    allChannelEmotes.AddRange(ffzChannelEmotes);
 
-            return allChannelEmotes.GroupBy(e => e.Name).Select(g => g.First()).ToList(); // Remove duplicates by name
+                return allChannelEmotes.GroupBy(e => e.Name).Select(g => g.First())
+                    .ToList(); // Remove duplicates by name
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching channel emotes for channel {channelId}: {ex.Message}");
+                return null;
+            }
         }
 
         // Private method to fetch and merge global emotes
         private async Task<List<MergedEmote>?> GetMergedGlobalEmotesAsync()
         {
-            var sevenTvEmotes = await GetSevenTvGlobalEmotesAsync();
-            var bttvEmotes = await GetBetterTtvGlobalEmotesAsync();
-            var ffzEmotes = await GetFrankerFaceZGlobalEmotesAsync();
-
-            var mergedEmotes = new List<MergedEmote>();
-
-            if (sevenTvEmotes != null)
+            try
             {
-                mergedEmotes.AddRange(sevenTvEmotes.Select(e => new MergedEmote(e.id, e.name, e.url)));
-            }
+                var sevenTvEmotes = await GetSevenTvGlobalEmotesAsync();
+                var bttvEmotes = await GetBetterTtvGlobalEmotesAsync();
+                var ffzEmotes = await GetFrankerFaceZGlobalEmotesAsync();
 
-            if (bttvEmotes != null)
+                var mergedEmotes = new List<MergedEmote>();
+
+                if (sevenTvEmotes != null)
+                {
+                    mergedEmotes.AddRange(sevenTvEmotes.Select(e => new MergedEmote(e.id, e.name, e.url)));
+                }
+
+                if (bttvEmotes != null)
+                {
+                    mergedEmotes.AddRange(bttvEmotes.Select(e => new MergedEmote(e.id, e.code, e.url)));
+                }
+
+                if (ffzEmotes != null)
+                {
+                    mergedEmotes.AddRange(ffzEmotes.Select(e =>
+                        new MergedEmote(e.Id.ToString(), e.Name, e.Urls.First().Value)));
+                }
+
+                return mergedEmotes;
+            }
+            catch (Exception ex)
             {
-                mergedEmotes.AddRange(bttvEmotes.Select(e => new MergedEmote(e.id, e.code, e.url)));
+                Console.WriteLine($"Error merging global emotes: {ex.Message}");
+                return null;
             }
-
-            if (ffzEmotes != null)
-            {
-                mergedEmotes.AddRange(ffzEmotes.Select(e => new MergedEmote(e.Id.ToString(), e.Name, e.Urls.First().Value)));
-            }
-
-            return mergedEmotes;
         }
 
         // Fetch channel-specific SevenTV emotes
         private async Task<List<MergedEmote>?> GetSevenTvChannelEmotesAsync(string channelId)
         {
-            var channelEmoteSet =
-                await FetchEmotesAsync<SevenTvChannelEmoteSet>($"https://7tv.io/v3/users/twitch/{channelId}");
-            if (channelEmoteSet?.emote_set?.emotes == null) return null;
+            try
+            {
+                var channelEmoteSet =
+                    await FetchEmotesAsync<SevenTvChannelEmoteSet>($"https://7tv.io/v3/users/twitch/{channelId}");
+                if (channelEmoteSet?.emote_set?.emotes == null) return null;
 
-            return channelEmoteSet.emote_set.emotes
-                .Select(e => new MergedEmote(e.id, e.name, e.url))
-                .ToList();
+                return channelEmoteSet.emote_set.emotes
+                    .Select(e => new MergedEmote(e.id, e.name, e.url))
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching SevenTV emotes for channel {channelId}: {ex.Message}");
+                return null;
+            }
         }
 
         // Fetch channel-specific BetterTTV emotes
         private async Task<List<MergedEmote>?> GetBetterTtvChannelEmotesAsync(string channelId)
         {
-            var channelEmotes =
-                await FetchEmotesAsync<ChannelEmotes>($"https://api.betterttv.net/3/cached/users/twitch/{channelId}");
-            if (channelEmotes == null) return null;
-
-            var emotes = new List<MergedEmote>();
-
-            if (channelEmotes.channelEmotes != null)
+            try
             {
-                emotes.AddRange(channelEmotes.channelEmotes.Select(e => new MergedEmote(e.id, e.code, e.url)));
-            }
+                var channelEmotes =
+                    await FetchEmotesAsync<ChannelEmotes>(
+                        $"https://api.betterttv.net/3/cached/users/twitch/{channelId}");
+                if (channelEmotes == null) return null;
 
-            if (channelEmotes.sharedEmotes != null)
+                var emotes = new List<MergedEmote>();
+
+                if (channelEmotes.channelEmotes != null)
+                {
+                    emotes.AddRange(channelEmotes.channelEmotes.Select(e => new MergedEmote(e.id, e.code, e.url)));
+                }
+
+                if (channelEmotes.sharedEmotes != null)
+                {
+                    emotes.AddRange(channelEmotes.sharedEmotes.Select(e => new MergedEmote(e.id, e.code, e.url)));
+                }
+
+                return emotes;
+            }
+            catch (Exception ex)
             {
-                emotes.AddRange(channelEmotes.sharedEmotes.Select(e => new MergedEmote(e.id, e.code, e.url)));
+                Console.WriteLine($"Error fetching BetterTTV emotes for channel {channelId}: {ex.Message}");
+                return null;
             }
-
-            return emotes;
         }
 
         // Fetch channel-specific FrankerFaceZ emotes
         private async Task<List<MergedEmote>?> GetFrankerFaceZChannelEmotesAsync(string channelId)
         {
-            var channelEmoteSet =
-                await FetchEmotesAsync<FrankerFaceZChannelEmoteSet>($"https://api.frankerfacez.com/v1/room/id/{channelId}");
-            if (channelEmoteSet?.Sets == null) return null;
-
-            var emotes = new List<MergedEmote>();
-
-            foreach (var set in channelEmoteSet.Sets.Values)
+            try
             {
-                emotes.AddRange(set.Emoticons.Select(e => new MergedEmote(e.Id.ToString(), e.Name, e.Urls.First().Value)));
-            }
+                var channelEmoteSet =
+                    await FetchEmotesAsync<FrankerFaceZChannelEmoteSet>(
+                        $"https://api.frankerfacez.com/v1/room/id/{channelId}");
+                if (channelEmoteSet?.Sets == null) return null;
 
-            return emotes;
+                var emotes = new List<MergedEmote>();
+
+                foreach (var set in channelEmoteSet.Sets.Values)
+                {
+                    emotes.AddRange(set.Emoticons.Select(e =>
+                        new MergedEmote(e.Id.ToString(), e.Name, e.Urls.First().Value)));
+                }
+
+                return emotes;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching FrankerFaceZ emotes for channel {channelId}: {ex.Message}");
+                return null;
+            }
         }
 
         // Generic method to fetch and deserialize emotes
         private async Task<T?> FetchEmotesAsync<T>(string url)
         {
-            var response = await _httpClient.GetAsync(url);
-            if (!response.IsSuccessStatusCode) return default;
+            try
+            {
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"Failed to fetch emotes from {url}. Status Code: {response.StatusCode}");
+                    return default;
+                }
 
-            var content = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<T>(content);
+                var content = await response.Content.ReadAsStringAsync();
+                return JsonConvert.DeserializeObject<T>(content);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching emotes from {url}: {ex.Message}");
+                return default;
+            }
         }
     }
 }
