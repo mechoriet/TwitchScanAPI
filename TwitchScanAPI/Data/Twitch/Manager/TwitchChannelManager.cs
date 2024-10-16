@@ -11,6 +11,7 @@ using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.DbContext;
 using TwitchScanAPI.Models;
 using TwitchScanAPI.Models.Twitch.Channel;
+using TwitchScanAPI.Models.Twitch.Chat;
 using TwitchScanAPI.Models.Twitch.Statistics;
 using TwitchScanAPI.Services;
 
@@ -24,7 +25,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly MongoDbContext _context;
         private readonly EmoteService _emoteService;
 
-        public TwitchChannelManager(IConfiguration configuration, NotificationService notificationService, MongoDbContext context, EmoteService emoteService)
+        public TwitchChannelManager(IConfiguration configuration, NotificationService notificationService,
+            MongoDbContext context, EmoteService emoteService)
         {
             _configuration = configuration;
             _notificationService = notificationService;
@@ -129,7 +131,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             foreach (var stat in TwitchStats)
             {
                 var channelInfo = await stat.GetChannelInfoAsync();
-                channels.Add(new InitiatedChannel(stat.ChannelName, stat.MessageCount, stat.StartedAt, channelInfo.Uptime,
+                channels.Add(new InitiatedChannel(stat.ChannelName, stat.MessageCount, stat.StartedAt,
+                    channelInfo.Uptime,
                     channelInfo.IsOnline, channelInfo.Title, channelInfo.Game));
             }
 
@@ -182,8 +185,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 await channel.SaveSnapshotAsync();
             }
         }
-        
-        public async Task SaveSnapshotToChannelAsync(string channelName, StatisticsManager? manager = null, DateTime? date = null, int? viewCount = null)
+
+        public async Task SaveSnapshotToChannelAsync(string channelName, StatisticsManager? manager = null,
+            DateTime? date = null, int? viewCount = null)
         {
             var channel = GetChannel(channelName);
             if (channel == null) return;
@@ -195,16 +199,24 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public IEnumerable<StatisticTimeline> GetViewCountHistory(string channelName)
         {
-            return _context.StatisticHistory
-                .Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName))
-                .ToList()
-                .Select(x => new StatisticTimeline
-                {
-                    Id = x.Id.ToString(),
-                    Time = x.Time,
-                    PeakViewers = x.PeakViewers,
-                    AverageViewers = x.AverageViewers
-                });
+            try
+            {
+                return _context.StatisticHistory
+                    .Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName))
+                    .ToList()
+                    .Select(x => new StatisticTimeline
+                    {
+                        Id = x.Id.ToString(),
+                        Time = x.Time,
+                        PeakViewers = x.PeakViewers,
+                        AverageViewers = x.AverageViewers
+                    });
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return new List<StatisticTimeline>();
+            }
         }
 
         /// <summary>
@@ -224,6 +236,15 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         /// <summary>
+        /// Get the chat history of a specific user in a channel using the "ChatHistory" statistic
+        /// </summary>
+        public IEnumerable<ChatHistory> GetChatHistory(string channelName, string username)
+        {
+            var channel = GetChannel(channelName);
+            return channel == null ? new List<ChatHistory>() : channel.GetChatHistory(username);
+        }
+
+        /// <summary>
         /// Get all users in a channel
         /// </summary>
         public IEnumerable<string>? GetUsers(string channelName) => GetChannel(channelName)?.GetUsers();
@@ -240,7 +261,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             {
                 channel.Dispose();
             }
-            
+
             GC.SuppressFinalize(this);
         }
     }

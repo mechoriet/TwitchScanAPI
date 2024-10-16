@@ -87,7 +87,7 @@ namespace TwitchScanAPI.Data.Twitch
             {
                 Time = date ?? DateTime.UtcNow
             };
-            
+
             await _context.StatisticHistory.InsertOneAsync(statisticHistory);
 
             // Reset the message count and statistics
@@ -169,6 +169,8 @@ namespace TwitchScanAPI.Data.Twitch
         }
 
         public IEnumerable<string> GetUsers() => _userManager.GetUsers();
+
+        public List<ChatHistory> GetChatHistory(string username) => _statisticsManager.GetChatHistory(username);
 
         private async Task SendStatisticsAsync()
         {

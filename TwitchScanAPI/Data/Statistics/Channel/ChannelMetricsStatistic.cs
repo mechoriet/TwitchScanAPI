@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,7 +7,6 @@ using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Statistics;
 using TwitchScanAPI.Services;
-using Timer = System.Timers.Timer;
 
 namespace TwitchScanAPI.Data.Statistics.Channel
 {

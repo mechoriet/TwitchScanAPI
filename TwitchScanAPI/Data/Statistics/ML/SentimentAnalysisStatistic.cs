@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Timers;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.ML.SentimentAnalysis;
 using TwitchScanAPI.Models.Twitch.Chat;

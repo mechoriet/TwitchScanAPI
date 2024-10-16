@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Timers;
 using TwitchLib.Client.Models;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Statistics;
-using TwitchScanAPI.Services;
 
 namespace TwitchScanAPI.Data.Statistics.Channel
 {

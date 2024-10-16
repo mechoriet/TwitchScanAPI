@@ -196,5 +196,12 @@ namespace TwitchScanAPI.Controllers
             Console.WriteLine("History by key requested by " + HttpContext.Connection.RemoteIpAddress);
             return Ok(_twitchChannelManager.GetHistoryByKey(channelName, key));
         }
+        
+        [HttpGet]
+        public ActionResult GetChatHistory(string channelName, string username)
+        {
+            Console.WriteLine("Chat history requested by " + HttpContext.Connection.RemoteIpAddress);
+            return Ok(_twitchChannelManager.GetChatHistory(channelName, username));
+        }
     }
 }

@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using TwitchScanAPI.Data.Statistics.Annotations;
 
 namespace TwitchScanAPI.Data.Statistics.Base
 {
@@ -74,7 +75,9 @@ namespace TwitchScanAPI.Data.Statistics.Base
 
         public IDictionary<string, object> GetAllStatistics()
         {
-            return _statistics.ToDictionary(stat => stat.Name, stat => stat.GetResult());
+            return _statistics
+                .Where(stat => !stat.GetType().GetCustomAttributes(typeof(IgnoreStatisticAttribute), false).Any()) // Filter out ignored statistics
+                .ToDictionary(stat => stat.Name, stat => stat.GetResult());
         }
 
         public object? GetStatistic(string name)
