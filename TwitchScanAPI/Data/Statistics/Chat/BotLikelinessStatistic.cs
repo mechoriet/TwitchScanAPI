@@ -42,6 +42,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         {
             // Retrieve top X users with highest bot-likeliness scores
             var topUsers = _userMetrics
+                .Where(kvp => kvp.Value.TotalMessages > 10) // Filter out users with low message count
                 .OrderByDescending(kvp => kvp.Value.BotScore)
                 .Take(SnapshotTopX)
                 .Select(kvp => new BotLikelinessResult

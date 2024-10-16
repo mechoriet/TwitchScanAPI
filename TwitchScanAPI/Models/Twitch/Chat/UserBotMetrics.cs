@@ -8,7 +8,7 @@ namespace TwitchScanAPI.Models.Twitch.Chat
     // Class to store metrics for a single user
      public class UserBotMetrics
     {
-        private long _totalMessages;
+        public long TotalMessages;
         private long _totalLength;
         private readonly ConcurrentDictionary<string, int> _messageCounts = new();
         private readonly ConcurrentQueue<DateTime> _messageTimes = new();
@@ -22,7 +22,7 @@ namespace TwitchScanAPI.Models.Twitch.Chat
 
         public UserBotMetrics(ChannelMessage initialMessage)
         {
-            _totalMessages = 1;
+            TotalMessages = 1;
             _totalLength = initialMessage.ChatMessage.Message.Length;
 
             _messageCounts.TryAdd(initialMessage.ChatMessage.Message, 1);
@@ -33,7 +33,7 @@ namespace TwitchScanAPI.Models.Twitch.Chat
 
         public UserBotMetrics UpdateMetrics(ChannelMessage message)
         {
-            _totalMessages++;
+            TotalMessages++;
             _totalLength += message.ChatMessage.Message.Length;
 
             // Update repetition counts
@@ -72,10 +72,10 @@ namespace TwitchScanAPI.Models.Twitch.Chat
         private double CalculateMessageLengthConsistency()
         {
             // Calculate standard deviation of message lengths
-            var averageLength = (double)_totalLength / _totalMessages;
+            var averageLength = (double)_totalLength / TotalMessages;
             var variance = _messageCounts
                 .Select(kvp => Math.Pow(kvp.Key.Length - averageLength, 2) * kvp.Value)
-                .Sum() / _totalMessages;
+                .Sum() / TotalMessages;
 
             var stdDev = Math.Sqrt(variance);
 
