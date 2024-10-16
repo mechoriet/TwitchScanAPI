@@ -67,6 +67,13 @@ namespace TwitchScanAPI.DbContext
                 cm.AutoMap();
                 cm.SetDiscriminator("RaidStatisticResult");
             });
+            
+            // BotResult
+            BsonClassMap.RegisterClassMap<BotResult>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetDiscriminator("BotResult");
+            });
         }
 
         public IMongoCollection<StatisticHistory> StatisticHistory =>
