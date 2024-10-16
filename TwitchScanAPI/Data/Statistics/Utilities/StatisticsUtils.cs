@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace TwitchScanAPI.Data.Statistics.Utilities
 {
-    public class StatisticsUtils
+    public static class StatisticsUtils
     {
         public static HashSet<string> GetNGrams(string input, int n)
         {
