@@ -19,6 +19,7 @@ namespace TwitchScanAPI.Models.Twitch.Chat
         private double _groupBehaviorScore;
 
         public double BotScore { get; private set; }
+        public DateTime LastMessageTime => _messageTimes.LastOrDefault();
 
         public UserBotMetrics(ChannelMessage initialMessage)
         {

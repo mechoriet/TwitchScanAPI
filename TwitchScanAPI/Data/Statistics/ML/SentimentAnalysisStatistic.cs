@@ -18,6 +18,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
         private const int MinMessages = 5;
         private const int TopUsersCount = 10;
         private const int MaxTopMessages = 10;
+        private static readonly TimeSpan CleanupThreshold = TimeSpan.FromMinutes(5);
 
         public string Name => "SentimentAnalysis";
 
@@ -34,7 +35,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
         public object GetResult()
         {
             var sentimentData = _sentimentOverTime
-                .Select(kv => new { Key = kv.Key, Value = kv.Value.Compound })
+                .Select(kv => new { kv.Key, Value = kv.Value.Compound })
                 .ToList();
             
             var trend = TrendService.CalculateTrend(
@@ -94,6 +95,9 @@ namespace TwitchScanAPI.Data.Statistics.ML
             // Update top positive and negative messages
             UpdateTopMessages(userSentiment, text, results, message.Time);
 
+            // Cleanup old entries
+            CleanupOldEntries();
+            
             return Task.CompletedTask;
         }
 
@@ -240,6 +244,34 @@ namespace TwitchScanAPI.Data.Statistics.ML
         {
             var bucketTicks = time.Ticks - (time.Ticks % _bucketSize.Ticks);
             return new DateTime(bucketTicks, time.Kind);
+        }
+
+        private void CleanupOldEntries()
+        {
+            var cutoffTime = DateTime.UtcNow - CleanupThreshold;
+
+            // Cleanup inactive users
+            var inactiveUsers = _userSentiments
+                .Where(u => u.Value.LastUpdated < cutoffTime)
+                .Select(u => u.Key)
+                .ToList();
+
+            foreach (var username in inactiveUsers)
+            {
+                _userSentiments.TryRemove(username, out _);
+            }
+
+            // Cleanup old positive messages
+            lock (_topPositiveMessagesLock)
+            {
+                _topPositiveMessages.RemoveAll(m => m.Time < cutoffTime);
+            }
+
+            // Cleanup old negative messages
+            lock (_topNegativeMessagesLock)
+            {
+                _topNegativeMessages.RemoveAll(m => m.Time < cutoffTime);
+            }
         }
     }
 }

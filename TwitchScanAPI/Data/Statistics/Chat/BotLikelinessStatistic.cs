@@ -16,6 +16,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
         // Stores metrics for each user
         private readonly ConcurrentDictionary<string, UserBotMetrics> _userMetrics = new();
+        private readonly TimeSpan _userMetricTimeout = TimeSpan.FromMinutes(30); // Remove users with last message older than this
 
         // Stores recent messages for similarity analysis
         private readonly ConcurrentQueue<MessageEntry> _recentMessages = new();
@@ -24,7 +25,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         // Snapshot management
         private const int SnapshotTopX = 100; // Number of top users to snapshot
         private readonly ConcurrentQueue<Snapshot> _snapshots = new();
-        private readonly TimeSpan _snapshotRetention = TimeSpan.FromHours(2); // Retain snapshots
+        private readonly TimeSpan _snapshotRetention = TimeSpan.FromMinutes(30); // Retain snapshots
 
         // Timer for periodic snapshots
         private readonly Timer _snapshotTimer;
@@ -101,6 +102,18 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                     {
                         break; // All remaining messages are within the time window
                     }
+                }
+            }
+        }
+        
+        private void CleanupOldMetrics()
+        {
+            var now = DateTime.UtcNow;
+            foreach (var kvp in _userMetrics.ToArray())
+            {
+                if (now - kvp.Value.LastMessageTime > _userMetricTimeout)
+                {
+                    _userMetrics.TryRemove(kvp.Key, out _);
                 }
             }
         }
