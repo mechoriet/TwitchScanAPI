@@ -27,6 +27,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
         private readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(10);
         private bool _isReconnecting;
+        private bool _fetching;
         private bool IsOnline { get; set; }
 
         private DateTime _lastFetchTime;
@@ -218,11 +219,13 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public async Task<ChannelInformation> GetChannelInfoAsync()
         {
             // Use cached info if valid
-            if (_cachedChannelInformation != null && (DateTime.UtcNow - _lastFetchTime) < _cacheDuration)
+            if (_fetching || (_cachedChannelInformation != null && (DateTime.UtcNow - _lastFetchTime) < _cacheDuration))
             {
-                return _cachedChannelInformation;
+                return _cachedChannelInformation ?? new ChannelInformation(false);
             }
 
+            _lastFetchTime = DateTime.UtcNow;
+            _fetching = true;
             try
             {
                 var streams = await _api.Helix.Streams.GetStreamsAsync(userLogins: new List<string> { _channelName });
@@ -255,7 +258,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     : new ChannelInformation(false);
 
                 OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
-                _lastFetchTime = DateTime.UtcNow;
 
                 return _cachedChannelInformation;
             }
@@ -263,6 +265,10 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             {
                 Console.WriteLine(ex);
                 return new ChannelInformation(false);
+            }
+            finally
+            {
+                _fetching = false;
             }
         }
 
