@@ -78,17 +78,25 @@ namespace TwitchScanAPI.Data.Twitch
             manager ??= _statisticsManager;
 
             // Try getting the peak viewers from the statistics
-            var statistics = manager.GetAllStatistics();
-            statistics.TryGetValue("ChannelMetrics", out var value);
-            var viewerStatistics = value is ChannelMetrics metrics ? metrics.ViewerStatistics : null;
-            // Save the statistics to the database
-            var statisticHistory = new StatisticHistory(ChannelName, viewCount ?? viewerStatistics?.PeakViewers ?? 0,
-                viewCount ?? viewerStatistics?.AverageViewers ?? 0, MessageCount, statistics)
+            try
             {
-                Time = date ?? DateTime.UtcNow
-            };
+                var statistics = manager.GetAllStatistics();
+                statistics.TryGetValue("ChannelMetrics", out var value);
+                var viewerStatistics = value is ChannelMetrics metrics ? metrics.ViewerStatistics : null;
+                // Save the statistics to the database
+                var statisticHistory = new StatisticHistory(ChannelName,
+                    viewCount ?? viewerStatistics?.PeakViewers ?? 0,
+                    viewCount ?? viewerStatistics?.AverageViewers ?? 0, MessageCount, statistics)
+                {
+                    Time = date ?? DateTime.UtcNow
+                };
 
-            await _context.StatisticHistory.InsertOneAsync(statisticHistory);
+                await _context.StatisticHistory.InsertOneAsync(statisticHistory);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving snapshot for channel '{ChannelName}': {ex.Message} {ex.StackTrace}");
+            }
 
             // Reset the message count and statistics
             MessageCount = 0;
