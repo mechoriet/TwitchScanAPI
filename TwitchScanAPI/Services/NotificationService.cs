@@ -28,7 +28,7 @@ namespace TwitchScanAPI.Services
         {
             return _hubContext.Clients.Group(channelName).ReceiveChannelMessage(message);
         }
-        
+
         public Task ReceiveMessageCountAsync(string channelName, long messageCount)
         {
             return _hubContext.Clients.All.ReceiveMessageCount(channelName, messageCount);
@@ -73,7 +73,7 @@ namespace TwitchScanAPI.Services
         {
             return _hubContext.Clients.Group(channelName).ReceiveTimedOutUser(timedOutUser);
         }
-        
+
         public Task ReceiveOnlineStatusAsync(ChannelStatus channelStatus)
         {
             return _hubContext.Clients.All.ReceiveStatus(channelStatus);

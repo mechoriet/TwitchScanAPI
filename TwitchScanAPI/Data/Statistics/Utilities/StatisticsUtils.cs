@@ -10,10 +10,7 @@ namespace TwitchScanAPI.Data.Statistics.Utilities
             var ngrams = new HashSet<string>();
             var length = input.Length;
 
-            for (var i = 0; i < length - n + 1; i++)
-            {
-                ngrams.Add(input.Substring(i, n));
-            }
+            for (var i = 0; i < length - n + 1; i++) ngrams.Add(input.Substring(i, n));
 
             return ngrams;
         }

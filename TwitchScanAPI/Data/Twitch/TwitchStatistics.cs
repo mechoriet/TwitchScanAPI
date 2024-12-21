@@ -25,18 +25,15 @@ namespace TwitchScanAPI.Data.Twitch
     {
         // Statistics interval in seconds depending on online status
         private const int StatisticInterval = 1;
-        public string ChannelName { get; }
-        public int MessageCount { get; private set; }
-        public DateTime StartedAt { get; } = DateTime.UtcNow;
-        public bool IsOnline;
         private readonly TwitchClientManager _clientManager;
-        private readonly StatisticsManager _statisticsManager;
-        private readonly ObservedWordsManager _observedWordsManager;
-        private readonly UserManager _userManager;
-        private readonly NotificationService _notificationService;
         private readonly MongoDbContext _context;
-        private readonly Timer _statisticsTimer;
+        private readonly NotificationService _notificationService;
+        private readonly ObservedWordsManager _observedWordsManager;
         private readonly TimeSpan _statisticsInterval = TimeSpan.FromSeconds(StatisticInterval);
+        private readonly StatisticsManager _statisticsManager;
+        private readonly Timer _statisticsTimer;
+        private readonly UserManager _userManager;
+        public bool IsOnline;
 
         private TwitchStatistics(string channelName, TwitchClientManager clientManager,
             NotificationService notificationService, MongoDbContext context)
@@ -59,6 +56,18 @@ namespace TwitchScanAPI.Data.Twitch
             };
             _statisticsTimer.Elapsed += async (_, _) => { await SendStatisticsAsync(); };
             _statisticsTimer.Start();
+        }
+
+        public string ChannelName { get; }
+        public int MessageCount { get; private set; }
+        public DateTime StartedAt { get; } = DateTime.UtcNow;
+
+        public void Dispose()
+        {
+            _clientManager.Dispose();
+            _statisticsTimer.Stop();
+            _statisticsTimer.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         public static async Task<TwitchStatistics?> CreateAsync(string channelName, IConfiguration configuration,
@@ -157,7 +166,10 @@ namespace TwitchScanAPI.Data.Twitch
             _observedWordsManager.AddTextToObserve(text);
         }
 
-        public async Task<ChannelInformation> GetChannelInfoAsync() => await _clientManager.GetChannelInfoAsync();
+        public async Task<ChannelInformation> GetChannelInfoAsync()
+        {
+            return await _clientManager.GetChannelInfoAsync();
+        }
 
         public async Task<IDictionary<string, object>> GetStatisticsAsync()
         {
@@ -176,9 +188,15 @@ namespace TwitchScanAPI.Data.Twitch
             }
         }
 
-        public IEnumerable<string> GetUsers() => _userManager.GetUsers();
+        public IEnumerable<string> GetUsers()
+        {
+            return _userManager.GetUsers();
+        }
 
-        public List<ChatHistory> GetChatHistory(string username) => _statisticsManager.GetChatHistory(username);
+        public List<ChatHistory> GetChatHistory(string username)
+        {
+            return _statisticsManager.GetChatHistory(username);
+        }
 
         private async Task SendStatisticsAsync()
         {
@@ -221,15 +239,11 @@ namespace TwitchScanAPI.Data.Twitch
 
             // Check for observed words
             if (_observedWordsManager.IsMatch(channelMessage.ChatMessage.Message))
-            {
                 await _notificationService.ReceiveObservedMessageAsync(ChannelName, channelMessage);
-            }
 
             // Check for elevated users
             if (IsElevatedUser(chatMessage))
-            {
                 await _notificationService.ReceiveElevatedMessageAsync(ChannelName, channelMessage);
-            }
         }
 
         private async void ClientManager_OnUserJoined(object? sender, OnUserJoinedArgs e)
@@ -256,7 +270,7 @@ namespace TwitchScanAPI.Data.Twitch
                 SubscriptionPlanName = e.Subscriber.SubscriptionPlanName,
                 SubscriptionPlan = e.Subscriber.SubscriptionPlan.ToString(),
                 Months = 1,
-                MultiMonth = ParseInt(e.Subscriber.MsgParamCumulativeMonths, 1),
+                MultiMonth = ParseInt(e.Subscriber.MsgParamCumulativeMonths, 1)
             };
 
             await _statisticsManager.Update(subscription);
@@ -308,7 +322,7 @@ namespace TwitchScanAPI.Data.Twitch
                 DisplayName = e.GiftedSubscription.DisplayName,
                 GiftedSubscriptionCount = e.GiftedSubscription.MsgParamMassGiftCount,
                 GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString(),
-                MultiMonth = ParseInt(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, 1),
+                MultiMonth = ParseInt(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, 1)
             };
 
             await _statisticsManager.Update(subscription);
@@ -329,7 +343,7 @@ namespace TwitchScanAPI.Data.Twitch
             {
                 Message = e.Message,
                 TargetMessageId = e.TargetMessageId,
-                TmiSentTs = e.TmiSentTs,
+                TmiSentTs = e.TmiSentTs
             };
 
             await _statisticsManager.Update(clearedMessage);
@@ -342,7 +356,7 @@ namespace TwitchScanAPI.Data.Twitch
             {
                 Username = e.UserTimeout.Username,
                 TimeoutReason = e.UserTimeout.TimeoutReason,
-                TimeoutDuration = e.UserTimeout.TimeoutDuration,
+                TimeoutDuration = e.UserTimeout.TimeoutDuration
             };
 
             await _statisticsManager.Update(timedOutUser);
@@ -363,20 +377,16 @@ namespace TwitchScanAPI.Data.Twitch
 
         #region Helper Methods
 
-        private static int ParseInt(string? value, int defaultValue) =>
-            int.TryParse(value, out var result) ? result : defaultValue;
+        private static int ParseInt(string? value, int defaultValue)
+        {
+            return int.TryParse(value, out var result) ? result : defaultValue;
+        }
 
-        private static bool IsElevatedUser(ChatMessage message) =>
-            message.IsModerator || message.IsPartner || message.IsStaff || message.IsVip;
+        private static bool IsElevatedUser(ChatMessage message)
+        {
+            return message.IsModerator || message.IsPartner || message.IsStaff || message.IsVip;
+        }
 
         #endregion
-
-        public void Dispose()
-        {
-            _clientManager.Dispose();
-            _statisticsTimer.Stop();
-            _statisticsTimer.Dispose();
-            GC.SuppressFinalize(this);
-        }
     }
 }

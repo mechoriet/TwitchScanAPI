@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using TwitchScanAPI.Models.Twitch.Emotes;
 using TwitchScanAPI.Models.Twitch.Emotes.Bttv;
-using TwitchScanAPI.Models.Twitch.Emotes.SevenTV;
 using TwitchScanAPI.Models.Twitch.Emotes.FrankerFaceZ;
+using TwitchScanAPI.Models.Twitch.Emotes.SevenTV;
 
 namespace TwitchScanAPI.Services
 {
     public class EmoteService
     {
-        private readonly HttpClient _httpClient = new();
+        private static readonly HttpClient HttpClient = new();
         private static List<MergedEmote>? _cachedGlobalEmotes;
 
         public static async Task<EmoteService> CreateAsync()
@@ -116,20 +116,14 @@ namespace TwitchScanAPI.Services
                 var mergedEmotes = new List<MergedEmote>();
 
                 if (sevenTvEmotes != null)
-                {
                     mergedEmotes.AddRange(sevenTvEmotes.Select(e => new MergedEmote(e.id, e.name, e.url)));
-                }
 
                 if (bttvEmotes != null)
-                {
                     mergedEmotes.AddRange(bttvEmotes.Select(e => new MergedEmote(e.id, e.code, e.url)));
-                }
 
                 if (ffzEmotes != null)
-                {
                     mergedEmotes.AddRange(ffzEmotes.Select(e =>
                         new MergedEmote(e.Id.ToString(), e.Name, e.Urls.First().Value)));
-                }
 
                 return mergedEmotes;
             }
@@ -173,14 +167,10 @@ namespace TwitchScanAPI.Services
                 var emotes = new List<MergedEmote>();
 
                 if (channelEmotes.channelEmotes != null)
-                {
                     emotes.AddRange(channelEmotes.channelEmotes.Select(e => new MergedEmote(e.id, e.code, e.url)));
-                }
 
                 if (channelEmotes.sharedEmotes != null)
-                {
                     emotes.AddRange(channelEmotes.sharedEmotes.Select(e => new MergedEmote(e.id, e.code, e.url)));
-                }
 
                 return emotes;
             }
@@ -204,10 +194,8 @@ namespace TwitchScanAPI.Services
                 var emotes = new List<MergedEmote>();
 
                 foreach (var set in channelEmoteSet.Sets.Values)
-                {
                     emotes.AddRange(set.Emoticons.Select(e =>
                         new MergedEmote(e.Id.ToString(), e.Name, e.Urls.First().Value)));
-                }
 
                 return emotes;
             }
@@ -219,11 +207,11 @@ namespace TwitchScanAPI.Services
         }
 
         // Generic method to fetch and deserialize emotes
-        private async Task<T?> FetchEmotesAsync<T>(string url)
+        private static async Task<T?> FetchEmotesAsync<T>(string url)
         {
             try
             {
-                var response = await _httpClient.GetAsync(url);
+                var response = await HttpClient.GetAsync(url);
                 if (!response.IsSuccessStatusCode)
                 {
                     Console.WriteLine($"Failed to fetch emotes from {url}. Status Code: {response.StatusCode}");

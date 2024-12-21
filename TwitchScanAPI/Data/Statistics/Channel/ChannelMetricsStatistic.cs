@@ -12,23 +12,24 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 {
     public class ChannelMetricsStatistic : IStatistic
     {
-        public string Name => "ChannelMetrics";
+        private const int BucketSize = 1; // Grouping viewers into 1-minute periods
 
         // For Viewer Count Tracking
         private readonly ConcurrentQueue<(DateTime Timestamp, long Viewers)> _viewerHistory = new();
-        private long _peakViewers;
-        private long _totalViewers;
-        private long _viewerCountEntries;
+
+        // For Viewers Over Time
+        private readonly ConcurrentDictionary<string, long> _viewersOverTime = new();
 
         // For Current Game and Uptime Tracking
         private string? _currentGame;
         private TimeSpan _currentUptime;
+        private long _peakViewers;
+        private long _totalViewers;
+        private long _viewerCountEntries;
+        public string Name => "ChannelMetrics";
 
-        // For Viewers Over Time
-        private readonly ConcurrentDictionary<string, long> _viewersOverTime = new();
-        private const int BucketSize = 1; // Grouping viewers into 1-minute periods
         /// <summary>
-        /// Gets the result of all tracked metrics, including viewers, watch time, and game/uptime information.
+        ///     Gets the result of all tracked metrics, including viewers, watch time, and game/uptime information.
         /// </summary>
         public object GetResult()
         {
@@ -43,7 +44,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
             // Convert total watch time to hours for easier interpretation
             var totalWatchTimeHours = _viewersOverTime.Values.Sum() / 60.0;
-            
+
             // Calculate the trend
             var viewerData = _viewerHistory.ToList();
             var trend = TrendService.CalculateTrend(
@@ -66,8 +67,8 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         }
 
         /// <summary>
-        /// Updates the channel metrics with new channel information, including viewers, uptime, and game.
-        /// This method is called each time new data is fetched from the channel.
+        ///     Updates the channel metrics with new channel information, including viewers, uptime, and game.
+        ///     This method is called each time new data is fetched from the channel.
         /// </summary>
         public Task Update(ChannelInformation channelInfo)
         {
@@ -85,10 +86,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             UpdateViewersOverTime(currentTime, channelInfo.Viewers);
 
             // Update the currently active game if it's different
-            if (!string.IsNullOrWhiteSpace(channelInfo.Game))
-            {
-                _currentGame = channelInfo.Game.Trim();
-            }
+            if (!string.IsNullOrWhiteSpace(channelInfo.Game)) _currentGame = channelInfo.Game.Trim();
 
             // Update the uptime based on the channel's reported start time
             _currentUptime = currentTime - channelInfo.Uptime;
@@ -96,8 +94,8 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         }
 
         /// <summary>
-        /// Tracks the peak viewers by comparing the current viewer count with the existing peak.
-        /// Updates the peak if the current viewers exceed the peak.
+        ///     Tracks the peak viewers by comparing the current viewer count with the existing peak.
+        ///     Updates the peak if the current viewers exceed the peak.
         /// </summary>
         private void UpdatePeakViewers(long currentViewers)
         {
@@ -112,8 +110,8 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         }
 
         /// <summary>
-        /// Tracks the number of viewers over time, using rounded minute-based buckets.
-        /// Updates the dictionary with the viewer count for each time bucket.
+        ///     Tracks the number of viewers over time, using rounded minute-based buckets.
+        ///     Updates the dictionary with the viewer count for each time bucket.
         /// </summary>
         private void UpdateViewersOverTime(DateTime timestamp, long viewers)
         {

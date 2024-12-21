@@ -15,14 +15,15 @@ namespace TwitchScanAPI.HostedServices
 {
     public class TwitchChannelManagerHostedService : IHostedService, IDisposable
     {
-        private readonly TwitchChannelManager _channelManager;
         private readonly TwitchAuthService _authService;
-        private readonly MongoDbContext _context;
+        private readonly TwitchChannelManager _channelManager;
         private readonly IConfiguration _configuration;
+        private readonly MongoDbContext _context;
         private readonly Timer _oauthTimer;
         private readonly TimeSpan _refreshInterval = TimeSpan.FromMinutes(30);
 
-        public TwitchChannelManagerHostedService(TwitchAuthService authService, MongoDbContext context, IConfiguration configuration, TwitchChannelManager channelManager)
+        public TwitchChannelManagerHostedService(TwitchAuthService authService, MongoDbContext context,
+            IConfiguration configuration, TwitchChannelManager channelManager)
         {
             // Initialize the timer to trigger token refresh every 30 minutes
             _authService = authService;
@@ -34,11 +35,17 @@ namespace TwitchScanAPI.HostedServices
             _oauthTimer.Start();
         }
 
+        public void Dispose()
+        {
+            _oauthTimer.Stop();
+            _oauthTimer.Dispose();
+        }
+
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             // Refresh the OAuth token on startup
             await RefreshAuthTokenAsync();
-            
+
             // Initialize the observer from the database
             await InitiateFromDbAsync();
         }
@@ -59,10 +66,7 @@ namespace TwitchScanAPI.HostedServices
                 _configuration[Variables.TwitchOauthKey] = oauth;
 
                 // Update OAuth token for all TwitchStatistics instances
-                foreach (var channel in _channelManager.TwitchStats)
-                {
-                    await channel.RefreshConnectionAsync();
-                }
+                foreach (var channel in _channelManager.TwitchStats) await channel.RefreshConnectionAsync();
             }
             catch (Exception ex)
             {
@@ -76,16 +80,7 @@ namespace TwitchScanAPI.HostedServices
                 .Distinct(x => x.UserName, Builders<StatisticHistory>.Filter.Empty)
                 .ToListAsync();
 
-            foreach (var channel in channels)
-            {
-                await _channelManager.Init(channel);
-            }
-        }
-
-        public void Dispose()
-        {
-            _oauthTimer.Stop();
-            _oauthTimer.Dispose();
+            foreach (var channel in channels) await _channelManager.Init(channel);
         }
     }
 }

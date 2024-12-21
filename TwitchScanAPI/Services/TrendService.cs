@@ -10,9 +10,9 @@ namespace TwitchScanAPI.Services
         private static readonly TimeSpan DefaultTrendTimeSpan = TimeSpan.FromMinutes(30);
 
         /// <summary>
-        /// Calculates the trend by comparing the average of recent data points within a timespan
-        /// with the average of the entire dataset. If the timespan exceeds the total data range,
-        /// only the entire dataset is considered.
+        ///     Calculates the trend by comparing the average of recent data points within a timespan
+        ///     with the average of the entire dataset. If the timespan exceeds the total data range,
+        ///     only the entire dataset is considered.
         /// </summary>
         /// <typeparam name="T">The type of data points.</typeparam>
         /// <param name="data">The collection of data points.</param>

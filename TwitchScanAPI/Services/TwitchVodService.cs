@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
@@ -15,9 +16,9 @@ namespace TwitchScanAPI.Services
 {
     public class TwitchVodService
     {
-        private readonly HttpClient _httpClient;
-        private readonly TwitchAPI _api = new();
         private static readonly ConcurrentDictionary<string, string> EmoteCache = new();
+        private readonly TwitchAPI _api = new();
+        private readonly HttpClient _httpClient;
 
         public TwitchVodService(IConfiguration configuration)
         {
@@ -48,7 +49,6 @@ namespace TwitchScanAPI.Services
                 var comments = response?.SelectToken("[0].data.video.comments.edges");
 
                 if (comments != null)
-                {
                     try
                     {
                         chatMessages.AddRange(from comment in comments
@@ -66,14 +66,17 @@ namespace TwitchScanAPI.Services
                                 .Select(f => f["text"]?.ToString())
                                 .ToArray()
                             select new ChannelMessage(channelName,
-                                    new TwitchChatMessage() { Username = username, Message = message, Emotes = emotes.Select(em => new TwitchEmote(em, message)).ToList() })
+                                    new TwitchChatMessage
+                                    {
+                                        Username = username, Message = message,
+                                        Emotes = emotes.Select(em => new TwitchEmote(em, message)).ToList()
+                                    })
                                 { Time = createdAt ?? DateTime.MinValue });
                     }
                     catch (Exception e)
                     {
                         Console.WriteLine("Error parsing chat message: " + e.Message + "\n" + e.StackTrace);
                     }
-                }
 
                 contentOffsetSeconds = comments?.LastOrDefault()?["node"]?["contentOffsetSeconds"]?.ToObject<int>();
                 cursor = comments?.LastOrDefault()?["cursor"]?.ToString() ?? string.Empty;
@@ -103,7 +106,7 @@ namespace TwitchScanAPI.Services
                 }}
             ]";
 
-            var content = new StringContent(requestBody.Trim(), System.Text.Encoding.UTF8, "application/json");
+            var content = new StringContent(requestBody.Trim(), Encoding.UTF8, "application/json");
             var response = await _httpClient.PostAsync("https://gql.twitch.tv/gql", content);
             var jsonResponse = await response.Content.ReadAsStringAsync();
             return JArray.Parse(jsonResponse);

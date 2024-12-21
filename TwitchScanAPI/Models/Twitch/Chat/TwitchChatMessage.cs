@@ -14,12 +14,6 @@ namespace TwitchScanAPI.Models.Twitch.Chat
 
     public class TwitchEmote
     {
-        public string Id { get; private set; }
-        public string Name { get; private set; }
-        public string ImageUrl { get; private set; }
-        public int StartIndex { get; private set; }
-        public int EndIndex { get; private set; }
-
         public TwitchEmote(string name, int startIndex, int endIndex)
             : this(name, name, GenerateImageUrl(name), startIndex, endIndex)
         {
@@ -38,7 +32,7 @@ namespace TwitchScanAPI.Models.Twitch.Chat
             StartIndex = startIndex;
             EndIndex = endIndex;
         }
-        
+
         public TwitchEmote(string id, string message)
         {
             Id = id;
@@ -46,7 +40,7 @@ namespace TwitchScanAPI.Models.Twitch.Chat
             ImageUrl = GenerateImageUrl(id);
             SetIndices(message);
         }
-        
+
         public TwitchEmote(string id, string name, string imageUrl, Match match)
         {
             Id = id;
@@ -54,7 +48,13 @@ namespace TwitchScanAPI.Models.Twitch.Chat
             ImageUrl = imageUrl;
             SetIndicesFromMatch(match);
         }
-        
+
+        public string Id { get; private set; }
+        public string Name { get; }
+        public string ImageUrl { get; private set; }
+        public int StartIndex { get; private set; }
+        public int EndIndex { get; private set; }
+
         private void SetIndicesFromMatch(Match match)
         {
             StartIndex = match.Index;
@@ -70,14 +70,10 @@ namespace TwitchScanAPI.Models.Twitch.Chat
         {
             StartIndex = message.IndexOf(Name, StringComparison.Ordinal);
             if (StartIndex != -1)
-            {
                 EndIndex = StartIndex + Name.Length;
-            }
             else
-            {
                 // Handle case when the name is not found in the message
                 StartIndex = EndIndex = -1; // You could throw an exception or handle it as needed
-            }
         }
     }
 }

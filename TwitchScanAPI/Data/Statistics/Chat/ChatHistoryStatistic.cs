@@ -11,22 +11,19 @@ namespace TwitchScanAPI.Data.Statistics.Chat
     [IgnoreStatistic]
     public class ChatHistoryStatistic : IStatistic
     {
-        public string Name => "ChatHistory";
+        private const int MaxMessagesPerUser = 100; // Limit to avoid memory overload
 
         // Stores chat history per user, each user has a list of messages
         private readonly ConcurrentDictionary<string, List<ChannelMessage>> _chatHistory = new();
-        private const int MaxMessagesPerUser = 100; // Limit to avoid memory overload
+        public string Name => "ChatHistory";
 
         public object GetResult()
         {
             var chatHistory = new List<ChatHistory>();
-            
+
             // Convert the dictionary to a list of ChatHistory objects
-            foreach (var (username, messages) in _chatHistory)
-            {
-                chatHistory.Add(new ChatHistory(username, messages));
-            }
-            
+            foreach (var (username, messages) in _chatHistory) chatHistory.Add(new ChatHistory(username, messages));
+
             return chatHistory;
         }
 
@@ -46,9 +43,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
                         // limit the number of messages stored
                         if (existingMessages.Count > MaxMessagesPerUser)
-                        {
                             existingMessages.RemoveAt(0); // Remove the oldest message if limit is exceeded
-                        }
 
                         return existingMessages;
                     }

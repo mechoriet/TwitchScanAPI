@@ -11,7 +11,7 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
         Decreasing,
         Stable
     }
-    
+
     public class ViewerStatistics : TimedEntity
     {
         public long CurrentViewers { get; set; }

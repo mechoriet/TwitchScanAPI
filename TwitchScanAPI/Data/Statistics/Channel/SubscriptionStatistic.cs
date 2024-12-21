@@ -13,17 +13,17 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 {
     public class SubscriptionStatistic : IStatistic
     {
-        public string Name => "SubscriptionStatistic";
+        private const int BucketSize = 1; // Grouping subscriptions into 1-minute periods
 
         // Tracks the count of each SubscriptionType
         private readonly ConcurrentDictionary<SubscriptionType, int> _subscriptionCounts = new();
 
-        // Tracks the total subscription months per subscriber (for gifted subscriptions)
-        private readonly ConcurrentDictionary<string, int> _topSubscriber = new(StringComparer.OrdinalIgnoreCase);
-
         // Tracks the number of subscriptions over each minute interval
         private readonly ConcurrentDictionary<string, long> _subscriptionsOverTime = new();
-        private const int BucketSize = 1; // Grouping subscriptions into 1-minute periods
+
+        // Tracks the total subscription months per subscriber (for gifted subscriptions)
+        private readonly ConcurrentDictionary<string, int> _topSubscriber = new(StringComparer.OrdinalIgnoreCase);
+        public string Name => "SubscriptionStatistic";
 
         public object GetResult()
         {
@@ -33,7 +33,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             var subscriptionsOverTime = _subscriptionsOverTime
                 .OrderBy(kvp => kvp.Key)
                 .ToList();
-            
+
             // Calculate the Trend
             var trend = TrendService.CalculateTrend(
                 subscriptionsOverTime,
@@ -67,10 +67,8 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             // Track subscription months for gifted subscriptions
             if (channelSubscription.Type == SubscriptionType.Gifted &&
                 !string.IsNullOrWhiteSpace(channelSubscription.UserName))
-            {
                 _topSubscriber.AddOrUpdate(channelSubscription.UserName, channelSubscription.Months,
                     (_, oldValue) => oldValue + channelSubscription.Months);
-            }
 
             // Track subscriptions over time (batched by minute)
             var currentTime = DateTime.UtcNow;

@@ -16,7 +16,9 @@ namespace TwitchScanAPI.Hubs
         Task ReceiveClearedMessage(ClearedMessage clearedMessage);
         Task ReceiveSubscription(ChannelSubscription channelSubscription);
         Task ReceiveUserJoined(string username, string channel);
+
         Task ReceiveUserLeft(string username);
+
         // Send all statistics regularly to the client
         Task ReceiveStatistics(IDictionary<string, object> statistics);
         Task ReceiveStatus(ChannelStatus channelStatus);

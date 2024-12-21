@@ -10,10 +10,9 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 {
     public class SentenceFrequencyStatistic : IStatistic
     {
-        public string Name => "SentenceFrequency";
-        private readonly ConcurrentDictionary<string, int> _sentenceCounts = new();
-
         private static readonly Regex SentenceSplitter = new(@"\.|\?|!|\n", RegexOptions.Compiled);
+        private readonly ConcurrentDictionary<string, int> _sentenceCounts = new();
+        public string Name => "SentenceFrequency";
 
         public object GetResult()
         {
@@ -25,10 +24,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 topSentences.Add((kv.Value, kv.Key));
 
                 // Only keep top 10
-                if (topSentences.Count > 10)
-                {
-                    topSentences.Remove(topSentences.Min); // Remove smallest if over capacity
-                }
+                if (topSentences.Count > 10) topSentences.Remove(topSentences.Min); // Remove smallest if over capacity
             }
 
             // Convert result to dictionary
@@ -39,7 +35,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
         public Task Update(ChannelMessage message)
         {
-            if (string.IsNullOrWhiteSpace(message.ChatMessage.Message)) 
+            if (string.IsNullOrWhiteSpace(message.ChatMessage.Message))
                 return Task.CompletedTask; // Handle empty messages
 
             // Check if the message has any punctuation at all
@@ -48,9 +44,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 // No punctuation found, treat the whole message as a single sentence
                 var trimmedMessage = message.ChatMessage.Message.Trim();
                 if (!string.IsNullOrWhiteSpace(trimmedMessage))
-                {
                     _sentenceCounts.AddOrUpdate(trimmedMessage.ToLower(), 1, (_, count) => count + 1);
-                }
                 return Task.CompletedTask;
             }
 
@@ -63,8 +57,8 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
                 _sentenceCounts.AddOrUpdate(trimmed.ToLower(), 1, (_, count) => count + 1);
             }
+
             return Task.CompletedTask;
         }
-
     }
 }

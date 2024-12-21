@@ -9,9 +9,8 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 {
     public class EmoteUsageStatistic : IStatistic
     {
-        public string Name => "EmoteUsage";
-
         private readonly ConcurrentDictionary<string, int> _emoteCounts = new(StringComparer.OrdinalIgnoreCase);
+        public string Name => "EmoteUsage";
 
         public object GetResult()
         {
@@ -24,9 +23,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             var emotes = message.ChatMessage.Emotes;
 
             foreach (var emote in emotes.Where(emote => !string.IsNullOrWhiteSpace(emote.Name)))
-            {
                 _emoteCounts.AddOrUpdate(emote.Name, 1, (_, count) => count + 1);
-            }
             return Task.CompletedTask;
         }
     }

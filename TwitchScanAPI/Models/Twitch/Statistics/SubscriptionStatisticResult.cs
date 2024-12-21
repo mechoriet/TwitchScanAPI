@@ -28,7 +28,7 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
 
         // Subscriptions aggregated over time, grouped by the timestamp
         public List<KeyValuePair<string, long>> SubscriptionsOverTime { get; set; } = new();
-        
+
         // Trend of the subscription count
         public Trend Trend { get; set; }
     }

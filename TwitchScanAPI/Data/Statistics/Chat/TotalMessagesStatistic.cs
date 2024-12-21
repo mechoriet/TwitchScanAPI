@@ -7,8 +7,8 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 {
     public class TotalMessagesStatistic : IStatistic
     {
-        public string Name => "TotalMessages";
         private int _totalMessages;
+        public string Name => "TotalMessages";
 
         public object GetResult()
         {

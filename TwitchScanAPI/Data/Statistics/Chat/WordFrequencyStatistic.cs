@@ -10,10 +10,11 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 {
     public class WordFrequencyStatistic : IStatistic
     {
-        public string Name => "WordFrequency";
-        private readonly ConcurrentDictionary<string, int> _wordCounts = new();
+        private static readonly Regex
+            WordSplitter = new(@"\W+", RegexOptions.Compiled); // Splits by any non-word character
 
-        private static readonly Regex WordSplitter = new(@"\W+", RegexOptions.Compiled); // Splits by any non-word character
+        private readonly ConcurrentDictionary<string, int> _wordCounts = new();
+        public string Name => "WordFrequency";
 
         public object GetResult()
         {
@@ -25,10 +26,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 topWords.Add((kv.Value, kv.Key));
 
                 // Only keep top 10
-                if (topWords.Count > 10)
-                {
-                    topWords.Remove(topWords.Min); // Remove smallest if over capacity
-                }
+                if (topWords.Count > 10) topWords.Remove(topWords.Min); // Remove smallest if over capacity
             }
 
             // Convert result to dictionary
@@ -47,8 +45,8 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
                 _wordCounts.AddOrUpdate(trimmed.ToLower(), 1, (_, count) => count + 1);
             }
+
             return Task.CompletedTask;
         }
     }
-
 }

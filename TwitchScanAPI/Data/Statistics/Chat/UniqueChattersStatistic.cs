@@ -7,8 +7,8 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 {
     public class UniqueChattersStatistic : IStatistic
     {
-        public string Name => "UniqueChatters";
         private readonly ConcurrentDictionary<string, byte> _uniqueChatters = new();
+        public string Name => "UniqueChatters";
 
         public object GetResult()
         {

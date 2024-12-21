@@ -10,9 +10,10 @@ namespace TwitchScanAPI.Data.Statistics.Base
 {
     public class Statistics
     {
-        private ImmutableList<IStatistic> _statistics;
+        private ImmutableDictionary<Type, ImmutableList<(IStatistic Statistic, MethodInfo UpdateMethod)>>
+            _eventHandlers;
 
-        private ImmutableDictionary<Type, ImmutableList<(IStatistic Statistic, MethodInfo UpdateMethod)>> _eventHandlers;
+        private ImmutableList<IStatistic> _statistics;
 
         public Statistics()
         {
@@ -51,9 +52,7 @@ namespace TwitchScanAPI.Data.Statistics.Base
 
                     // Initialize the handler list for this event type if it doesn't already exist
                     if (!handlers.ContainsKey(eventType))
-                    {
                         handlers[eventType] = ImmutableList<(IStatistic, MethodInfo)>.Empty;
-                    }
 
                     // Add the statistic and its corresponding 'Update' method to the list for this event type
                     handlers[eventType] = handlers[eventType].Add((statistic, method)); // Return a new ImmutableList
@@ -64,7 +63,7 @@ namespace TwitchScanAPI.Data.Statistics.Base
         }
 
         /// <summary>
-        /// Reset all statistics to their initial state.
+        ///     Reset all statistics to their initial state.
         /// </summary>
         public void Reset()
         {
@@ -76,7 +75,9 @@ namespace TwitchScanAPI.Data.Statistics.Base
         public IDictionary<string, object> GetAllStatistics()
         {
             return _statistics
-                .Where(stat => !stat.GetType().GetCustomAttributes(typeof(IgnoreStatisticAttribute), false).Any()) // Filter out ignored statistics
+                .Where(stat =>
+                    !stat.GetType().GetCustomAttributes(typeof(IgnoreStatisticAttribute), false)
+                        .Any()) // Filter out ignored statistics
                 .ToDictionary(stat => stat.Name, stat => stat.GetResult());
         }
 
@@ -98,10 +99,7 @@ namespace TwitchScanAPI.Data.Statistics.Base
                 var result = method.Invoke(statistic, new object[] { eventData });
 
                 // Check if the method returns a Task
-                if (result is Task task)
-                {
-                    await task; // Await if it's a Task
-                }
+                if (result is Task task) await task; // Await if it's a Task
             }
         }
     }

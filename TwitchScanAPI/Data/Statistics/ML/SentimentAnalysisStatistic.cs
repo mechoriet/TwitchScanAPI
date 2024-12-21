@@ -20,24 +20,26 @@ namespace TwitchScanAPI.Data.Statistics.ML
         private const int MaxTopMessages = 10;
         private static readonly TimeSpan CleanupThreshold = TimeSpan.FromMinutes(5);
 
-        public string Name => "SentimentAnalysis";
-
         private readonly SentimentIntensityAnalyzer _analyzer = new();
-        private readonly ConcurrentDictionary<DateTime, SentimentScores> _sentimentOverTime = new();
-        private readonly ConcurrentDictionary<string, Models.ML.SentimentAnalysis.UserSentiment> _userSentiments = new(StringComparer.OrdinalIgnoreCase);
 
         private readonly TimeSpan _bucketSize = TimeSpan.FromMinutes(1);
-        private readonly List<SentimentMessage> _topPositiveMessages = new();
+        private readonly ConcurrentDictionary<DateTime, SentimentScores> _sentimentOverTime = new();
         private readonly List<SentimentMessage> _topNegativeMessages = new();
-        private readonly object _topPositiveMessagesLock = new();
         private readonly object _topNegativeMessagesLock = new();
+        private readonly List<SentimentMessage> _topPositiveMessages = new();
+        private readonly object _topPositiveMessagesLock = new();
+
+        private readonly ConcurrentDictionary<string, Models.ML.SentimentAnalysis.UserSentiment> _userSentiments =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        public string Name => "SentimentAnalysis";
 
         public object GetResult()
         {
             var sentimentData = _sentimentOverTime
                 .Select(kv => new { kv.Key, Value = kv.Value.Compound })
                 .ToList();
-            
+
             var trend = TrendService.CalculateTrend(
                 sentimentData,
                 d => d.Value,
@@ -80,7 +82,8 @@ namespace TwitchScanAPI.Data.Statistics.ML
             }
 
             // Update per-user sentiment scores
-            var userSentiment = _userSentiments.GetOrAdd(username.Trim(), u => new Models.ML.SentimentAnalysis.UserSentiment(u));
+            var userSentiment =
+                _userSentiments.GetOrAdd(username.Trim(), u => new Models.ML.SentimentAnalysis.UserSentiment(u));
 
             lock (userSentiment.Lock)
             {
@@ -97,7 +100,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
 
             // Cleanup old entries
             CleanupOldEntries();
-            
+
             return Task.CompletedTask;
         }
 
@@ -192,7 +195,8 @@ namespace TwitchScanAPI.Data.Statistics.ML
             }
         }
 
-        private void UpdateTopMessages(Models.ML.SentimentAnalysis.UserSentiment userSentiment, string message, SentimentAnalysisResults results, DateTime time)
+        private void UpdateTopMessages(Models.ML.SentimentAnalysis.UserSentiment userSentiment, string message,
+            SentimentAnalysisResults results, DateTime time)
         {
             var sentimentMessage = new SentimentMessage
             {
@@ -209,40 +213,31 @@ namespace TwitchScanAPI.Data.Statistics.ML
             lock (_topPositiveMessagesLock)
             {
                 if (results.Compound > 0)
-                {
                     AddTopMessage(_topPositiveMessages, sentimentMessage, (a, b) => b.Compound.CompareTo(a.Compound));
-                }
             }
 
             // Update top negative messages
             lock (_topNegativeMessagesLock)
             {
                 if (results.Compound < 0)
-                {
                     AddTopMessage(_topNegativeMessages, sentimentMessage, (a, b) => a.Compound.CompareTo(b.Compound));
-                }
             }
         }
 
-        private void AddTopMessage(List<SentimentMessage> topMessages, SentimentMessage newMessage, Comparison<SentimentMessage> comparison)
+        private void AddTopMessage(List<SentimentMessage> topMessages, SentimentMessage newMessage,
+            Comparison<SentimentMessage> comparison)
         {
             var index = topMessages.BinarySearch(newMessage, Comparer<SentimentMessage>.Create(comparison));
-            if (index < 0)
-            {
-                index = ~index;
-            }
+            if (index < 0) index = ~index;
 
             topMessages.Insert(index, newMessage);
 
-            if (topMessages.Count > MaxTopMessages)
-            {
-                topMessages.RemoveAt(topMessages.Count - 1);
-            }
+            if (topMessages.Count > MaxTopMessages) topMessages.RemoveAt(topMessages.Count - 1);
         }
 
         private DateTime GetBucketTime(DateTime time)
         {
-            var bucketTicks = time.Ticks - (time.Ticks % _bucketSize.Ticks);
+            var bucketTicks = time.Ticks - time.Ticks % _bucketSize.Ticks;
             return new DateTime(bucketTicks, time.Kind);
         }
 
@@ -256,10 +251,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
                 .Select(u => u.Key)
                 .ToList();
 
-            foreach (var username in inactiveUsers)
-            {
-                _userSentiments.TryRemove(username, out _);
-            }
+            foreach (var username in inactiveUsers) _userSentiments.TryRemove(username, out _);
 
             // Cleanup old positive messages
             lock (_topPositiveMessagesLock)

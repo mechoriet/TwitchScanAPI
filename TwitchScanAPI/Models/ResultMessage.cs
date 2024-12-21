@@ -1,5 +1,4 @@
-﻿#nullable enable
-namespace TwitchScanAPI.Models
+﻿namespace TwitchScanAPI.Models
 {
     public class ResultMessage<T>
     {

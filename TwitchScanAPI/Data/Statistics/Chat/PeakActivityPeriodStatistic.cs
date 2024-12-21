@@ -12,21 +12,21 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 {
     public class PeakActivityPeriodStatistic : IStatistic
     {
-        public string Name => "PeakActivityPeriods";
+        private const int BucketSize = 1; // Grouping messages into 1-minute periods
+        private readonly ConcurrentDictionary<DateTime, long> _emoteOnlyMessagesOverTime = new();
 
         // Dictionaries for tracking message counts in different channel states
         private readonly ConcurrentDictionary<DateTime, long> _messagesOverTime = new();
-        private readonly ConcurrentDictionary<DateTime, long> _subOnlyMessagesOverTime = new();
-        private readonly ConcurrentDictionary<DateTime, long> _emoteOnlyMessagesOverTime = new();
         private readonly ConcurrentDictionary<DateTime, long> _slowOnlyMessagesOverTime = new();
-
-        private const int BucketSize = 1; // Grouping messages into 1-minute periods
+        private readonly ConcurrentDictionary<DateTime, long> _subOnlyMessagesOverTime = new();
 
         // Stores the current channel state
         private ChannelState? _channelState;
+        public string Name => "PeakActivityPeriods";
 
         /// <summary>
-        /// Returns the result of tracked message counts, including general messages and messages in sub-only, emote-only, and slow modes.
+        ///     Returns the result of tracked message counts, including general messages and messages in sub-only, emote-only, and
+        ///     slow modes.
         /// </summary>
         public object GetResult()
         {
@@ -37,13 +37,13 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 .Concat(_slowOnlyMessagesOverTime)
                 .GroupBy(kv => kv.Key)
                 .ToDictionary(g => g.Key, g => g.Sum(kv => kv.Value));
-            
+
             var trend = TrendService.CalculateTrend(
                 completeData,
                 d => d.Value,
                 d => d.Key
             );
-            
+
             return PeakActivityPeriods.Create(trend,
                 _messagesOverTime,
                 _subOnlyMessagesOverTime,
@@ -53,7 +53,8 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         }
 
         /// <summary>
-        /// Updates the message count based on the received channel message, considering the current channel state (e.g., sub-only mode).
+        ///     Updates the message count based on the received channel message, considering the current channel state (e.g.,
+        ///     sub-only mode).
         /// </summary>
         public Task Update(ChannelMessage message)
         {
@@ -78,7 +79,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         }
 
         /// <summary>
-        /// Updates the internal channel state, which is used to determine how messages are tracked (e.g., sub-only mode).
+        ///     Updates the internal channel state, which is used to determine how messages are tracked (e.g., sub-only mode).
         /// </summary>
         public Task Update(ChannelState channelState)
         {
@@ -87,7 +88,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         }
 
         /// <summary>
-        /// Helper method to clean up any dictionary that stores message counts.
+        ///     Helper method to clean up any dictionary that stores message counts.
         /// </summary>
         private static void CleanupDictionary(ConcurrentDictionary<DateTime, long> dictionary, DateTime expirationTime)
         {
@@ -95,10 +96,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 .Where(key => key < expirationTime)
                 .ToList();
 
-            foreach (var key in keysToRemove)
-            {
-                dictionary.TryRemove(key, out _);
-            }
+            foreach (var key in keysToRemove) dictionary.TryRemove(key, out _);
         }
     }
 }

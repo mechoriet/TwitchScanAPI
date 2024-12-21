@@ -10,14 +10,14 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 {
     public class RaidStatistic : IStatistic
     {
-        public string Name => "RaidStatistic";
+        private const int BucketSize = 1; // Grouping raids into 1-minute periods
 
         // Tracks the count of raids
         private readonly ConcurrentDictionary<string, int> _raidCounts = new(StringComparer.OrdinalIgnoreCase);
 
         // Tracks raids over time (bucketed by minute)
         private readonly ConcurrentDictionary<string, string> _raidsOverTime = new();
-        private const int BucketSize = 1; // Grouping raids into 1-minute periods
+        public string Name => "RaidStatistic";
 
         public object GetResult()
         {
@@ -34,7 +34,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                     .OrderByDescending(kv => kv.Value)
                     .Take(10)
                     .ToDictionary(kv => kv.Key, kv => kv.Value),
-                RaidsOverTime = raidsOverTime,
+                RaidsOverTime = raidsOverTime
             };
         }
 
@@ -42,21 +42,17 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         {
             // Increment raid count for the raider
             if (int.TryParse(raidNotification.MsgParamViewerCount, out var viewerCount))
-            {
                 _raidCounts.AddOrUpdate(
-                    raidNotification.MsgParamLogin, 
-                    viewerCount, 
+                    raidNotification.MsgParamLogin,
+                    viewerCount,
                     (_, count) => count + viewerCount
                 );
-            }
             else
-            {
                 _raidCounts.AddOrUpdate(
-                    raidNotification.MsgParamLogin, 
-                    1, 
+                    raidNotification.MsgParamLogin,
+                    1,
                     (_, count) => count + 1
                 );
-            }
 
             // Track the raid over time (batched by minute)
             var currentTime = DateTime.UtcNow;

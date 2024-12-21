@@ -7,9 +7,9 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 {
     public class AverageMessageLengthStatistic : IStatistic
     {
-        public string Name => "AverageMessageLength";
-        private long _totalLength;
         private long _messageCount;
+        private long _totalLength;
+        public string Name => "AverageMessageLength";
 
         public object GetResult()
         {

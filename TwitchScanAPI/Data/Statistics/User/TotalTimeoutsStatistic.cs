@@ -9,11 +9,11 @@ namespace TwitchScanAPI.Data.Statistics.User
 {
     public class TotalTimeoutsStatistic : IStatistic
     {
-        public string Name => "TotalTimeouts";
+        private readonly ConcurrentDictionary<string, int> _timeoutReasons = new(StringComparer.OrdinalIgnoreCase);
 
         private int _timeoutCount;
         private long _totalTimeoutDuration;
-        private readonly ConcurrentDictionary<string, int> _timeoutReasons = new(StringComparer.OrdinalIgnoreCase);
+        public string Name => "TotalTimeouts";
 
         public object GetResult()
         {
@@ -32,11 +32,8 @@ namespace TwitchScanAPI.Data.Statistics.User
             _totalTimeoutDuration += userTimedOut.TimeoutDuration;
 
             if (!string.IsNullOrWhiteSpace(userTimedOut.TimeoutReason))
-            {
                 _timeoutReasons.AddOrUpdate(userTimedOut.TimeoutReason.Trim(), 1, (_, count) => count + 1);
-            }
             return Task.CompletedTask;
         }
     }
-
 }

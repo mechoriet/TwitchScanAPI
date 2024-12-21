@@ -9,8 +9,10 @@ namespace TwitchScanAPI.Data.Statistics.User
 {
     public class TotalUsersStatistic : IStatistic
     {
+        private readonly ConcurrentDictionary<string, byte>
+            _users = new(StringComparer.OrdinalIgnoreCase); // Case-insensitive username comparison
+
         public string Name => "TotalUsers";
-        private readonly ConcurrentDictionary<string, byte> _users = new(StringComparer.OrdinalIgnoreCase); // Case-insensitive username comparison
 
         public object GetResult()
         {
@@ -23,13 +25,13 @@ namespace TwitchScanAPI.Data.Statistics.User
             AddUser(message.ChatMessage.Username);
             return Task.CompletedTask;
         }
-        
+
         public Task Update(UserEntity userEntity)
         {
             AddUser(userEntity.Username);
             return Task.CompletedTask;
         }
-        
+
         private void AddUser(string username)
         {
             if (string.IsNullOrWhiteSpace(username)) return; // Handle null or empty usernames

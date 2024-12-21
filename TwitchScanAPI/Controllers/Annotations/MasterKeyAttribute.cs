@@ -9,12 +9,13 @@ namespace TwitchScanAPI.Controllers.Annotations
     {
         public override void OnActionExecuting(ActionExecutingContext context)
         {
-            if (context.HttpContext.RequestServices.GetService(typeof(IConfiguration)) is not IConfiguration configuration)
+            if (context.HttpContext.RequestServices.GetService(typeof(IConfiguration)) is not IConfiguration
+                configuration)
             {
                 context.Result = new StatusCodeResult(StatusCodes.Status500InternalServerError);
                 return;
             }
-            
+
             var masterKey = configuration["MasterKey"];
             var requestKey = context.HttpContext.Request.Headers["MasterKey"].ToString();
 

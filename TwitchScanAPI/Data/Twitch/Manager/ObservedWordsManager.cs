@@ -12,10 +12,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         public void AddTextToObserve(string text)
         {
-            if (_wordsToObserve.Add(text))
-            {
-                UpdateRegex();
-            }
+            if (_wordsToObserve.Add(text)) UpdateRegex();
         }
 
         private void UpdateRegex()

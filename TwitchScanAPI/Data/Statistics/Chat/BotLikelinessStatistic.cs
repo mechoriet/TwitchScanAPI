@@ -12,32 +12,40 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 {
     public class BotLikelinessStatistic : IStatistic, IDisposable
     {
-        public string Name => "BotLikeliness";
-
-        // Stores metrics for each user
-        private readonly ConcurrentDictionary<string, UserBotMetrics> _userMetrics = new();
-        private readonly TimeSpan _userMetricTimeout = TimeSpan.FromMinutes(30); // Remove users with last message older than this
-
-        // Stores recent messages for similarity analysis
-        private readonly ConcurrentQueue<MessageEntry> _recentMessages = new();
-        private readonly TimeSpan _timeWindow = TimeSpan.FromMinutes(10); // Time window for analysis
-
         // Snapshot management
         private const int SnapshotTopX = 100; // Number of top users to snapshot
-        private readonly ConcurrentQueue<Snapshot> _snapshots = new();
-        private readonly TimeSpan _snapshotRetention = TimeSpan.FromMinutes(30); // Retain snapshots
-
-        // Timer for periodic snapshots
-        private readonly Timer _snapshotTimer;
 
         // Lock object for thread safety during cleanup
         private readonly object _cleanupLock = new();
+
+        // Stores recent messages for similarity analysis
+        private readonly ConcurrentQueue<MessageEntry> _recentMessages = new();
+        private readonly TimeSpan _snapshotRetention = TimeSpan.FromMinutes(30); // Retain snapshots
+        private readonly ConcurrentQueue<Snapshot> _snapshots = new();
+
+        // Timer for periodic snapshots
+        private readonly Timer _snapshotTimer;
+        private readonly TimeSpan _timeWindow = TimeSpan.FromMinutes(10); // Time window for analysis
+
+        // Stores metrics for each user
+        private readonly ConcurrentDictionary<string, UserBotMetrics> _userMetrics = new();
+
+        private readonly TimeSpan
+            _userMetricTimeout = TimeSpan.FromMinutes(30); // Remove users with last message older than this
 
         public BotLikelinessStatistic()
         {
             // Initialize and start the snapshot timer
             _snapshotTimer = new Timer(TakeSnapshot, null, _timeWindow, _timeWindow);
         }
+
+        public void Dispose()
+        {
+            GC.SuppressFinalize(this);
+            _snapshotTimer?.Dispose();
+        }
+
+        public string Name => "BotLikeliness";
 
         public object GetResult()
         {
@@ -93,29 +101,19 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             lock (_cleanupLock)
             {
                 while (_recentMessages.TryPeek(out var oldestMessage))
-                {
                     if (DateTime.UtcNow - oldestMessage.Timestamp > _timeWindow)
-                    {
                         _recentMessages.TryDequeue(out _);
-                    }
                     else
-                    {
                         break; // All remaining messages are within the time window
-                    }
-                }
             }
         }
-        
+
         private void CleanupOldMetrics()
         {
             var now = DateTime.UtcNow;
             foreach (var kvp in _userMetrics.ToArray())
-            {
                 if (now - kvp.Value.LastMessageTime > _userMetricTimeout)
-                {
                     _userMetrics.TryRemove(kvp.Key, out _);
-                }
-            }
         }
 
         private void AnalyzeMessageSimilarity(MessageEntry newMessage)
@@ -141,14 +139,10 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 if (!(similarity >= similarityThreshold)) continue;
                 // Increase group behavior score for both users
                 if (_userMetrics.TryGetValue(newMessage.Username, out var userMetrics))
-                {
                     userMetrics.IncreaseGroupBehaviorScore();
-                }
 
                 if (_userMetrics.TryGetValue(existingMessage.Username, out var otherUserMetrics))
-                {
                     otherUserMetrics.IncreaseGroupBehaviorScore();
-                }
             }
         }
 
@@ -182,22 +176,10 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         private void CleanupOldSnapshots()
         {
             while (_snapshots.TryPeek(out var oldestSnapshot))
-            {
                 if (DateTime.UtcNow - oldestSnapshot.Timestamp > _snapshotRetention)
-                {
                     _snapshots.TryDequeue(out _);
-                }
                 else
-                {
                     break; // All remaining snapshots are within the retention period
-                }
-            }
-        }
-
-        public void Dispose()
-        {
-            GC.SuppressFinalize(this);
-            _snapshotTimer?.Dispose();
         }
     }
 }

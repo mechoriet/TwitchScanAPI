@@ -34,7 +34,7 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
                     .ToDictionary(kv => kv.Key.ToString("yyyy-MM-ddTHH:mm:ssZ"), kv => kv.Value),
                 SlowModeMessagesOverTime = slowModeMessagesOverTime
                     .OrderByDescending(kv => kv.Key)
-                    .ToDictionary(kv => kv.Key.ToString("yyyy-MM-ddTHH:mm:ssZ"), kv => kv.Value),
+                    .ToDictionary(kv => kv.Key.ToString("yyyy-MM-ddTHH:mm:ssZ"), kv => kv.Value)
             };
         }
     }

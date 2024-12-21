@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using System.Timers;
 using Microsoft.Extensions.Configuration;
@@ -19,23 +20,43 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 {
     public class TwitchClientManager : IDisposable
     {
-        private TwitchClient? _client;
-        private TwitchAPI _api = new();
+        private readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(10);
         private readonly string _channelName;
         private readonly IConfiguration _configuration;
-        private readonly Timer _reconnectTimer;
-        private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
-        private readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(10);
-        private bool _isReconnecting;
-        private bool _fetching;
-        private bool IsOnline { get; set; }
-
-        private DateTime _lastFetchTime;
-        private ChannelInformation? _cachedChannelInformation;
 
         // BetterTTV & 7TV
         private readonly EmoteService _emoteService;
+        private readonly Timer _reconnectTimer;
+        private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
+        private readonly TwitchAPI _api = new();
+        private ChannelInformation? _cachedChannelInformation;
+        private TwitchClient? _client;
+        private bool _fetching;
+        private bool _isReconnecting;
+
+        private DateTime _lastFetchTime;
         public List<MergedEmote>? ExternalChannelEmotes;
+
+        // Constructor
+        private TwitchClientManager(string channelName, IConfiguration configuration, EmoteService emoteService)
+        {
+            _emoteService = emoteService;
+            _channelName = channelName;
+            _configuration = configuration;
+            ConfigureTwitchApi();
+
+            _reconnectTimer = new Timer(_retryInterval.TotalMilliseconds) { AutoReset = false };
+            _reconnectTimer.Elapsed += async (_, _) => await HandleReconnectAsync();
+        }
+
+        private bool IsOnline { get; set; }
+
+        public void Dispose()
+        {
+            GC.SuppressFinalize(this);
+            DisconnectClient();
+            _reconnectTimer.Dispose();
+        }
 
         // Events to expose
         public event EventHandler<OnMessageReceivedArgs>? OnMessageReceived;
@@ -52,18 +73,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public event EventHandler<OnChannelStateChangedArgs>? OnChannelStateChanged;
         public event EventHandler<ChannelInformation>? OnConnectionChanged;
         public event EventHandler? OnDisconnected;
-
-        // Constructor
-        private TwitchClientManager(string channelName, IConfiguration configuration, EmoteService emoteService)
-        {
-            _emoteService = emoteService;
-            _channelName = channelName;
-            _configuration = configuration;
-            ConfigureTwitchApi();
-
-            _reconnectTimer = new Timer(_retryInterval.TotalMilliseconds) { AutoReset = false };
-            _reconnectTimer.Elapsed += async (_, _) => await HandleReconnectAsync();
-        }
 
         // Factory method
         public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration,
@@ -86,13 +95,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             var channelInfo = await GetChannelInfoAsync();
             if (channelInfo.IsOnline)
-            {
                 await StartClientAsync();
-            }
             else
-            {
                 ScheduleReconnect();
-            }
 
             return channelInfo;
         }
@@ -173,37 +178,65 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         // Event handlers
-        private void OnMessageReceivedHandler(object? sender, OnMessageReceivedArgs args) =>
+        private void OnMessageReceivedHandler(object? sender, OnMessageReceivedArgs args)
+        {
             OnMessageReceived?.Invoke(sender, args);
+        }
 
-        private void OnUserJoinedHandler(object? sender, OnUserJoinedArgs args) => OnUserJoined?.Invoke(sender, args);
-        private void OnUserLeftHandler(object? sender, OnUserLeftArgs args) => OnUserLeft?.Invoke(sender, args);
+        private void OnUserJoinedHandler(object? sender, OnUserJoinedArgs args)
+        {
+            OnUserJoined?.Invoke(sender, args);
+        }
 
-        private void OnNewSubscriberHandler(object? sender, OnNewSubscriberArgs args) =>
+        private void OnUserLeftHandler(object? sender, OnUserLeftArgs args)
+        {
+            OnUserLeft?.Invoke(sender, args);
+        }
+
+        private void OnNewSubscriberHandler(object? sender, OnNewSubscriberArgs args)
+        {
             OnNewSubscriber?.Invoke(sender, args);
+        }
 
-        private void OnReSubscriberHandler(object? sender, OnReSubscriberArgs args) =>
+        private void OnReSubscriberHandler(object? sender, OnReSubscriberArgs args)
+        {
             OnReSubscriber?.Invoke(sender, args);
+        }
 
-        private void OnGiftedSubscriptionHandler(object? sender, OnGiftedSubscriptionArgs args) =>
+        private void OnGiftedSubscriptionHandler(object? sender, OnGiftedSubscriptionArgs args)
+        {
             OnGiftedSubscription?.Invoke(sender, args);
+        }
 
-        private void OnCommunitySubscriptionHandler(object? sender, OnCommunitySubscriptionArgs args) =>
+        private void OnCommunitySubscriptionHandler(object? sender, OnCommunitySubscriptionArgs args)
+        {
             OnCommunitySubscription?.Invoke(sender, args);
+        }
 
-        private void OnRaidNotificationHandler(object? sender, OnRaidNotificationArgs args) =>
+        private void OnRaidNotificationHandler(object? sender, OnRaidNotificationArgs args)
+        {
             OnRaidNotification?.Invoke(sender, args);
+        }
 
-        private void OnUserBannedHandler(object? sender, OnUserBannedArgs args) => OnUserBanned?.Invoke(sender, args);
+        private void OnUserBannedHandler(object? sender, OnUserBannedArgs args)
+        {
+            OnUserBanned?.Invoke(sender, args);
+        }
 
-        private void OnMessageClearedHandler(object? sender, OnMessageClearedArgs args) =>
+        private void OnMessageClearedHandler(object? sender, OnMessageClearedArgs args)
+        {
             OnMessageCleared?.Invoke(sender, args);
+        }
 
-        private void OnUserTimedOutHandler(object? sender, OnUserTimedoutArgs args) =>
+        private void OnUserTimedOutHandler(object? sender, OnUserTimedoutArgs args)
+        {
             OnUserTimedOut?.Invoke(sender, args);
+        }
 
-        private void OnChannelStateChangedHandler(object? sender, OnChannelStateChangedArgs args) =>
+        private void OnChannelStateChangedHandler(object? sender, OnChannelStateChangedArgs args)
+        {
             OnChannelStateChanged?.Invoke(sender, args);
+        }
 
         private void OnTwitchDisconnectedHandler(object? sender, EventArgs e)
         {
@@ -219,10 +252,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public async Task<ChannelInformation> GetChannelInfoAsync()
         {
             // Use cached info if valid
-            if (_fetching || (_cachedChannelInformation != null && (DateTime.UtcNow - _lastFetchTime) < _cacheDuration))
-            {
+            if (_fetching || (_cachedChannelInformation != null && DateTime.UtcNow - _lastFetchTime < _cacheDuration))
                 return _cachedChannelInformation ?? new ChannelInformation(false);
-            }
 
             _lastFetchTime = DateTime.UtcNow;
             _fetching = true;
@@ -237,8 +268,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                         OnDisconnected?.Invoke(this, EventArgs.Empty);
                         break;
                     case false when isOnline:
-                        _api = new TwitchAPI();
-                        ConfigureTwitchApi();
                         ExternalChannelEmotes = await _emoteService.GetChannelEmotesAsync(streams!.Streams[0].UserId);
                         Console.WriteLine($"{_channelName} is now online.");
                         break;
@@ -261,6 +290,11 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
                 return _cachedChannelInformation;
             }
+            catch (HttpRequestException ex)
+            {
+                Console.WriteLine($"HTTP Request Error: {ex.Message}, Inner: {ex.InnerException?.Message}");
+                return new ChannelInformation(false);
+            }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
@@ -279,13 +313,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             UnsubscribeFromClientEvents(_client);
             _client.Disconnect();
             _client = null;
-        }
-
-        public void Dispose()
-        {
-            GC.SuppressFinalize(this);
-            DisconnectClient();
-            _reconnectTimer.Dispose();
         }
     }
 }

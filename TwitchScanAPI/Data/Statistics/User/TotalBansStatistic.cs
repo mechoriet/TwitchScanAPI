@@ -9,10 +9,10 @@ namespace TwitchScanAPI.Data.Statistics.User
 {
     public class TotalBansStatistic : IStatistic
     {
-        public string Name => "TotalBans";
+        private readonly ConcurrentDictionary<string, int> _banReasons = new(StringComparer.OrdinalIgnoreCase);
 
         private int _banCount;
-        private readonly ConcurrentDictionary<string, int> _banReasons = new(StringComparer.OrdinalIgnoreCase);
+        public string Name => "TotalBans";
 
         public object GetResult()
         {
@@ -28,9 +28,7 @@ namespace TwitchScanAPI.Data.Statistics.User
             _banCount++;
 
             if (!string.IsNullOrWhiteSpace(userBanned.BanReason))
-            {
                 _banReasons.AddOrUpdate(userBanned.BanReason.Trim(), 1, (_, count) => count + 1);
-            }
             return Task.CompletedTask;
         }
     }

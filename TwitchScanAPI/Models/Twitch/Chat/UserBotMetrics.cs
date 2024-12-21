@@ -6,20 +6,16 @@ using System.Linq;
 namespace TwitchScanAPI.Models.Twitch.Chat
 {
     // Class to store metrics for a single user
-     public class UserBotMetrics
+    public class UserBotMetrics
     {
-        public long TotalMessages;
-        private long _totalLength;
+        private readonly TimeSpan _frequencyTimeWindow = TimeSpan.FromMinutes(1); // Time window for frequency analysis
+        private readonly int _maxStoredMessages = 100; // Limit for stored message times
         private readonly ConcurrentDictionary<string, int> _messageCounts = new();
         private readonly ConcurrentQueue<DateTime> _messageTimes = new();
 
-        private readonly TimeSpan _frequencyTimeWindow = TimeSpan.FromMinutes(1); // Time window for frequency analysis
-        private readonly int _maxStoredMessages = 100; // Limit for stored message times
-
         private double _groupBehaviorScore;
-
-        public double BotScore { get; private set; }
-        public DateTime LastMessageTime => _messageTimes.LastOrDefault();
+        private long _totalLength;
+        public long TotalMessages;
 
         public UserBotMetrics(ChannelMessage initialMessage)
         {
@@ -32,6 +28,9 @@ namespace TwitchScanAPI.Models.Twitch.Chat
             CalculateBotScore();
         }
 
+        public double BotScore { get; private set; }
+        public DateTime LastMessageTime => _messageTimes.LastOrDefault();
+
         public UserBotMetrics UpdateMetrics(ChannelMessage message)
         {
             TotalMessages++;
@@ -42,10 +41,7 @@ namespace TwitchScanAPI.Models.Twitch.Chat
 
             // Update message times
             _messageTimes.Enqueue(message.Time);
-            if (_messageTimes.Count > _maxStoredMessages)
-            {
-                _messageTimes.TryDequeue(out _);
-            }
+            if (_messageTimes.Count > _maxStoredMessages) _messageTimes.TryDequeue(out _);
 
             // Recalculate bot-likeliness score
             CalculateBotScore();
@@ -97,7 +93,7 @@ namespace TwitchScanAPI.Models.Twitch.Chat
             var messagesPerMinute = messagesInWindow / _frequencyTimeWindow.TotalMinutes;
 
             // Normalize frequency score (e.g., up to 100 for 30 messages per minute)
-            var frequencyScore = Math.Min((messagesPerMinute / 30.0) * 100.0, 100.0);
+            var frequencyScore = Math.Min(messagesPerMinute / 30.0 * 100.0, 100.0);
 
             return frequencyScore;
         }
@@ -108,7 +104,7 @@ namespace TwitchScanAPI.Models.Twitch.Chat
             var maxRepetition = _messageCounts.Values.Max();
 
             // Normalize repetition score (e.g., up to 100 for 5 repetitions)
-            var repetitionScore = Math.Min((maxRepetition / 5.0) * 100.0, 100.0);
+            var repetitionScore = Math.Min(maxRepetition / 5.0 * 100.0, 100.0);
 
             return repetitionScore;
         }
@@ -122,7 +118,7 @@ namespace TwitchScanAPI.Models.Twitch.Chat
             CalculateBotScore();
         }
     }
-    
+
     // Represents an entry in the recent messages queue
     public class MessageEntry
     {

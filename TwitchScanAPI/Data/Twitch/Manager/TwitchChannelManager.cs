@@ -11,7 +11,6 @@ using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.DbContext;
 using TwitchScanAPI.Models;
 using TwitchScanAPI.Models.Twitch.Channel;
-using TwitchScanAPI.Models.Twitch.Chat;
 using TwitchScanAPI.Models.Twitch.Statistics;
 using TwitchScanAPI.Services;
 
@@ -19,11 +18,11 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 {
     public class TwitchChannelManager : IDisposable
     {
-        public readonly List<TwitchStatistics> TwitchStats = new();
         private readonly IConfiguration _configuration;
-        private readonly NotificationService _notificationService;
         private readonly MongoDbContext _context;
         private readonly EmoteService _emoteService;
+        private readonly NotificationService _notificationService;
+        public readonly List<TwitchStatistics> TwitchStats = new();
 
         public TwitchChannelManager(IConfiguration configuration, NotificationService notificationService,
             MongoDbContext context, EmoteService emoteService)
@@ -34,8 +33,15 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _emoteService = emoteService;
         }
 
+        public void Dispose()
+        {
+            foreach (var channel in TwitchStats) channel.Dispose();
+
+            GC.SuppressFinalize(this);
+        }
+
         /// <summary>
-        /// Initialize a channel to observe
+        ///     Initialize a channel to observe
         /// </summary>
         public async Task<ResultMessage<string?>> Init(string channelName)
         {
@@ -74,7 +80,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         /// <summary>
-        /// Initialize multiple channels at once
+        ///     Initialize multiple channels at once
         /// </summary>
         public async Task<ResultMessage<string?>> InitMultiple(string[] channelNames)
         {
@@ -94,7 +100,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         /// <summary>
-        /// Remove a channel from the observer
+        ///     Remove a channel from the observer
         /// </summary>
         public ResultMessage<string?> Remove(string channelName)
         {
@@ -111,7 +117,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         /// <summary>
-        /// Add a text to observe for a specific channel
+        ///     Add a text to observe for a specific channel
         /// </summary>
         public bool AddTextToObserve(string channelName, string text)
         {
@@ -123,7 +129,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         /// <summary>
-        /// Get all initiated channels
+        ///     Get all initiated channels
         /// </summary>
         public async Task<IEnumerable<InitiatedChannel>> GetInitiatedChannels()
         {
@@ -140,7 +146,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         /// <summary>
-        /// Get all possible statistics that can be observed
+        ///     Get all possible statistics that can be observed
         /// </summary>
         public async Task<IEnumerable<string>> GetPossibleStatistics()
         {
@@ -153,21 +159,18 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         /// <summary>
-        /// Get all statistics for all channels
+        ///     Get all statistics for all channels
         /// </summary>
         public async Task<IDictionary<string, IDictionary<string, object>?>> GetAllStatistics()
         {
             var stats = new Dictionary<string, IDictionary<string, object>?>();
-            foreach (var channel in TwitchStats)
-            {
-                stats[channel.ChannelName] = await channel.GetStatisticsAsync();
-            }
+            foreach (var channel in TwitchStats) stats[channel.ChannelName] = await channel.GetStatisticsAsync();
 
             return stats;
         }
 
         /// <summary>
-        /// Get all statistics for a specific channel
+        ///     Get all statistics for a specific channel
         /// </summary>
         public async Task<IDictionary<string, object>?> GetAllStatistics(string channelName)
         {
@@ -176,14 +179,11 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         /// <summary>
-        /// Save snapshots current statistics to the database
+        ///     Save snapshots current statistics to the database
         /// </summary>
         public async Task SaveSnapshotsAsync()
         {
-            foreach (var channel in TwitchStats.Where(channel => channel.IsOnline))
-            {
-                await channel.SaveSnapshotAsync();
-            }
+            foreach (var channel in TwitchStats.Where(channel => channel.IsOnline)) await channel.SaveSnapshotAsync();
         }
 
         public async Task SaveSnapshotToChannelAsync(string channelName, StatisticsManager? manager = null,
@@ -195,7 +195,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         /// <summary>
-        /// Get the history keys and peak viewers
+        ///     Get the history keys and peak viewers
         /// </summary>
         public IEnumerable<StatisticTimeline> GetViewCountHistory(string channelName)
         {
@@ -220,14 +220,11 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         /// <summary>
-        /// Get the history of a specific key from the statistic history
+        ///     Get the history of a specific key from the statistic history
         /// </summary>
         public StatisticHistory GetHistoryByKey(string channelName, string id)
         {
-            if (!Guid.TryParse(id, out var guidKey))
-            {
-                throw new FormatException("Invalid GUID format");
-            }
+            if (!Guid.TryParse(id, out var guidKey)) throw new FormatException("Invalid GUID format");
 
             return _context.StatisticHistory
                 .Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName) &
@@ -236,7 +233,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         /// <summary>
-        /// Get the chat history of a specific user in a channel using the "ChatHistory" statistic
+        ///     Get the chat history of a specific user in a channel using the "ChatHistory" statistic
         /// </summary>
         public IEnumerable<ChatHistory> GetChatHistory(string channelName, string username)
         {
@@ -245,24 +242,17 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         /// <summary>
-        /// Get all users in a channel
+        ///     Get all users in a channel
         /// </summary>
-        public IEnumerable<string>? GetUsers(string channelName) => GetChannel(channelName)?.GetUsers();
+        public IEnumerable<string>? GetUsers(string channelName)
+        {
+            return GetChannel(channelName)?.GetUsers();
+        }
 
         private TwitchStatistics? GetChannel(string channelName)
         {
             return TwitchStats.FirstOrDefault(x =>
                 string.Equals(x.ChannelName, channelName, StringComparison.OrdinalIgnoreCase));
-        }
-
-        public void Dispose()
-        {
-            foreach (var channel in TwitchStats)
-            {
-                channel.Dispose();
-            }
-
-            GC.SuppressFinalize(this);
         }
     }
 }

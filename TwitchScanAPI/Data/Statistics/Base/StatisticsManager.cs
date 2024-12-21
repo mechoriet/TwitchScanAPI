@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using TwitchScanAPI.Data.Statistics.Chat;
-using TwitchScanAPI.Models.Twitch.Chat;
 using TwitchScanAPI.Models.Twitch.Statistics;
 
 namespace TwitchScanAPI.Data.Statistics.Base
@@ -39,10 +36,7 @@ namespace TwitchScanAPI.Data.Statistics.Base
         {
             var chatHistory = _statistics.GetStatistic("ChatHistory") as List<ChatHistory> ?? new List<ChatHistory>();
 
-            if (string.IsNullOrEmpty(username))
-            {
-                return chatHistory.OrderBy(x => x.Time).ToList();
-            }
+            if (string.IsNullOrEmpty(username)) return chatHistory.OrderBy(x => x.Time).ToList();
 
             return chatHistory
                 .Where(x => string.Equals(x.Username, username, StringComparison.CurrentCultureIgnoreCase))

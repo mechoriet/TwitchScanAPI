@@ -5,17 +5,13 @@ namespace TwitchScanAPI.Models.Twitch.Emotes.FrankerFaceZ
 {
     public class FrankerFaceZEmoteSet
     {
-        [JsonProperty("id")]
-        public int Id { get; set; }
+        [JsonProperty("id")] public int Id { get; set; }
 
-        [JsonProperty("_type")]
-        public int Type { get; set; }
+        [JsonProperty("_type")] public int Type { get; set; }
 
-        [JsonProperty("title")]
-        public string Title { get; set; }
+        [JsonProperty("title")] public string Title { get; set; }
 
-        [JsonProperty("sets")]
-        public Dictionary<string, Set> Sets { get; set; }
+        [JsonProperty("sets")] public Dictionary<string, Set> Sets { get; set; }
     }
 
     public class Set

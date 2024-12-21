@@ -20,13 +20,13 @@ namespace TwitchScanAPI
         {
             _configuration = configuration;
         }
-        
+
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
             services.AddSignalR();
-    
+
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "TwitchScanAPI", Version = "v1" });
@@ -70,7 +70,7 @@ namespace TwitchScanAPI
             app.UseHttpsRedirection();
 
             app.UseRouting();
-            
+
             // Enable CORS
             app.UseCors("AllowSpecificOrigins");
 
