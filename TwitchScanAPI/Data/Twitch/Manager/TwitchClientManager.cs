@@ -115,9 +115,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _reconnectTimer.Start();
         }
 
-        private Task StartClientAsync()
+        private async Task StartClientAsync()
         {
-            if (_client?.IsConnected == true) return Task.CompletedTask;
+            if (_client?.IsConnected == true) return;
 
             var credentials = new ConnectionCredentials(
                 _configuration.GetValue<string>(Variables.TwitchChatName),
@@ -129,14 +129,22 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 ThrottlingPeriod = TimeSpan.FromSeconds(30)
             };
 
-            var customClient = new WebSocketClient(clientOptions);
-            _client = new TwitchClient(customClient) { AutoReListenOnException = true };
-            _client.Initialize(credentials, _channelName);
+            try
+            {
+                var customClient = new WebSocketClient(clientOptions);
+                _client = new TwitchClient(customClient) { AutoReListenOnException = true };
+                _client.Initialize(credentials, _channelName);
 
-            SubscribeToClientEvents(_client);
+                SubscribeToClientEvents(_client);
 
-            _client.Connect();
-            return Task.CompletedTask;
+                _client.Connect();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error starting Twitch client: {ex.Message}");
+                await Task.Delay(5000);
+                ScheduleReconnect();
+            }
         }
 
         private void SubscribeToClientEvents(TwitchClient client)
