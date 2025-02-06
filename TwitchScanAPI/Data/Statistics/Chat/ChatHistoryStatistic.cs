@@ -11,7 +11,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
     [IgnoreStatistic]
     public class ChatHistoryStatistic : IStatistic
     {
-        private const int MaxMessagesPerUser = 100; // Limit to avoid memory overload
+        private const int MaxMessagesPerUser = 2000; // Limit to avoid memory overload
 
         // Stores chat history per user, each user has a list of messages
         private readonly ConcurrentDictionary<string, List<ChannelMessage>> _chatHistory = new();
