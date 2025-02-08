@@ -10,7 +10,7 @@ using TwitchScanAPI.Models.Twitch.Statistics;
 
 namespace TwitchScanAPI.Data.Statistics.Chat
 {
-    public class BotLikelinessStatistic : IStatistic, IDisposable
+    public class BotLikelinessStatistic : IStatistic
     {
         // Snapshot management
         private const int SnapshotTopX = 100; // Number of top users to snapshot
@@ -41,8 +41,9 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
         public void Dispose()
         {
-            GC.SuppressFinalize(this);
-            _snapshotTimer?.Dispose();
+            _recentMessages.Clear();
+            _snapshots.Clear();
+            _userMetrics.Clear();
         }
 
         public string Name => "BotLikeliness";
@@ -106,14 +107,6 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                     else
                         break; // All remaining messages are within the time window
             }
-        }
-
-        private void CleanupOldMetrics()
-        {
-            var now = DateTime.UtcNow;
-            foreach (var kvp in _userMetrics.ToArray())
-                if (now - kvp.Value.LastMessageTime > _userMetricTimeout)
-                    _userMetrics.TryRemove(kvp.Key, out _);
         }
 
         private void AnalyzeMessageSimilarity(MessageEntry newMessage)

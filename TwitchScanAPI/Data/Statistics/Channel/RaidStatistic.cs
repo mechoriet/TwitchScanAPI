@@ -71,5 +71,11 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             // Add or update the raid count for the time bucket
             _raidsOverTime.AddOrUpdate(roundedTime, username, (_, _) => username);
         }
+        
+        public void Dispose()
+        {
+            _raidCounts.Clear();
+            _raidsOverTime.Clear();
+        }
     }
 }

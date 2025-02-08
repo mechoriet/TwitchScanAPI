@@ -236,5 +236,13 @@ namespace TwitchScanAPI.Data.Statistics.ML
             var bucketTicks = time.Ticks - time.Ticks % _bucketSize.Ticks;
             return new DateTime(bucketTicks, time.Kind);
         }
+        
+        public void Dispose()
+        {
+            _sentimentOverTime.Clear();
+            _userSentiments.Clear();
+            _topPositiveMessages.Clear();
+            _topNegativeMessages.Clear();
+        }
     }
 }

@@ -60,6 +60,7 @@ namespace TwitchScanAPI.Controllers
         public async Task<ActionResult> DeleteChannel(string channelName)
         {
             await _context.StatisticHistory.DeleteManyAsync(x => x.UserName == channelName);
+            _twitchStats.Remove(channelName);
             return Ok();
         }
 

@@ -26,5 +26,10 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 _emoteCounts.AddOrUpdate(emote.Name, 1, (_, count) => count + 1);
             return Task.CompletedTask;
         }
+        
+        public void Dispose()
+        {
+            _emoteCounts.Clear();
+        }
     }
 }

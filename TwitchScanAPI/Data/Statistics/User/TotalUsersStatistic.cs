@@ -39,5 +39,10 @@ namespace TwitchScanAPI.Data.Statistics.User
             // Add the username to the dictionary (case-insensitive due to the StringComparer)
             _users.TryAdd(username.Trim(), 0);
         }
+        
+        public void Dispose()
+        {
+            _users.Clear();
+        }
     }
 }

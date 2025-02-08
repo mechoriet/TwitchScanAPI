@@ -51,5 +51,10 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
             return Task.CompletedTask;
         }
+        
+        public void Dispose()
+        {
+            _chatHistory.Clear();
+        }
     }
 }

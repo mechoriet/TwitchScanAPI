@@ -70,6 +70,7 @@ namespace TwitchScanAPI.Data.Statistics.Base
             // Reassign with a new immutable list and immutable dictionary
             _statistics = DiscoverStatistics().ToImmutableList();
             _eventHandlers = BuildEventHandlers().ToImmutableDictionary();
+            Cleanup();
         }
 
         public IDictionary<string, object> GetAllStatistics()
@@ -79,6 +80,14 @@ namespace TwitchScanAPI.Data.Statistics.Base
                     !stat.GetType().GetCustomAttributes(typeof(IgnoreStatisticAttribute), false)
                         .Any()) // Filter out ignored statistics
                 .ToDictionary(stat => stat.Name, stat => stat.GetResult());
+        }
+        
+        private void Cleanup()
+        {
+            foreach (var statistic in _statistics)
+            {
+                if (statistic is IDisposable disposable) disposable.Dispose();
+            }
         }
 
         public object? GetStatistic(string name)

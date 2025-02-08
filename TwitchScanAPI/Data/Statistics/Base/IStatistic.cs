@@ -1,6 +1,8 @@
-﻿namespace TwitchScanAPI.Data.Statistics.Base
+﻿using System;
+
+namespace TwitchScanAPI.Data.Statistics.Base
 {
-    public interface IStatistic
+    public interface IStatistic : IDisposable
     {
         string Name { get; }
         object GetResult();

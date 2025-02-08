@@ -64,6 +64,7 @@ namespace TwitchScanAPI.Data.Twitch
 
         public void Dispose()
         {
+            _statisticsManager.Reset();
             _clientManager.Dispose();
             _statisticsTimer.Stop();
             _statisticsTimer.Dispose();

@@ -98,5 +98,14 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
             foreach (var key in keysToRemove) dictionary.TryRemove(key, out _);
         }
+        
+        public void Dispose()
+        {
+            _messagesOverTime.Clear();
+            _subOnlyMessagesOverTime.Clear();
+            _emoteOnlyMessagesOverTime.Clear();
+            _slowOnlyMessagesOverTime.Clear();
+            _channelState = null;
+        }
     }
 }

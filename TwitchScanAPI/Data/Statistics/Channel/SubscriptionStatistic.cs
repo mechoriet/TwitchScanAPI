@@ -87,5 +87,12 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             // Add or update the subscription count for the time bucket
             _subscriptionsOverTime.AddOrUpdate(roundedTime, 1, (_, count) => count + 1);
         }
+        
+        public void Dispose()
+        {
+            _subscriptionCounts.Clear();
+            _subscriptionsOverTime.Clear();
+            _topSubscriber.Clear();
+        }
     }
 }

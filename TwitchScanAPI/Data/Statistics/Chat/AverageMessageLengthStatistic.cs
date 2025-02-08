@@ -23,5 +23,11 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             Interlocked.Increment(ref _messageCount);
             return Task.CompletedTask;
         }
+        
+        public void Dispose()
+        {
+            _messageCount = 0;
+            _totalLength = 0;
+        }
     }
 }

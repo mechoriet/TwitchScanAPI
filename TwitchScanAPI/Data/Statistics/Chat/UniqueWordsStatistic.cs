@@ -30,5 +30,10 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             foreach (var word in words) _uniqueWords.TryAdd(word, 0);
             return Task.CompletedTask;
         }
+        
+        public void Dispose()
+        {
+            _uniqueWords.Clear();
+        }
     }
 }

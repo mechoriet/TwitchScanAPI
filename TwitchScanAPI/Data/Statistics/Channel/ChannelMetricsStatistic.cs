@@ -125,5 +125,16 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             // Add or update the viewer count for the time bucket
             _viewersOverTime.AddOrUpdate(roundedTime, viewers, (_, value) => viewers > value ? viewers : value);
         }
+        
+        public void Dispose()
+        {
+            _viewerHistory.Clear();
+            _viewersOverTime.Clear();
+            _currentGame = null;
+            _currentUptime = TimeSpan.Zero;
+            _peakViewers = 0;
+            _totalViewers = 0;
+            _viewerCountEntries = 0;
+        }
     }
 }

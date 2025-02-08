@@ -35,5 +35,12 @@ namespace TwitchScanAPI.Data.Statistics.User
                 _timeoutReasons.AddOrUpdate(userTimedOut.TimeoutReason.Trim(), 1, (_, count) => count + 1);
             return Task.CompletedTask;
         }
+        
+        public void Dispose()
+        {
+            _timeoutCount = 0;
+            _totalTimeoutDuration = 0;
+            _timeoutReasons.Clear();
+        }
     }
 }

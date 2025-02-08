@@ -24,5 +24,10 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             if (LinkRegex.IsMatch(message.ChatMessage.Message)) Interlocked.Increment(ref _linkCount);
             return Task.CompletedTask;
         }
+        
+        public void Dispose()
+        {
+            _linkCount = 0;
+        }
     }
 }

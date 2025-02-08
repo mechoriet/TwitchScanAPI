@@ -31,5 +31,12 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             Interlocked.Increment(ref _intervalCount);
             return Task.CompletedTask;
         }
+        
+        public void Dispose()
+        {
+            _intervalCount = 0;
+            _totalIntervalTicks = 0;
+            _lastMessageTime = null;
+        }
     }
 }

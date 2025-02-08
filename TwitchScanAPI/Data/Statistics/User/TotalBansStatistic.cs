@@ -31,5 +31,11 @@ namespace TwitchScanAPI.Data.Statistics.User
                 _banReasons.AddOrUpdate(userBanned.BanReason.Trim(), 1, (_, count) => count + 1);
             return Task.CompletedTask;
         }
+        
+        public void Dispose()
+        {
+            _banCount = 0;
+            _banReasons.Clear();
+        }
     }
 }
