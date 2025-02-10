@@ -46,7 +46,10 @@ namespace TwitchScanAPI
             services.AddSingleton<TwitchVodService>();
             services.AddSingleton<TwitchChannelManager>();
             services.AddHttpClient<TwitchAuthService>();
+            
+            // Register hosted services
             services.AddHostedService<TwitchChannelManagerHostedService>();
+            services.AddHostedService<RestartHostedService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

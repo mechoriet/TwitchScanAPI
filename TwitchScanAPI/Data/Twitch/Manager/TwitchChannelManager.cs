@@ -186,6 +186,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             foreach (var channel in TwitchStats.Where(channel => channel.IsOnline)) await channel.SaveSnapshotAsync();
         }
 
+        /// <summary>
+        ///    Save a snapshot of a specific channel to the database
+        /// </summary>
         public async Task SaveSnapshotToChannelAsync(string channelName, StatisticsManager? manager = null,
             DateTime? date = null, int? viewCount = null)
         {
@@ -248,7 +251,18 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             return GetChannel(channelName)?.GetUsers();
         }
+        
+        /// <summary>
+        ///     Check if all channels are offline
+        /// </summary>
+        public bool AllChannelsOffline()
+        {
+            return TwitchStats.All(x => !x.IsOnline);
+        }
 
+        /// <summary>
+        ///     Get the channel statistics
+        /// </summary>
         private TwitchStatistics? GetChannel(string channelName)
         {
             return TwitchStats.FirstOrDefault(x =>
