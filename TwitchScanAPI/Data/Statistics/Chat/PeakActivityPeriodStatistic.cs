@@ -101,6 +101,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _messagesOverTime.Clear();
             _subOnlyMessagesOverTime.Clear();
             _emoteOnlyMessagesOverTime.Clear();

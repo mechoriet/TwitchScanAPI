@@ -10,15 +10,15 @@ namespace TwitchScanAPI.Data.Statistics.Base
 {
     public class Statistics
     {
-        private ImmutableDictionary<Type, ImmutableList<(IStatistic Statistic, MethodInfo UpdateMethod)>>
+        private readonly ImmutableDictionary<Type, ImmutableList<(IStatistic Statistic, MethodInfo UpdateMethod)>>
             _eventHandlers;
 
-        private ImmutableList<IStatistic> _statistics;
+        private readonly ImmutableList<IStatistic> _statistics;
 
         public Statistics()
         {
             _statistics = DiscoverStatistics().ToImmutableList();
-            _eventHandlers = BuildEventHandlers().ToImmutableDictionary();
+            _eventHandlers = BuildEventHandlers();
         }
 
         private List<IStatistic> DiscoverStatistics()
@@ -67,10 +67,17 @@ namespace TwitchScanAPI.Data.Statistics.Base
         /// </summary>
         public void Reset()
         {
-            // Reassign with a new immutable list and immutable dictionary
-            _statistics = DiscoverStatistics().ToImmutableList();
-            _eventHandlers = BuildEventHandlers().ToImmutableDictionary();
-            Cleanup();
+            // Dispose every statistic in _statistics
+            foreach (var statistic in _statistics)
+            {
+                if (statistic is IDisposable disposable) disposable.Dispose();
+            }
+            
+            // Dispose every stat in _eventHandlers
+            foreach (var (statistic, _) in _eventHandlers.Values.SelectMany(handlers => handlers))
+            {
+                if (statistic is IDisposable disposable) disposable.Dispose();
+            }
         }
 
         public IDictionary<string, object> GetAllStatistics()
@@ -80,14 +87,6 @@ namespace TwitchScanAPI.Data.Statistics.Base
                     !stat.GetType().GetCustomAttributes(typeof(IgnoreStatisticAttribute), false)
                         .Any()) // Filter out ignored statistics
                 .ToDictionary(stat => stat.Name, stat => stat.GetResult());
-        }
-        
-        private void Cleanup()
-        {
-            foreach (var statistic in _statistics)
-            {
-                if (statistic is IDisposable disposable) disposable.Dispose();
-            }
         }
 
         public object? GetStatistic(string name)

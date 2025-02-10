@@ -38,6 +38,7 @@ namespace TwitchScanAPI.Data.Statistics.User
         
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _timeoutCount = 0;
             _totalTimeoutDuration = 0;
             _timeoutReasons.Clear();

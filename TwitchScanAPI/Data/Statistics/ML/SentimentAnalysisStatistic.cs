@@ -19,7 +19,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
         private const int TopUsersCount = 10;
         private const int MaxTopMessages = 10;
 
-        private readonly SentimentIntensityAnalyzer _analyzer = new();
+        private static readonly SentimentIntensityAnalyzer Analyzer = new();
 
         private readonly TimeSpan _bucketSize = TimeSpan.FromMinutes(1);
         private readonly ConcurrentDictionary<DateTime, SentimentScores> _sentimentOverTime = new();
@@ -65,7 +65,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
             var username = message.ChatMessage.Username;
 
             // Analyze sentiment
-            var results = _analyzer.PolarityScores(text);
+            var results = Analyzer.PolarityScores(text);
 
             // Update time-based sentiment scores
             var bucketTime = GetBucketTime(message.Time);
@@ -220,7 +220,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
             }
         }
 
-        private void AddTopMessage(List<SentimentMessage> topMessages, SentimentMessage newMessage,
+        private static void AddTopMessage(List<SentimentMessage> topMessages, SentimentMessage newMessage,
             Comparison<SentimentMessage> comparison)
         {
             var index = topMessages.BinarySearch(newMessage, Comparer<SentimentMessage>.Create(comparison));
@@ -239,6 +239,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
         
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _sentimentOverTime.Clear();
             _userSentiments.Clear();
             _topPositiveMessages.Clear();

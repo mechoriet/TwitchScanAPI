@@ -21,7 +21,7 @@ namespace TwitchScanAPI.Services
             var service = new EmoteService();
             try
             {
-                _cachedGlobalEmotes ??= await service.GetMergedGlobalEmotesAsync();
+                _cachedGlobalEmotes ??= await GetMergedGlobalEmotesAsync();
             }
             catch (Exception ex)
             {
@@ -32,7 +32,7 @@ namespace TwitchScanAPI.Services
         }
 
         // Fetch global emotes with caching
-        private async Task<List<SevenTvEmote>?> GetSevenTvGlobalEmotesAsync()
+        private static async Task<List<SevenTvEmote>?> GetSevenTvGlobalEmotesAsync()
         {
             try
             {
@@ -45,7 +45,7 @@ namespace TwitchScanAPI.Services
             }
         }
 
-        private async Task<List<BetterTtvEmote>?> GetBetterTtvGlobalEmotesAsync()
+        private static async Task<List<BetterTtvEmote>?> GetBetterTtvGlobalEmotesAsync()
         {
             try
             {
@@ -58,7 +58,7 @@ namespace TwitchScanAPI.Services
             }
         }
 
-        private async Task<List<FrankerFaceZEmote>?> GetFrankerFaceZGlobalEmotesAsync()
+        private static async Task<List<FrankerFaceZEmote>?> GetFrankerFaceZGlobalEmotesAsync()
         {
             try
             {
@@ -73,7 +73,7 @@ namespace TwitchScanAPI.Services
         }
 
         // Public method to get merged emotes for a channel
-        public async Task<List<MergedEmote>?> GetChannelEmotesAsync(string channelId)
+        public static async Task<List<MergedEmote>?> GetChannelEmotesAsync(string channelId)
         {
             if (string.IsNullOrWhiteSpace(channelId)) return null;
 
@@ -105,7 +105,7 @@ namespace TwitchScanAPI.Services
         }
 
         // Private method to fetch and merge global emotes
-        private async Task<List<MergedEmote>?> GetMergedGlobalEmotesAsync()
+        private static async Task<List<MergedEmote>?> GetMergedGlobalEmotesAsync()
         {
             try
             {
@@ -135,16 +135,14 @@ namespace TwitchScanAPI.Services
         }
 
         // Fetch channel-specific SevenTV emotes
-        private async Task<List<MergedEmote>?> GetSevenTvChannelEmotesAsync(string channelId)
+        private static async Task<List<MergedEmote>?> GetSevenTvChannelEmotesAsync(string channelId)
         {
             try
             {
                 var channelEmoteSet =
                     await FetchEmotesAsync<SevenTvChannelEmoteSet>($"https://7tv.io/v3/users/twitch/{channelId}");
-                if (channelEmoteSet?.emote_set?.emotes == null) return null;
 
-                return channelEmoteSet.emote_set.emotes
-                    .Select(e => new MergedEmote(e.id, e.name, e.url))
+                return channelEmoteSet?.emote_set?.emotes?.Select(e => new MergedEmote(e.id, e.name, e.url))
                     .ToList();
             }
             catch (Exception ex)
@@ -155,7 +153,7 @@ namespace TwitchScanAPI.Services
         }
 
         // Fetch channel-specific BetterTTV emotes
-        private async Task<List<MergedEmote>?> GetBetterTtvChannelEmotesAsync(string channelId)
+        private static async Task<List<MergedEmote>?> GetBetterTtvChannelEmotesAsync(string channelId)
         {
             try
             {
@@ -182,7 +180,7 @@ namespace TwitchScanAPI.Services
         }
 
         // Fetch channel-specific FrankerFaceZ emotes
-        private async Task<List<MergedEmote>?> GetFrankerFaceZChannelEmotesAsync(string channelId)
+        private static async Task<List<MergedEmote>?> GetFrankerFaceZChannelEmotesAsync(string channelId)
         {
             try
             {

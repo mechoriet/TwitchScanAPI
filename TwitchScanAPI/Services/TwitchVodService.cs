@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
@@ -16,7 +15,6 @@ namespace TwitchScanAPI.Services
 {
     public class TwitchVodService
     {
-        private static readonly ConcurrentDictionary<string, string> EmoteCache = new();
         private readonly TwitchAPI _api = new();
         private readonly HttpClient _httpClient;
 

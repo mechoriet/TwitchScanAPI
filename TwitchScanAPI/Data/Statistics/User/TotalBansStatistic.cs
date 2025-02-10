@@ -34,6 +34,7 @@ namespace TwitchScanAPI.Data.Statistics.User
         
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _banCount = 0;
             _banReasons.Clear();
         }

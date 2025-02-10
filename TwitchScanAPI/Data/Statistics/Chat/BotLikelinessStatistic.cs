@@ -24,23 +24,14 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         private readonly ConcurrentQueue<Snapshot> _snapshots = new();
 
         // Timer for periodic snapshots
-        private readonly Timer _snapshotTimer;
         private readonly TimeSpan _timeWindow = TimeSpan.FromMinutes(10); // Time window for analysis
 
         // Stores metrics for each user
         private readonly ConcurrentDictionary<string, UserBotMetrics> _userMetrics = new();
 
-        private readonly TimeSpan
-            _userMetricTimeout = TimeSpan.FromMinutes(30); // Remove users with last message older than this
-
-        public BotLikelinessStatistic()
-        {
-            // Initialize and start the snapshot timer
-            _snapshotTimer = new Timer(TakeSnapshot, null, _timeWindow, _timeWindow);
-        }
-
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _recentMessages.Clear();
             _snapshots.Clear();
             _userMetrics.Clear();

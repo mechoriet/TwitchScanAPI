@@ -29,6 +29,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _emoteCounts.Clear();
         }
     }

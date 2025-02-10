@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -63,6 +64,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _sentenceCounts.Clear();
         }
     }

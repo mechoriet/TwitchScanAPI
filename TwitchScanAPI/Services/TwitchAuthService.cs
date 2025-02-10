@@ -64,7 +64,7 @@ namespace TwitchScanAPI.Services
         }
     }
 
-    public class ValidationResponse
+    public abstract class ValidationResponse
     {
         public int expires_in { get; set; }
     }

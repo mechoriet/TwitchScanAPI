@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Twitch.Chat;
@@ -26,6 +27,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _messageCount = 0;
             _totalLength = 0;
         }

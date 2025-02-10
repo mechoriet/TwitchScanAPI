@@ -37,6 +37,7 @@ namespace TwitchScanAPI.HostedServices
 
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _oauthTimer.Stop();
             _oauthTimer.Dispose();
         }

@@ -42,6 +42,7 @@ namespace TwitchScanAPI.Data.Statistics.User
         
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _users.Clear();
         }
     }

@@ -128,6 +128,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _viewerHistory.Clear();
             _viewersOverTime.Clear();
             _currentGame = null;

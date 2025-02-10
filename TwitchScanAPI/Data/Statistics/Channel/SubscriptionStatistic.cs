@@ -27,8 +27,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
         public object GetResult()
         {
-            var currentTime = DateTime.UtcNow;
-
             // Aggregate subscriptions over time, ordered chronologically
             var subscriptionsOverTime = _subscriptionsOverTime
                 .OrderBy(kvp => kvp.Key)
@@ -90,6 +88,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _subscriptionCounts.Clear();
             _subscriptionsOverTime.Clear();
             _topSubscriber.Clear();

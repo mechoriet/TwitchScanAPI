@@ -80,7 +80,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             var manager = new TwitchClientManager(channelName, configuration, emoteService);
             var channelInformation = await manager.GetChannelInfoAsync();
-            manager.ExternalChannelEmotes = await emoteService.GetChannelEmotesAsync(channelInformation.Id);
+            manager.ExternalChannelEmotes = await EmoteService.GetChannelEmotesAsync(channelInformation.Id);
             await manager.StartClientAsync();
             return manager;
         }
@@ -276,7 +276,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                         OnDisconnected?.Invoke(this, EventArgs.Empty);
                         break;
                     case false when isOnline:
-                        ExternalChannelEmotes = await _emoteService.GetChannelEmotesAsync(streams!.Streams[0].UserId);
+                        ExternalChannelEmotes = await EmoteService.GetChannelEmotesAsync(streams!.Streams[0].UserId);
                         Console.WriteLine($"{_channelName} is now online.");
                         break;
                 }

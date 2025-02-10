@@ -4,6 +4,6 @@ namespace TwitchScanAPI.Models.Twitch.Emotes.SevenTV
 {
     public class SevenTvEmoteSet
     {
-        public List<SevenTvEmote> emotes { get; set; }
+        public List<SevenTvEmote>? emotes { get; set; }
     }
 }

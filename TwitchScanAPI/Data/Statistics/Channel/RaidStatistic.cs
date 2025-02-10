@@ -74,6 +74,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _raidCounts.Clear();
             _raidsOverTime.Clear();
         }

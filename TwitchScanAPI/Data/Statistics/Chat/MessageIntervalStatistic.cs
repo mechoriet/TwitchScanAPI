@@ -34,6 +34,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         
         public void Dispose()
         {
+            GC.SuppressFinalize(this);
             _intervalCount = 0;
             _totalIntervalTicks = 0;
             _lastMessageTime = null;
