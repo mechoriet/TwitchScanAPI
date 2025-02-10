@@ -12,29 +12,45 @@ namespace TwitchScanAPI.HostedServices
     {
         private readonly TwitchChannelManager _twitchChannelManager;
         private readonly Stopwatch _appRunTime = new();
-        
+        private Task? _backgroundTask;
+        private readonly CancellationTokenSource _cts = new();
+
         public RestartHostedService(TwitchChannelManager twitchChannelManager)
         {
             _twitchChannelManager = twitchChannelManager;
             _appRunTime.Start();
         }
-        
-        public async Task StartAsync(CancellationToken cancellationToken)
+
+        public Task StartAsync(CancellationToken cancellationToken)
         {
-            while (!cancellationToken.IsCancellationRequested)
+            _backgroundTask = Task.Run(async () =>
             {
-                await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
-                var allOffline = _twitchChannelManager.AllChannelsOffline();
-                if (allOffline && _appRunTime.Elapsed.TotalHours > 24)
+                while (!_cts.Token.IsCancellationRequested)
                 {
-                    Environment.Exit(0);
+                    try
+                    {
+                        await Task.Delay(TimeSpan.FromMinutes(5), _cts.Token);
+
+                        var allOffline = _twitchChannelManager.AllChannelsOffline();
+                        if (allOffline && _appRunTime.Elapsed.TotalHours > 24)
+                        {
+                            Environment.Exit(0);
+                        }
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        // Swallow expected cancellation exception
+                    }
                 }
-            };
+            }, _cts.Token);
+
+            return Task.CompletedTask; // Allow the application to continue starting
         }
-        
+
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            return Task.CompletedTask;
+            _cts.Cancel(); // Signal the background task to stop
+            return _backgroundTask ?? Task.CompletedTask;
         }
     }
 }
