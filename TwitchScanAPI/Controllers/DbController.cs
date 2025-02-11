@@ -16,14 +16,12 @@ namespace TwitchScanAPI.Controllers
     [Route("[controller]/[action]")]
     public class DbController : Controller
     {
-        private readonly IConfiguration _configuration;
         private readonly MongoDbContext _context;
         private readonly TwitchChannelManager _twitchStats;
 
-        public DbController(TwitchChannelManager twitchStats, IConfiguration configuration, MongoDbContext context)
+        public DbController(TwitchChannelManager twitchStats, MongoDbContext context)
         {
             _twitchStats = twitchStats;
-            _configuration = configuration;
             _context = context;
         }
 

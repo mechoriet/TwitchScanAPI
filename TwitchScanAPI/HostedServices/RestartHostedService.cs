@@ -34,7 +34,8 @@ namespace TwitchScanAPI.HostedServices
                         var allOffline = _twitchChannelManager.AllChannelsOffline();
                         if (allOffline && _appRunTime.Elapsed.TotalHours > 24)
                         {
-                            Environment.Exit(0);
+                            //Environment.Exit(0);
+                            Console.WriteLine("All channels offline and last restart was over 24 hours ago. Could restart here.");
                         }
                     }
                     catch (TaskCanceledException)
