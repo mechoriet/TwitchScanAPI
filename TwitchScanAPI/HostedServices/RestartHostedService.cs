@@ -11,13 +11,16 @@ namespace TwitchScanAPI.HostedServices
     public class RestartHostedService : IHostedService
     {
         private readonly TwitchChannelManager _twitchChannelManager;
+        private readonly IHostApplicationLifetime _hostApplicationLifetime;
         private readonly Stopwatch _appRunTime = new();
         private Task? _backgroundTask;
         private readonly CancellationTokenSource _cts = new();
 
-        public RestartHostedService(TwitchChannelManager twitchChannelManager)
+        public RestartHostedService(TwitchChannelManager twitchChannelManager,
+            IHostApplicationLifetime hostApplicationLifetime)
         {
             _twitchChannelManager = twitchChannelManager;
+            _hostApplicationLifetime = hostApplicationLifetime;
             _appRunTime.Start();
         }
 
@@ -32,11 +35,9 @@ namespace TwitchScanAPI.HostedServices
                         await Task.Delay(TimeSpan.FromMinutes(5), _cts.Token);
 
                         var allOffline = _twitchChannelManager.AllChannelsOffline();
-                        if (allOffline && _appRunTime.Elapsed.TotalHours > 24)
-                        {
-                            //Environment.Exit(0);
-                            Console.WriteLine("All channels offline and last restart was over 24 hours ago. Could restart here.");
-                        }
+                        if (!allOffline || !(_appRunTime.Elapsed.TotalHours > 24)) continue;
+                        _hostApplicationLifetime.StopApplication();
+                        break;
                     }
                     catch (TaskCanceledException)
                     {

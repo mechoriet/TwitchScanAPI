@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using MongoDB.Driver;
 using TwitchScanAPI.Controllers.Annotations;
 using TwitchScanAPI.Data.Statistics.Base;
@@ -20,19 +21,29 @@ namespace TwitchScanAPI.Controllers
         private readonly MongoDbContext _context;
         private readonly TwitchChannelManager _twitchChannelManager;
         private readonly TwitchVodService _twitchVodService;
+        private readonly IHostApplicationLifetime _hostApplicationLifetime;
 
         public TwitchController(TwitchChannelManager twitchChannelManager, MongoDbContext context,
-            TwitchVodService twitchVodService)
+            TwitchVodService twitchVodService, IHostApplicationLifetime hostApplicationLifetime)
         {
-            _twitchChannelManager = twitchChannelManager;
             _context = context;
+            _twitchChannelManager = twitchChannelManager;
             _twitchVodService = twitchVodService;
+            _hostApplicationLifetime = hostApplicationLifetime;
         }
 
         private async Task<TwitchLogin?> GetUserFromAccessToken()
         {
             var accessToken = HttpContext.Request.Headers["AccessToken"].ToString();
             return await _context.TwitchLogins.Find(x => x.AccessToken == accessToken).FirstOrDefaultAsync();
+        }
+        
+        [HttpPost]
+        [MasterKey]
+        public ActionResult Stop()
+        {
+            _hostApplicationLifetime.StopApplication();
+            return Ok();
         }
 
         [HttpPost]
