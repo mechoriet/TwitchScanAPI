@@ -23,10 +23,4 @@
         <_ContentIncludedByDefault Remove="TwitchStats\TimedOut.json"/>
     </ItemGroup>
 
-    <ItemGroup>
-        <Content Include="..\.dockerignore">
-            <Link>.dockerignore</Link>
-        </Content>
-    </ItemGroup>
-
 </Project>
