@@ -42,7 +42,7 @@ namespace TwitchScanAPI.Controllers
             if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret))
                 return StatusCode(500, "Twitch API credentials not found");
 
-            var client = _httpClientFactory.CreateClient();
+            using var client = _httpClientFactory.CreateClient();
             var response = await client.PostAsync("https://id.twitch.tv/oauth2/token", new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("client_id", clientId),
@@ -106,7 +106,7 @@ namespace TwitchScanAPI.Controllers
             if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret) ||
                 string.IsNullOrEmpty(refreshToken)) return StatusCode(500);
 
-            var client = _httpClientFactory.CreateClient();
+            using var client = _httpClientFactory.CreateClient();
             var response = await client.PostAsync("https://id.twitch.tv/oauth2/token", new FormUrlEncodedContent(new[]
             {
                 new KeyValuePair<string, string>("client_id", clientId),

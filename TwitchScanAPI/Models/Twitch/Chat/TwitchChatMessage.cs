@@ -9,6 +9,8 @@ namespace TwitchScanAPI.Models.Twitch.Chat
         public string Username { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
         public string ColorHex { get; set; }
+        public int Bits { get; set; }
+        public double BitsInDollars { get; set; }
         public List<TwitchEmote> Emotes { get; set; } = new();
     }
 

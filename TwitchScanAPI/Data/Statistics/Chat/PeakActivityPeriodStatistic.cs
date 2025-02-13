@@ -17,6 +17,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
         // Dictionaries for tracking message counts in different channel states
         private readonly ConcurrentDictionary<DateTime, long> _messagesOverTime = new();
+        private readonly ConcurrentDictionary<DateTime, long> _bitsOverTime = new();
         private readonly ConcurrentDictionary<DateTime, long> _slowOnlyMessagesOverTime = new();
         private readonly ConcurrentDictionary<DateTime, long> _subOnlyMessagesOverTime = new();
 
@@ -46,6 +47,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
             return PeakActivityPeriods.Create(trend,
                 _messagesOverTime,
+                _bitsOverTime,
                 _subOnlyMessagesOverTime,
                 _emoteOnlyMessagesOverTime,
                 _slowOnlyMessagesOverTime
@@ -75,6 +77,10 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 _slowOnlyMessagesOverTime.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);
             else
                 _messagesOverTime.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);
+            
+            // Increment bits count if bits were used
+            if (message.ChatMessage.Bits > 0)
+                _bitsOverTime.AddOrUpdate(roundedTime, message.ChatMessage.Bits, (_, oldValue) => oldValue + message.ChatMessage.Bits);
             return Task.CompletedTask;
         }
 
@@ -86,23 +92,12 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             _channelState = channelState;
             return Task.CompletedTask;
         }
-
-        /// <summary>
-        ///     Helper method to clean up any dictionary that stores message counts.
-        /// </summary>
-        private static void CleanupDictionary(ConcurrentDictionary<DateTime, long> dictionary, DateTime expirationTime)
-        {
-            var keysToRemove = dictionary.Keys
-                .Where(key => key < expirationTime)
-                .ToList();
-
-            foreach (var key in keysToRemove) dictionary.TryRemove(key, out _);
-        }
         
         public void Dispose()
         {
             GC.SuppressFinalize(this);
             _messagesOverTime.Clear();
+            _bitsOverTime.Clear();
             _subOnlyMessagesOverTime.Clear();
             _emoteOnlyMessagesOverTime.Clear();
             _slowOnlyMessagesOverTime.Clear();

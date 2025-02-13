@@ -25,7 +25,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly IConfiguration _configuration;
 
         // BetterTTV & 7TV
-        private readonly EmoteService _emoteService;
         private readonly Timer _reconnectTimer;
         private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
         private readonly TwitchAPI _api = new();
@@ -38,9 +37,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public List<MergedEmote>? ExternalChannelEmotes;
 
         // Constructor
-        private TwitchClientManager(string channelName, IConfiguration configuration, EmoteService emoteService)
+        private TwitchClientManager(string channelName, IConfiguration configuration)
         {
-            _emoteService = emoteService;
             _channelName = channelName;
             _configuration = configuration;
             ConfigureTwitchApi();
@@ -78,7 +76,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration,
             EmoteService emoteService)
         {
-            var manager = new TwitchClientManager(channelName, configuration, emoteService);
+            var manager = new TwitchClientManager(channelName, configuration);
             var channelInformation = await manager.GetChannelInfoAsync();
             manager.ExternalChannelEmotes = await EmoteService.GetChannelEmotesAsync(channelInformation.Id);
             await manager.StartClientAsync();

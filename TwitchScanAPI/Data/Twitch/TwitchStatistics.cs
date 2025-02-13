@@ -221,6 +221,8 @@ namespace TwitchScanAPI.Data.Twitch
                 Username = chatMessage.Username,
                 Message = chatMessage.Message,
                 ColorHex = chatMessage.ColorHex,
+                Bits = chatMessage.Bits,
+                BitsInDollars = chatMessage.BitsInDollars,
                 Emotes = e.ChatMessage.EmoteSet.Emotes
                     .Select(em => new TwitchEmote(em.Id, em.Name, em.StartIndex, em.EndIndex))
                     .ToList()

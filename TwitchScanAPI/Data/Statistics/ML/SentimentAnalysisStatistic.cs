@@ -24,8 +24,8 @@ namespace TwitchScanAPI.Data.Statistics.ML
         private readonly TimeSpan _bucketSize = TimeSpan.FromMinutes(1);
         private readonly ConcurrentDictionary<DateTime, SentimentScores> _sentimentOverTime = new();
         private readonly List<SentimentMessage> _topNegativeMessages = new();
-        private readonly object _topNegativeMessagesLock = new();
         private readonly List<SentimentMessage> _topPositiveMessages = new();
+        private readonly object _topNegativeMessagesLock = new();
         private readonly object _topPositiveMessagesLock = new();
 
         private readonly ConcurrentDictionary<string, Models.ML.SentimentAnalysis.UserSentiment> _userSentiments =
@@ -236,7 +236,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
             var bucketTicks = time.Ticks - time.Ticks % _bucketSize.Ticks;
             return new DateTime(bucketTicks, time.Kind);
         }
-        
+
         public void Dispose()
         {
             GC.SuppressFinalize(this);

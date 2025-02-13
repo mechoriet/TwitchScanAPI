@@ -25,5 +25,6 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
         public long AverageViewers { get; set; }
         public long TotalMessages { get; set; }
         public object? Statistics { get; set; }
+        public object? ChatHistory { get; set; }
     }
 }
