@@ -36,9 +36,19 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
         
         private static Dictionary<string, long> FormatAndSortDictionary(IDictionary<DateTime, long> source)
         {
-            return source
-                .OrderByDescending(kv => kv.Key)
-                .ToDictionary(kv => kv.Key.ToString("yyyy-MM-ddTHH:mm:ssZ"), kv => kv.Value);
+            try
+            {
+                var snapshot = source.ToArray();
+                return snapshot
+                    .OrderByDescending(kv => kv.Key)
+                    .ToDictionary(kv => kv.Key.ToString("yyyy-MM-ddTHH:mm:ssZ"), kv => kv.Value);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error formatting dictionary: {ex.Message}");
+                throw;
+            }
         }
+
     }
 }
