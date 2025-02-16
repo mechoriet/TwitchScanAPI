@@ -36,8 +36,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
         public object GetResult()
         {
             var sentimentData = _sentimentOverTime
-                .Select(kv => new { kv.Key, Value = kv.Value.Compound })
-                .ToList();
+                    .Select(kv => new { kv.Key, Value = kv.Value.Compound });
 
             var trend = TrendService.CalculateTrend(
                 sentimentData,
