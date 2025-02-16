@@ -9,33 +9,25 @@ using TwitchScanAPI.Global;
 
 namespace TwitchScanAPI.Services
 {
-    public class TwitchAuthService
+    public class TwitchAuthService(IConfiguration configuration, HttpClient httpClient)
     {
         // Twitch OAuth API endpoint
         private const string TokenUrl = "https://id.twitch.tv/oauth2/token";
-        private readonly IConfiguration _configuration;
-        private readonly HttpClient _httpClient;
-
-        public TwitchAuthService(IConfiguration configuration, HttpClient httpClient)
-        {
-            _configuration = configuration;
-            _httpClient = httpClient;
-        }
 
         public async Task<string?> GetOAuthTokenAsync()
         {
             // Get values from IConfiguration
-            var oauth = _configuration.GetValue<string>(Variables.TwitchOauthKey);
-            var refreshToken = _configuration.GetValue<string>(Variables.TwitchRefreshToken);
-            var clientId = _configuration.GetValue<string>(Variables.TwitchClientId);
-            var clientSecret = _configuration.GetValue<string>(Variables.TwitchClientSecret);
+            var oauth = configuration.GetValue<string>(Variables.TwitchOauthKey);
+            var refreshToken = configuration.GetValue<string>(Variables.TwitchRefreshToken);
+            var clientId = configuration.GetValue<string>(Variables.TwitchClientId);
+            var clientSecret = configuration.GetValue<string>(Variables.TwitchClientSecret);
 
             if (string.IsNullOrEmpty(oauth) || string.IsNullOrEmpty(refreshToken) || string.IsNullOrEmpty(clientId) ||
                 string.IsNullOrEmpty(clientSecret)) throw new Exception("Twitch OAuth configuration is missing.");
 
             var request = new HttpRequestMessage(HttpMethod.Get, "https://id.twitch.tv/oauth2/validate");
             request.Headers.Add("Authorization", $"OAuth {oauth}");
-            var authResponse = await _httpClient.SendAsync(request);
+            var authResponse = await httpClient.SendAsync(request);
 
             var oauthValidResponse = await authResponse.Content.ReadFromJsonAsync<ValidationResponse>();
 
@@ -53,7 +45,7 @@ namespace TwitchScanAPI.Services
             }!);
 
             // Send POST request to refresh the token
-            var response = await _httpClient.PostAsync(TokenUrl, requestBody);
+            var response = await httpClient.PostAsync(TokenUrl, requestBody);
             if (!response.IsSuccessStatusCode)
                 throw new Exception($"Failed to retrieve OAuth token: {response.ReasonPhrase}");
 

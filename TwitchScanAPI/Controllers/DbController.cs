@@ -14,21 +14,12 @@ namespace TwitchScanAPI.Controllers
     /// </summary>
     [MasterKey]
     [Route("[controller]/[action]")]
-    public class DbController : Controller
+    public class DbController(TwitchChannelManager twitchStats, MongoDbContext context) : Controller
     {
-        private readonly MongoDbContext _context;
-        private readonly TwitchChannelManager _twitchStats;
-
-        public DbController(TwitchChannelManager twitchStats, MongoDbContext context)
-        {
-            _twitchStats = twitchStats;
-            _context = context;
-        }
-
         [HttpGet]
         public async Task<ActionResult> GetDbSize()
         {
-            var collection = _context.StatisticHistory;
+            var collection = context.StatisticHistory;
             var stats = await collection.EstimatedDocumentCountAsync();
             return Ok(stats);
         }
@@ -36,36 +27,36 @@ namespace TwitchScanAPI.Controllers
         [HttpPost]
         public async Task<ActionResult> SaveSnapshots()
         {
-            await _twitchStats.SaveSnapshotsAsync();
+            await twitchStats.SaveSnapshotsAsync();
             return Ok();
         }
 
         [HttpDelete]
         public async Task<ActionResult> CleanDb()
         {
-            await _context.StatisticHistory.DeleteManyAsync(_ => true);
+            await context.StatisticHistory.DeleteManyAsync(_ => true);
             return Ok();
         }
 
         [HttpDelete]
         public async Task<ActionResult> DeleteItem(Guid id)
         {
-            await _context.StatisticHistory.DeleteOneAsync(x => x.Id == id);
+            await context.StatisticHistory.DeleteOneAsync(x => x.Id == id);
             return Ok();
         }
 
         [HttpDelete]
         public async Task<ActionResult> DeleteChannel(string channelName)
         {
-            await _context.StatisticHistory.DeleteManyAsync(x => x.UserName == channelName);
-            _twitchStats.Remove(channelName);
+            await context.StatisticHistory.DeleteManyAsync(x => x.UserName == channelName);
+            twitchStats.Remove(channelName);
             return Ok();
         }
 
         [HttpDelete]
         public async Task<ActionResult> DeleteEmptyViewCounts()
         {
-            await _context.StatisticHistory.DeleteManyAsync(x => x.AverageViewers == 0 || x.PeakViewers == 0);
+            await context.StatisticHistory.DeleteManyAsync(x => x.AverageViewers == 0 || x.PeakViewers == 0);
             return Ok();
         }
     }
