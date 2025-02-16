@@ -16,22 +16,13 @@ using TwitchScanAPI.Services;
 
 namespace TwitchScanAPI.Data.Twitch.Manager
 {
-    public class TwitchChannelManager : IDisposable
+    public class TwitchChannelManager(
+        IConfiguration configuration,
+        NotificationService notificationService,
+        MongoDbContext context)
+        : IDisposable
     {
-        private readonly IConfiguration _configuration;
-        private readonly MongoDbContext _context;
-        private readonly EmoteService _emoteService;
-        private readonly NotificationService _notificationService;
         public readonly List<TwitchStatistics> TwitchStats = new();
-
-        public TwitchChannelManager(IConfiguration configuration, NotificationService notificationService,
-            MongoDbContext context, EmoteService emoteService)
-        {
-            _configuration = configuration;
-            _notificationService = notificationService;
-            _context = context;
-            _emoteService = emoteService;
-        }
 
         public void Dispose()
         {
@@ -60,8 +51,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             try
             {
-                var stats = await TwitchStatistics.CreateAsync(channelName, _configuration, _notificationService,
-                    _context, _emoteService);
+                var stats = await TwitchStatistics.CreateAsync(channelName, configuration, notificationService,
+                    context);
                 if (stats == null)
                 {
                     var error = new Error($"{channelName} not found", StatusCodes.Status404NotFound);
@@ -204,7 +195,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             try
             {
-                return _context.StatisticHistory
+                return context.StatisticHistory
                     .Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName))
                     .ToList()
                     .Select(x => new StatisticTimeline
@@ -229,7 +220,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             if (!Guid.TryParse(id, out var guidKey)) throw new FormatException("Invalid GUID format");
 
-            return _context.StatisticHistory
+            return context.StatisticHistory
                 .Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName) &
                       Builders<StatisticHistory>.Filter.Eq(x => x.Id, guidKey))
                 .FirstOrDefault();

@@ -73,8 +73,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public event EventHandler? OnDisconnected;
 
         // Factory method
-        public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration,
-            EmoteService emoteService)
+        public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration)
         {
             var manager = new TwitchClientManager(channelName, configuration);
             var channelInformation = await manager.GetChannelInfoAsync();

@@ -72,10 +72,10 @@ namespace TwitchScanAPI.Data.Twitch
         }
 
         public static async Task<TwitchStatistics?> CreateAsync(string channelName, IConfiguration configuration,
-            NotificationService notificationService, MongoDbContext context, EmoteService emoteService)
+            NotificationService notificationService, MongoDbContext context)
         {
             var clientManager =
-                await TwitchClientManager.CreateAsync(channelName, configuration, emoteService);
+                await TwitchClientManager.CreateAsync(channelName, configuration);
 
             return clientManager == null
                 ? null
