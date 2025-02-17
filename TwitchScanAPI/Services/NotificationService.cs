@@ -31,7 +31,7 @@ namespace TwitchScanAPI.Services
 
         public Task ReceiveMessageCountAsync(string channelName, long messageCount)
         {
-            return _hubContext.Clients.All.ReceiveMessageCount(channelName, messageCount);
+            return _hubContext.Clients.Group("public").ReceiveMessageCount(channelName, messageCount);
         }
 
         public Task ReceiveObservedMessageAsync(string channelName, ChannelMessage message)
@@ -76,7 +76,7 @@ namespace TwitchScanAPI.Services
 
         public Task ReceiveOnlineStatusAsync(ChannelStatus channelStatus)
         {
-            return _hubContext.Clients.All.ReceiveStatus(channelStatus);
+            return _hubContext.Clients.Group("public").ReceiveStatus(channelStatus);
         }
     }
 }
