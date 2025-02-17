@@ -30,7 +30,7 @@ namespace TwitchScanAPI.Controllers
             await twitchStats.SaveSnapshotsAsync();
             return Ok();
         }
-
+        
         [HttpDelete]
         public async Task<ActionResult> CleanDb()
         {

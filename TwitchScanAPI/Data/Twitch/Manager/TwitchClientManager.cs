@@ -264,7 +264,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _fetching = true;
             try
             {
-                var streams = await _api.Helix.Streams.GetStreamsAsync(userLogins: new List<string> { _channelName });
+                var streams = await _api.Helix.Streams.GetStreamsAsync(userLogins: [_channelName]);
                 var isOnline = streams?.Streams.Any() ?? false;
 
                 switch (IsOnline)

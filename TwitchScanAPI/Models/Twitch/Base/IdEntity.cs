@@ -6,6 +6,6 @@ namespace TwitchScanAPI.Models.Twitch.Base
     public class IdEntity
     {
         [JsonIgnore]
-        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid Id { get; } = Guid.NewGuid();
     }
 }

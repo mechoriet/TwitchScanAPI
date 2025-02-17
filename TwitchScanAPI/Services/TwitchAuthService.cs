@@ -36,13 +36,12 @@ namespace TwitchScanAPI.Services
                 return oauth;
 
             // Request body parameters for token refresh
-            var requestBody = new FormUrlEncodedContent(new[]
-            {
+            var requestBody = new FormUrlEncodedContent([
                 new KeyValuePair<string, string>("client_id", clientId),
                 new KeyValuePair<string, string>("client_secret", clientSecret),
                 new KeyValuePair<string, string>("grant_type", "refresh_token"),
                 new KeyValuePair<string, string>("refresh_token", refreshToken)
-            }!);
+            ]!);
 
             // Send POST request to refresh the token
             var response = await httpClient.PostAsync(TokenUrl, requestBody);

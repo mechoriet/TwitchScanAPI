@@ -19,22 +19,22 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         private readonly object _cleanupLock = new();
 
         // Stores recent messages for similarity analysis
-        private readonly ConcurrentQueue<MessageEntry> _recentMessages = new();
+        private ConcurrentQueue<MessageEntry> _recentMessages = new();
         private readonly TimeSpan _snapshotRetention = TimeSpan.FromMinutes(30); // Retain snapshots
-        private readonly ConcurrentQueue<Snapshot> _snapshots = new();
+        private ConcurrentQueue<Snapshot> _snapshots = new();
 
         // Timer for periodic snapshots
         private readonly TimeSpan _timeWindow = TimeSpan.FromMinutes(10); // Time window for analysis
 
         // Stores metrics for each user
-        private readonly ConcurrentDictionary<string, UserBotMetrics> _userMetrics = new();
+        private ConcurrentDictionary<string, UserBotMetrics> _userMetrics = new();
 
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _recentMessages.Clear();
-            _snapshots.Clear();
-            _userMetrics.Clear();
+            _recentMessages = new ConcurrentQueue<MessageEntry>();
+            _snapshots = new ConcurrentQueue<Snapshot>();
+            _userMetrics = new ConcurrentDictionary<string, UserBotMetrics>();
         }
 
         public string Name => "BotLikeliness";

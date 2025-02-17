@@ -9,7 +9,7 @@ namespace TwitchScanAPI.Data.Statistics.User
 {
     public class TotalUsersStatistic : IStatistic
     {
-        private readonly ConcurrentDictionary<string, byte>
+        private ConcurrentDictionary<string, byte>
             _users = new(StringComparer.OrdinalIgnoreCase); // Case-insensitive username comparison
 
         public string Name => "TotalUsers";
@@ -43,7 +43,7 @@ namespace TwitchScanAPI.Data.Statistics.User
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _users.Clear();
+            _users = new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
         }
     }
 }

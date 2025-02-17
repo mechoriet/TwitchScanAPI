@@ -14,7 +14,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         private static readonly Regex
             WordSplitter = new(@"\W+", RegexOptions.Compiled); // Splits by any non-word character
 
-        private readonly ConcurrentDictionary<string, int> _wordCounts = new();
+        private ConcurrentDictionary<string, int> _wordCounts = new();
         public string Name => "WordFrequency";
 
         public object GetResult()
@@ -53,7 +53,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _wordCounts.Clear();
+            _wordCounts = new ConcurrentDictionary<string, int>();
         }
     }
 }

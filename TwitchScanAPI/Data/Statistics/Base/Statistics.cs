@@ -104,7 +104,7 @@ namespace TwitchScanAPI.Data.Statistics.Base
             foreach (var (statistic, method) in handlers)
             {
                 if (eventData == null) continue;
-                var result = method.Invoke(statistic, new object[] { eventData });
+                var result = method.Invoke(statistic, [eventData]);
 
                 // Check if the method returns a Task
                 if (result is Task task) await task; // Await if it's a Task

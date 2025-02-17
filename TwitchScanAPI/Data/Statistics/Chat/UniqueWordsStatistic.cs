@@ -11,7 +11,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
     public class UniqueWordsStatistic : IStatistic
     {
         private static readonly Regex WordRegex = new(@"\b\w+\b", RegexOptions.Compiled); // Matches individual words
-        private readonly ConcurrentDictionary<string, byte> _uniqueWords = new();
+        private ConcurrentDictionary<string, byte> _uniqueWords = new();
         public string Name => "UniqueWords";
 
         public object GetResult()
@@ -35,7 +35,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _uniqueWords.Clear();
+            _uniqueWords = new ConcurrentDictionary<string, byte>();
         }
     }
 }

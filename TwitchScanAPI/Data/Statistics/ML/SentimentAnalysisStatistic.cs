@@ -22,13 +22,13 @@ namespace TwitchScanAPI.Data.Statistics.ML
         private static readonly SentimentIntensityAnalyzer Analyzer = new();
 
         private readonly TimeSpan _bucketSize = TimeSpan.FromMinutes(1);
-        private readonly ConcurrentDictionary<DateTime, SentimentScores> _sentimentOverTime = new();
-        private readonly List<SentimentMessage> _topNegativeMessages = new();
-        private readonly List<SentimentMessage> _topPositiveMessages = new();
+        private ConcurrentDictionary<DateTime, SentimentScores> _sentimentOverTime = new();
+        private List<SentimentMessage> _topNegativeMessages = new();
+        private List<SentimentMessage> _topPositiveMessages = new();
         private readonly object _topNegativeMessagesLock = new();
         private readonly object _topPositiveMessagesLock = new();
-
-        private readonly ConcurrentDictionary<string, Models.ML.SentimentAnalysis.UserSentiment> _userSentiments =
+        
+        private ConcurrentDictionary<string, Models.ML.SentimentAnalysis.UserSentiment> _userSentiments =
             new(StringComparer.OrdinalIgnoreCase);
 
         public string Name => "SentimentAnalysis";
@@ -99,7 +99,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
             return Task.CompletedTask;
         }
 
-        private List<SentimentOverTime> GetSentimentOverTime()
+        private IEnumerable<SentimentOverTime> GetSentimentOverTime()
         {
             return _sentimentOverTime
                 .OrderBy(kvp => kvp.Key)
@@ -111,11 +111,10 @@ namespace TwitchScanAPI.Data.Statistics.ML
                     AverageNeutral = kvp.Value.MessageCount > 0 ? kvp.Value.Neutral / kvp.Value.MessageCount : 0,
                     AverageCompound = kvp.Value.MessageCount > 0 ? kvp.Value.Compound / kvp.Value.MessageCount : 0,
                     MessageCount = (int)kvp.Value.MessageCount
-                })
-                .ToList();
+                });
         }
 
-        private List<UserSentiment> GetTopPositiveUsers()
+        private IEnumerable<UserSentiment> GetTopPositiveUsers()
         {
             return _userSentiments.Values
                 .Where(u => u.MessageCount >= MinMessages)
@@ -129,11 +128,10 @@ namespace TwitchScanAPI.Data.Statistics.ML
                     AverageNeutral = Math.Round(u.AverageNeutral, 3),
                     AverageCompound = Math.Round(u.AverageCompound, 3),
                     MessageCount = u.MessageCount
-                })
-                .ToList();
+                });
         }
 
-        private List<UserSentiment> GetTopNegativeUsers()
+        private IEnumerable<UserSentiment> GetTopNegativeUsers()
         {
             return _userSentiments.Values
                 .Where(u => u.MessageCount >= MinMessages)
@@ -147,11 +145,10 @@ namespace TwitchScanAPI.Data.Statistics.ML
                     AverageNeutral = Math.Round(u.AverageNeutral, 3),
                     AverageCompound = Math.Round(u.AverageCompound, 3),
                     MessageCount = u.MessageCount
-                })
-                .ToList();
+                });
         }
 
-        private List<UserSentiment> GetTopUsersWithSentiment()
+        private IEnumerable<UserSentiment> GetTopUsersWithSentiment()
         {
             return _userSentiments.Values
                 .OrderByDescending(u => u.MessageCount)
@@ -164,29 +161,26 @@ namespace TwitchScanAPI.Data.Statistics.ML
                     AverageNeutral = Math.Round(u.AverageNeutral, 3),
                     AverageCompound = Math.Round(u.AverageCompound, 3),
                     MessageCount = u.MessageCount
-                })
-                .ToList();
+                });
         }
 
-        private List<SentimentMessage> GetTopPositiveMessages()
+        private IEnumerable<SentimentMessage> GetTopPositiveMessages()
         {
             lock (_topPositiveMessagesLock)
             {
                 return _topPositiveMessages
                     .OrderByDescending(m => m.Compound)
-                    .Take(MaxTopMessages)
-                    .ToList();
+                    .Take(MaxTopMessages);
             }
         }
 
-        private List<SentimentMessage> GetTopNegativeMessages()
+        private IEnumerable<SentimentMessage> GetTopNegativeMessages()
         {
             lock (_topNegativeMessagesLock)
             {
                 return _topNegativeMessages
                     .OrderBy(m => m.Compound)
-                    .Take(MaxTopMessages)
-                    .ToList();
+                    .Take(MaxTopMessages);
             }
         }
 
@@ -239,10 +233,10 @@ namespace TwitchScanAPI.Data.Statistics.ML
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _sentimentOverTime.Clear();
-            _userSentiments.Clear();
-            _topPositiveMessages.Clear();
-            _topNegativeMessages.Clear();
+            _sentimentOverTime = new ConcurrentDictionary<DateTime, SentimentScores>();
+            _userSentiments = new ConcurrentDictionary<string, Models.ML.SentimentAnalysis.UserSentiment>();
+            _topPositiveMessages = [];
+            _topNegativeMessages = [];
         }
     }
 }

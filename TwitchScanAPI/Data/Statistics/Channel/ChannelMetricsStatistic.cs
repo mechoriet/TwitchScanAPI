@@ -15,10 +15,10 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         private const int BucketSize = 1; // Grouping viewers into 1-minute periods
 
         // For Viewer Count Tracking
-        private readonly ConcurrentQueue<(DateTime Timestamp, long Viewers)> _viewerHistory = new();
+        private ConcurrentQueue<(DateTime Timestamp, long Viewers)> _viewerHistory = new();
 
         // For Viewers Over Time
-        private readonly ConcurrentDictionary<string, long> _viewersOverTime = new();
+        private ConcurrentDictionary<string, long> _viewersOverTime = new();
 
         // For Current Game and Uptime Tracking
         private string? _currentGame;
@@ -129,8 +129,8 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _viewerHistory.Clear();
-            _viewersOverTime.Clear();
+            _viewerHistory = new ConcurrentQueue<(DateTime, long)>();
+            _viewersOverTime = new ConcurrentDictionary<string, long>();
             _currentGame = null;
             _currentUptime = TimeSpan.Zero;
             _peakViewers = 0;
