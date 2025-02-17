@@ -5,12 +5,12 @@ namespace TwitchScanAPI.Models.Twitch.Statistics
 {
     public class SentimentAnalysisResult : TimedEntity
     {
-        public List<SentimentOverTime> SentimentOverTime { get; set; } = new();
-        public List<UserSentiment> TopUsers { get; set; } = new();
-        public List<UserSentiment> TopPositiveUsers { get; set; } = new();
-        public List<UserSentiment> TopNegativeUsers { get; set; } = new();
-        public List<SentimentMessage> TopPositiveMessages { get; set; } = new();
-        public List<SentimentMessage> TopNegativeMessages { get; set; } = new();
+        public IEnumerable<SentimentOverTime> SentimentOverTime { get; set; } = [];
+        public IEnumerable<UserSentiment> TopUsers { get; set; } = [];
+        public IEnumerable<UserSentiment> TopPositiveUsers { get; set; } = [];
+        public IEnumerable<UserSentiment> TopNegativeUsers { get; set; } = [];
+        public IEnumerable<SentimentMessage> TopPositiveMessages { get; set; } = [];
+        public IEnumerable<SentimentMessage> TopNegativeMessages { get; set; } = [];
         public Trend Trend { get; set; }
     }
 }

@@ -16,13 +16,13 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         private const int BucketSize = 1; // Grouping subscriptions into 1-minute periods
 
         // Tracks the count of each SubscriptionType
-        private readonly ConcurrentDictionary<SubscriptionType, int> _subscriptionCounts = new();
+        private ConcurrentDictionary<SubscriptionType, int> _subscriptionCounts = new();
 
         // Tracks the number of subscriptions over each minute interval
-        private readonly ConcurrentDictionary<string, long> _subscriptionsOverTime = new();
+        private ConcurrentDictionary<string, long> _subscriptionsOverTime = new();
 
         // Tracks the total subscription months per subscriber (for gifted subscriptions)
-        private readonly ConcurrentDictionary<string, int> _topSubscriber = new(StringComparer.OrdinalIgnoreCase);
+        private ConcurrentDictionary<string, int> _topSubscriber = new(StringComparer.OrdinalIgnoreCase);
         public string Name => "SubscriptionStatistic";
 
         public object GetResult()
@@ -89,9 +89,9 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _subscriptionCounts.Clear();
-            _subscriptionsOverTime.Clear();
-            _topSubscriber.Clear();
+            _subscriptionCounts = new ConcurrentDictionary<SubscriptionType, int>();
+            _subscriptionsOverTime = new ConcurrentDictionary<string, long>();
+            _topSubscriber = new ConcurrentDictionary<string, int>();
         }
     }
 }

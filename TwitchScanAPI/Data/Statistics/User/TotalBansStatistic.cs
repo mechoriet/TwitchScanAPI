@@ -9,7 +9,7 @@ namespace TwitchScanAPI.Data.Statistics.User
 {
     public class TotalBansStatistic : IStatistic
     {
-        private readonly ConcurrentDictionary<string, int> _banReasons = new(StringComparer.OrdinalIgnoreCase);
+        private ConcurrentDictionary<string, int> _banReasons = new(StringComparer.OrdinalIgnoreCase);
 
         private int _banCount;
         public string Name => "TotalBans";
@@ -36,7 +36,7 @@ namespace TwitchScanAPI.Data.Statistics.User
         {
             GC.SuppressFinalize(this);
             _banCount = 0;
-            _banReasons.Clear();
+            _banReasons = new ConcurrentDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         }
     }
 }

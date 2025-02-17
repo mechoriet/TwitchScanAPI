@@ -13,10 +13,10 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         private const int BucketSize = 1; // Grouping raids into 1-minute periods
 
         // Tracks the count of raids
-        private readonly ConcurrentDictionary<string, int> _raidCounts = new(StringComparer.OrdinalIgnoreCase);
+        private ConcurrentDictionary<string, int> _raidCounts = new(StringComparer.OrdinalIgnoreCase);
 
         // Tracks raids over time (bucketed by minute)
-        private readonly ConcurrentDictionary<string, string> _raidsOverTime = new();
+        private ConcurrentDictionary<string, string> _raidsOverTime = new();
         public string Name => "RaidStatistic";
 
         public object GetResult()
@@ -75,8 +75,8 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _raidCounts.Clear();
-            _raidsOverTime.Clear();
+            _raidCounts = new ConcurrentDictionary<string, int>();
+            _raidsOverTime = new ConcurrentDictionary<string, string>();
         }
     }
 }

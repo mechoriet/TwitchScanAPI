@@ -10,8 +10,8 @@ namespace TwitchScanAPI.Global
         public const string TwitchClientSecret = "clientSecret";
         public const string TwitchChatName = "chatName";
 
-        public static readonly List<string> BotNames = new()
-        {
+        public static readonly List<string> BotNames =
+        [
             "streamlabs",
             "nightbot",
             "fossabot",
@@ -25,6 +25,6 @@ namespace TwitchScanAPI.Global
             "streamstickers",
             "regressz",
             "botrixoficial"
-        };
+        ];
     }
 }

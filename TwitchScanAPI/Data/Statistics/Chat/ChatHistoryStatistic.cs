@@ -15,7 +15,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         private const int MaxMessagesPerUser = 2000; // Limit to avoid memory overload
 
         // Stores chat history per user, each user has a list of messages
-        private readonly ConcurrentDictionary<string, List<ChannelMessage>> _chatHistory = new();
+        private ConcurrentDictionary<string, List<ChannelMessage>> _chatHistory = new();
         public string Name => "ChatHistory";
 
         public object GetResult()
@@ -34,7 +34,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
             // Add the message to the user's chat history
             _chatHistory.AddOrUpdate(username,
-                new List<ChannelMessage> { message }, // If no history, start a new list
+                [message], // If no history, start a new list
                 (_, existingMessages) =>
                 {
                     lock (existingMessages) // Ensure thread safety when modifying the list
@@ -56,7 +56,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _chatHistory.Clear();
+            _chatHistory = new ConcurrentDictionary<string, List<ChannelMessage>>();
         }
     }
 }

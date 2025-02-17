@@ -10,7 +10,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
     {
         public string Name => "BitsCheeredStatistic";
         
-        private readonly ConcurrentDictionary<string, int> _topBitDonators = new();
+        private ConcurrentDictionary<string, int> _topBitDonators = new();
         
         public object GetResult()
         {
@@ -27,7 +27,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         
         public void Dispose()
         {
-            _topBitDonators.Clear();
+            _topBitDonators = new ConcurrentDictionary<string, int>();
         }
     }
 }

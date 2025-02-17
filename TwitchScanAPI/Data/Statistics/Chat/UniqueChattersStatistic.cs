@@ -8,7 +8,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 {
     public class UniqueChattersStatistic : IStatistic
     {
-        private readonly ConcurrentDictionary<string, byte> _uniqueChatters = new();
+        private ConcurrentDictionary<string, byte> _uniqueChatters = new();
         public string Name => "UniqueChatters";
 
         public object GetResult()
@@ -31,7 +31,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _uniqueChatters.Clear();
+            _uniqueChatters = new ConcurrentDictionary<string, byte>();
         }
     }
 }

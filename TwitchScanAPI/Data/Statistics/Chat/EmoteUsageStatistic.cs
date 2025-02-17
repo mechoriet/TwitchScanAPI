@@ -9,7 +9,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 {
     public class EmoteUsageStatistic : IStatistic
     {
-        private readonly ConcurrentDictionary<string, int> _emoteCounts = new(StringComparer.OrdinalIgnoreCase);
+        private ConcurrentDictionary<string, int> _emoteCounts = new(StringComparer.OrdinalIgnoreCase);
         public string Name => "EmoteUsage";
 
         public object GetResult()
@@ -30,7 +30,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _emoteCounts.Clear();
+            _emoteCounts = new ConcurrentDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         }
     }
 }

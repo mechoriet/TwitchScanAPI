@@ -6,6 +6,7 @@ namespace TwitchScanAPI.Models.Twitch.Base
     public class IdEntity
     {
         [JsonIgnore]
-        public Guid Id { get; set; } = Guid.NewGuid();
+        // Setter is used by Entity Framework
+        public Guid Id { get; set;  } = Guid.NewGuid();
     }
 }

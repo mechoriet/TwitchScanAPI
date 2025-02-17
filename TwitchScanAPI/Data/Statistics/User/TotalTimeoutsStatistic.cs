@@ -9,7 +9,7 @@ namespace TwitchScanAPI.Data.Statistics.User
 {
     public class TotalTimeoutsStatistic : IStatistic
     {
-        private readonly ConcurrentDictionary<string, int> _timeoutReasons = new(StringComparer.OrdinalIgnoreCase);
+        private ConcurrentDictionary<string, int> _timeoutReasons = new(StringComparer.OrdinalIgnoreCase);
 
         private int _timeoutCount;
         private long _totalTimeoutDuration;
@@ -41,7 +41,7 @@ namespace TwitchScanAPI.Data.Statistics.User
             GC.SuppressFinalize(this);
             _timeoutCount = 0;
             _totalTimeoutDuration = 0;
-            _timeoutReasons.Clear();
+            _timeoutReasons = new ConcurrentDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         }
     }
 }

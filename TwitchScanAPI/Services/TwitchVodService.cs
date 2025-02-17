@@ -121,7 +121,7 @@ namespace TwitchScanAPI.Services
 
         private async Task<string> GetUserIdFromUserName(string userName)
         {
-            var userResponse = await _api.Helix.Users.GetUsersAsync(logins: new List<string> { userName });
+            var userResponse = await _api.Helix.Users.GetUsersAsync(logins: [userName]);
             return userResponse.Users.FirstOrDefault()?.Id ?? string.Empty;
         }
 

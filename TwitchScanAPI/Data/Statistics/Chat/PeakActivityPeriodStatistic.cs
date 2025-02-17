@@ -13,13 +13,13 @@ namespace TwitchScanAPI.Data.Statistics.Chat
     public class PeakActivityPeriodStatistic : IStatistic
     {
         private const int BucketSize = 1; // Grouping messages into 1-minute periods
-        private readonly ConcurrentDictionary<DateTime, long> _emoteOnlyMessagesOverTime = new();
 
         // Dictionaries for tracking message counts in different channel states
-        private readonly ConcurrentDictionary<DateTime, long> _messagesOverTime = new();
-        private readonly ConcurrentDictionary<DateTime, long> _bitsOverTime = new();
-        private readonly ConcurrentDictionary<DateTime, long> _slowOnlyMessagesOverTime = new();
-        private readonly ConcurrentDictionary<DateTime, long> _subOnlyMessagesOverTime = new();
+        private ConcurrentDictionary<DateTime, long> _messagesOverTime = new();
+        private ConcurrentDictionary<DateTime, long> _bitsOverTime = new();
+        private ConcurrentDictionary<DateTime, long> _slowOnlyMessagesOverTime = new();
+        private ConcurrentDictionary<DateTime, long> _subOnlyMessagesOverTime = new();
+        private ConcurrentDictionary<DateTime, long> _emoteOnlyMessagesOverTime = new();
 
         // Stores the current channel state
         private ChannelState? _channelState;
@@ -96,11 +96,11 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         public void Dispose()
         {
             GC.SuppressFinalize(this);
-            _messagesOverTime.Clear();
-            _bitsOverTime.Clear();
-            _subOnlyMessagesOverTime.Clear();
-            _emoteOnlyMessagesOverTime.Clear();
-            _slowOnlyMessagesOverTime.Clear();
+            _messagesOverTime = new ConcurrentDictionary<DateTime, long>();
+            _bitsOverTime = new ConcurrentDictionary<DateTime, long>();
+            _subOnlyMessagesOverTime = new ConcurrentDictionary<DateTime, long>();
+            _emoteOnlyMessagesOverTime = new ConcurrentDictionary<DateTime, long>();
+            _slowOnlyMessagesOverTime = new ConcurrentDictionary<DateTime, long>();
             _channelState = null;
         }
     }
