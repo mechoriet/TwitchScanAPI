@@ -23,6 +23,13 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(10);
         private readonly string _channelName;
         private readonly IConfiguration _configuration;
+        
+        private static readonly ClientOptions ClientOptions = new()
+        {
+            MessagesAllowedInPeriod = 750,
+            ThrottlingPeriod = TimeSpan.FromSeconds(30)
+        };
+        private WebSocketClient? _customClient;
 
         // BetterTTV & 7TV
         private readonly Timer _reconnectTimer;
@@ -54,6 +61,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             GC.SuppressFinalize(this);
             DisconnectClient();
             _reconnectTimer.Dispose();
+            _customClient?.Dispose();
         }
 
         // Events to expose
@@ -120,16 +128,11 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 _configuration.GetValue<string>(Variables.TwitchChatName),
                 _configuration.GetValue<string>(Variables.TwitchOauthKey));
 
-            var clientOptions = new ClientOptions
-            {
-                MessagesAllowedInPeriod = 750,
-                ThrottlingPeriod = TimeSpan.FromSeconds(30)
-            };
-
             try
             {
-                var customClient = new WebSocketClient(clientOptions);
-                _client = new TwitchClient(customClient) { AutoReListenOnException = true };
+                _customClient?.Dispose();
+                _customClient = new WebSocketClient(ClientOptions);
+                _client = new TwitchClient(_customClient) { AutoReListenOnException = true };
                 _client.Initialize(credentials, _channelName);
 
                 SubscribeToClientEvents(_client);
