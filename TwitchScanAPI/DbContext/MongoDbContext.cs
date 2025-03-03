@@ -83,6 +83,16 @@ namespace TwitchScanAPI.DbContext
                 cm.AutoMap();
                 cm.SetDiscriminator("ChatHistory");
             });
+            BsonClassMap.RegisterClassMap<BanMetrics>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetDiscriminator("Banmetrics");
+            });
+            BsonClassMap.RegisterClassMap<TimeoutMetrics>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetDiscriminator("TimeoutMetrics");
+            });
         }
 
         public IMongoCollection<StatisticHistory> StatisticHistory =>
