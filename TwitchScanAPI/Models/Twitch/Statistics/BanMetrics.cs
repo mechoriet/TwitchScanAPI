@@ -2,7 +2,7 @@
 
 namespace TwitchScanAPI.Models.Twitch.Statistics;
 
-public class Banmetrics
+public class BanMetrics
 {
     public int TotalBans { get; set; }
     public IEnumerable<BanReasonResult> BanReasons { get; set; } = [];

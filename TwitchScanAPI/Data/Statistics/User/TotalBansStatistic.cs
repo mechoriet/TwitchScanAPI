@@ -17,7 +17,7 @@ namespace TwitchScanAPI.Data.Statistics.User
 
         public object GetResult()
         {
-            return new Banmetrics
+            return new BanMetrics
             {
                 TotalBans = _banCount,
                 BanReasons = _banReasons.OrderByDescending(kvp => kvp.Value).Select(kvp => new BanReasonResult
