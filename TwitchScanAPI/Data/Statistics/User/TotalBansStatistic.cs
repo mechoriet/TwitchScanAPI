@@ -8,14 +8,13 @@ using TwitchScanAPI.Models.Twitch.User;
 
 namespace TwitchScanAPI.Data.Statistics.User
 {
-    public class TotalBansStatistic : IStatistic
+    public class TotalBansStatistic : StatisticBase
     {
         private ConcurrentDictionary<string, int> _banReasons = new(StringComparer.OrdinalIgnoreCase);
-
         private int _banCount;
-        public string Name => "TotalBans";
+        public override string Name => "TotalBans";
 
-        public object GetResult()
+        protected override object ComputeResult()
         {
             return new BanMetrics
             {
@@ -31,15 +30,15 @@ namespace TwitchScanAPI.Data.Statistics.User
         public Task Update(UserBanned userBanned)
         {
             _banCount++;
-
             if (!string.IsNullOrWhiteSpace(userBanned.BanReason))
                 _banReasons.AddOrUpdate(userBanned.BanReason.Trim(), 1, (_, count) => count + 1);
+            HasUpdated = true;
             return Task.CompletedTask;
         }
-        
-        public void Dispose()
+
+        public override void Dispose()
         {
-            GC.SuppressFinalize(this);
+            base.Dispose();
             _banCount = 0;
             _banReasons = new ConcurrentDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         }

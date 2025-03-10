@@ -10,7 +10,7 @@ using TwitchScanAPI.Models.Twitch.Statistics;
 
 namespace TwitchScanAPI.Data.Statistics.Chat
 {
-    public class BotLikelinessStatistic : IStatistic
+    public class BotLikelinessStatistic : StatisticBase
     {
         // Snapshot management
         private const int SnapshotTopX = 100; // Number of top users to snapshot
@@ -23,23 +23,15 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         private readonly TimeSpan _snapshotRetention = TimeSpan.FromMinutes(30); // Retain snapshots
         private ConcurrentQueue<Snapshot> _snapshots = new();
 
-        // Timer for periodic snapshots
-        private readonly TimeSpan _timeWindow = TimeSpan.FromMinutes(10); // Time window for analysis
+        // Time window for analysis
+        private readonly TimeSpan _timeWindow = TimeSpan.FromMinutes(10);
 
         // Stores metrics for each user
         private ConcurrentDictionary<string, UserBotMetrics> _userMetrics = new();
 
-        public void Dispose()
-        {
-            GC.SuppressFinalize(this);
-            _recentMessages = new ConcurrentQueue<MessageEntry>();
-            _snapshots = new ConcurrentQueue<Snapshot>();
-            _userMetrics = new ConcurrentDictionary<string, UserBotMetrics>();
-        }
+        public override string Name => "BotLikeliness";
 
-        public string Name => "BotLikeliness";
-
-        public object GetResult()
+        protected override object ComputeResult()
         {
             // Retrieve top X users with highest bot-likeliness scores
             var topUsers = _userMetrics
@@ -84,7 +76,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
             // Analyze similarity with recent messages
             AnalyzeMessageSimilarity(messageEntry);
-
+            HasUpdated = true;
             return Task.CompletedTask;
         }
 
@@ -93,10 +85,12 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             lock (_cleanupLock)
             {
                 while (_recentMessages.TryPeek(out var oldestMessage))
+                {
                     if (DateTime.UtcNow - oldestMessage.Timestamp > _timeWindow)
                         _recentMessages.TryDequeue(out _);
                     else
                         break; // All remaining messages are within the time window
+                }
             }
         }
 
@@ -130,9 +124,9 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             }
         }
 
+        // (Optional) A method to take a snapshot; you can call this periodically.
         private void TakeSnapshot(object? state)
         {
-            // Retrieve top X users
             var topUsers = _userMetrics
                 .OrderByDescending(kvp => kvp.Value.BotScore)
                 .Take(SnapshotTopX)
@@ -143,27 +137,33 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 })
                 .ToList();
 
-            // Create a snapshot
             var snapshot = new Snapshot
             {
                 Timestamp = DateTime.UtcNow,
                 Users = topUsers
             };
 
-            // Enqueue the snapshot
             _snapshots.Enqueue(snapshot);
-
-            // Cleanup old snapshots
             CleanupOldSnapshots();
         }
 
         private void CleanupOldSnapshots()
         {
             while (_snapshots.TryPeek(out var oldestSnapshot))
+            {
                 if (DateTime.UtcNow - oldestSnapshot.Timestamp > _snapshotRetention)
                     _snapshots.TryDequeue(out _);
                 else
-                    break; // All remaining snapshots are within the retention period
+                    break;
+            }
+        }
+
+        public override void Dispose()
+        {
+            base.Dispose();
+            _recentMessages = new ConcurrentQueue<MessageEntry>();
+            _snapshots = new ConcurrentQueue<Snapshot>();
+            _userMetrics = new ConcurrentDictionary<string, UserBotMetrics>();
         }
     }
 }

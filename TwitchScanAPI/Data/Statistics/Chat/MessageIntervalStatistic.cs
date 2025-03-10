@@ -6,15 +6,14 @@ using TwitchScanAPI.Models.Twitch.Chat;
 
 namespace TwitchScanAPI.Data.Statistics.Chat
 {
-    public class MessageIntervalStatistic : IStatistic
+    public class MessageIntervalStatistic : StatisticBase
     {
         private long _intervalCount;
-
         private object? _lastMessageTime;
         private long _totalIntervalTicks;
-        public string Name => "MessageIntervalMs";
+        public override string Name => "MessageIntervalMs";
 
-        public object GetResult()
+        protected override object ComputeResult()
         {
             return _intervalCount <= 0 ? 0 : new TimeSpan(_totalIntervalTicks / _intervalCount).TotalMilliseconds;
         }
@@ -22,19 +21,21 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         public Task Update(ChannelMessage message)
         {
             var currentTime = message.Time;
-
             var lastTime = (DateTime?)Interlocked.Exchange(ref _lastMessageTime, currentTime);
-            if (!lastTime.HasValue) return Task.CompletedTask;
+            if (lastTime.HasValue)
+            {
+                var interval = currentTime - lastTime.Value;
+                Interlocked.Add(ref _totalIntervalTicks, interval.Ticks);
+                Interlocked.Increment(ref _intervalCount);
+            }
 
-            var interval = currentTime - lastTime.Value;
-            Interlocked.Add(ref _totalIntervalTicks, interval.Ticks);
-            Interlocked.Increment(ref _intervalCount);
+            HasUpdated = true;
             return Task.CompletedTask;
         }
-        
-        public void Dispose()
+
+        public override void Dispose()
         {
-            GC.SuppressFinalize(this);
+            base.Dispose();
             _intervalCount = 0;
             _totalIntervalTicks = 0;
             _lastMessageTime = null;

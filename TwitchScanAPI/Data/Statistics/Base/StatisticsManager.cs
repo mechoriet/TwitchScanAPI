@@ -22,7 +22,7 @@ namespace TwitchScanAPI.Data.Statistics.Base
             await _statistics.Update(eventData);
         }
 
-        public IDictionary<string, object> GetAllStatistics()
+        public Dictionary<string, object?> GetAllStatistics()
         {
             return _statistics.GetAllStatistics();
         }

@@ -10,8 +10,9 @@ using TwitchScanAPI.Services;
 
 namespace TwitchScanAPI.Data.Statistics.Chat
 {
-    public class PeakActivityPeriodStatistic : IStatistic
+    public class PeakActivityPeriodStatistic : StatisticBase
     {
+        public override string Name => "PeakActivityPeriods";
         private const int BucketSize = 1; // Grouping messages into 1-minute periods
 
         // Dictionaries for tracking message counts in different channel states
@@ -23,15 +24,13 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
         // Stores the current channel state
         private ChannelState? _channelState;
-        public string Name => "PeakActivityPeriods";
 
         /// <summary>
-        ///     Returns the result of tracked message counts, including general messages and messages in sub-only, emote-only, and
-        ///     slow modes.
+        /// Computes the result by merging the data and calculating the trend.
         /// </summary>
-        public object GetResult()
+        protected override object ComputeResult()
         {
-            // Calculate messages
+            // Merge dictionaries into a complete data set
             var completeData = _messagesOverTime
                 .Concat(_subOnlyMessagesOverTime)
                 .Concat(_emoteOnlyMessagesOverTime)
@@ -45,7 +44,8 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 d => d.Key
             );
 
-            return PeakActivityPeriods.Create(trend,
+            return PeakActivityPeriods.Create(
+                trend,
                 _messagesOverTime,
                 _bitsOverTime,
                 _subOnlyMessagesOverTime,
@@ -55,20 +55,24 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         }
 
         /// <summary>
-        ///     Updates the message count based on the received channel message, considering the current channel state (e.g.,
-        ///     sub-only mode).
+        /// Updates the statistic using a new channel message.
         /// </summary>
         public Task Update(ChannelMessage message)
         {
-            // Get the message timestamp
             var dateTime = message.Time;
 
-            // Round the time to the nearest minute (based on BucketSize)
+            // Round the time to the nearest minute based on BucketSize.
             var roundedMinutes = Math.Floor((double)dateTime.Minute / BucketSize) * BucketSize;
-            var roundedTime = new DateTime(dateTime.Year, dateTime.Month, dateTime.Day, dateTime.Hour,
-                (int)roundedMinutes, 0);
+            var roundedTime = new DateTime(
+                dateTime.Year,
+                dateTime.Month,
+                dateTime.Day,
+                dateTime.Hour,
+                (int)roundedMinutes,
+                0
+            );
 
-            // Increment message count in the appropriate dictionary based on the channel state
+            // Increment message count based on the current channel state.
             if (_channelState?.SubOnly == true)
                 _subOnlyMessagesOverTime.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);
             else if (_channelState?.EmoteOnly == true)
@@ -77,25 +81,29 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 _slowOnlyMessagesOverTime.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);
             else
                 _messagesOverTime.AddOrUpdate(roundedTime, 1, (_, oldValue) => oldValue + 1);
-            
-            // Increment bits count if bits were used
+
+            // Increment bits count if bits were used.
             if (message.ChatMessage.Bits > 0)
-                _bitsOverTime.AddOrUpdate(roundedTime, message.ChatMessage.Bits, (_, oldValue) => oldValue + message.ChatMessage.Bits);
+                _bitsOverTime.AddOrUpdate(roundedTime, message.ChatMessage.Bits,
+                    (_, oldValue) => oldValue + message.ChatMessage.Bits);
+
+            HasUpdated = true;
             return Task.CompletedTask;
         }
 
         /// <summary>
-        ///     Updates the internal channel state, which is used to determine how messages are tracked (e.g., sub-only mode).
+        /// Updates the channel state, which affects how messages are tracked.
         /// </summary>
         public Task Update(ChannelState channelState)
         {
             _channelState = channelState;
+            HasUpdated = true;
             return Task.CompletedTask;
         }
-        
-        public void Dispose()
+
+        public override void Dispose()
         {
-            GC.SuppressFinalize(this);
+            base.Dispose();
             _messagesOverTime = new ConcurrentDictionary<DateTime, long>();
             _bitsOverTime = new ConcurrentDictionary<DateTime, long>();
             _subOnlyMessagesOverTime = new ConcurrentDictionary<DateTime, long>();

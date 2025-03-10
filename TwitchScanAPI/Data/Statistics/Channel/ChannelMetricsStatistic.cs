@@ -10,8 +10,9 @@ using TwitchScanAPI.Services;
 
 namespace TwitchScanAPI.Data.Statistics.Channel
 {
-    public class ChannelMetricsStatistic : IStatistic
+    public class ChannelMetricsStatistic : StatisticBase
     {
+        public override string Name => "ChannelMetrics";
         private const int BucketSize = 1; // Grouping viewers into 1-minute periods
 
         // For Viewer Count Tracking
@@ -26,12 +27,8 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         private long _peakViewers;
         private long _totalViewers;
         private long _viewerCountEntries;
-        public string Name => "ChannelMetrics";
 
-        /// <summary>
-        ///     Gets the result of all tracked metrics, including viewers, watch time, and game/uptime information.
-        /// </summary>
-        public object GetResult()
+        protected override object ComputeResult()
         {
             // Calculate average viewers if there are entries, else set to 0
             var averageViewers = _viewerCountEntries == 0 ? 0 : (double)_totalViewers / _viewerCountEntries;
@@ -53,7 +50,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                 d => d.Timestamp
             );
 
-            // Return all metrics, including watch time over time
             return ChannelMetrics.Create(
                 currentViewers,
                 (int)Math.Round(averageViewers),
@@ -66,10 +62,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             );
         }
 
-        /// <summary>
-        ///     Updates the channel metrics with new channel information, including viewers, uptime, and game.
-        ///     This method is called each time new data is fetched from the channel.
-        /// </summary>
         public Task Update(ChannelInformation channelInfo)
         {
             var currentTime = DateTime.UtcNow;
@@ -86,17 +78,15 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             UpdateViewersOverTime(currentTime, channelInfo.Viewers);
 
             // Update the currently active game if it's different
-            if (!string.IsNullOrWhiteSpace(channelInfo.Game)) _currentGame = channelInfo.Game.Trim();
+            if (!string.IsNullOrWhiteSpace(channelInfo.Game))
+                _currentGame = channelInfo.Game.Trim();
 
             // Update the uptime based on the channel's reported start time
             _currentUptime = currentTime - channelInfo.Uptime;
+            HasUpdated = true;
             return Task.CompletedTask;
         }
 
-        /// <summary>
-        ///     Tracks the peak viewers by comparing the current viewer count with the existing peak.
-        ///     Updates the peak if the current viewers exceed the peak.
-        /// </summary>
         private void UpdatePeakViewers(long currentViewers)
         {
             long initialValue, computedValue;
@@ -109,10 +99,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             } while (computedValue != Interlocked.CompareExchange(ref _peakViewers, computedValue, initialValue));
         }
 
-        /// <summary>
-        ///     Tracks the number of viewers over time, using rounded minute-based buckets.
-        ///     Updates the dictionary with the viewer count for each time bucket.
-        /// </summary>
         private void UpdateViewersOverTime(DateTime timestamp, long viewers)
         {
             // Round the timestamp to the nearest minute
@@ -125,10 +111,10 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             // Add or update the viewer count for the time bucket
             _viewersOverTime.AddOrUpdate(roundedTime, viewers, (_, value) => viewers > value ? viewers : value);
         }
-        
-        public void Dispose()
+
+        public override void Dispose()
         {
-            GC.SuppressFinalize(this);
+            base.Dispose();
             _viewerHistory = new ConcurrentQueue<(DateTime, long)>();
             _viewersOverTime = new ConcurrentDictionary<string, long>();
             _currentGame = null;

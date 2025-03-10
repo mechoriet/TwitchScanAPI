@@ -8,15 +8,14 @@ using TwitchScanAPI.Models.Twitch.User;
 
 namespace TwitchScanAPI.Data.Statistics.User
 {
-    public class TotalTimeoutsStatistic : IStatistic
+    public class TotalTimeoutsStatistic : StatisticBase
     {
         private ConcurrentDictionary<string, int> _timeoutReasons = new(StringComparer.OrdinalIgnoreCase);
-
         private int _timeoutCount;
         private long _totalTimeoutDuration;
-        public string Name => "TotalTimeouts";
+        public override string Name => "TotalTimeouts";
 
-        public object GetResult()
+        protected override object ComputeResult()
         {
             return new TimeoutMetrics
             {
@@ -35,15 +34,15 @@ namespace TwitchScanAPI.Data.Statistics.User
         {
             _timeoutCount++;
             _totalTimeoutDuration += userTimedOut.TimeoutDuration;
-
             if (!string.IsNullOrWhiteSpace(userTimedOut.TimeoutReason))
                 _timeoutReasons.AddOrUpdate(userTimedOut.TimeoutReason.Trim(), 1, (_, count) => count + 1);
+            HasUpdated = true;
             return Task.CompletedTask;
         }
-        
-        public void Dispose()
+
+        public override void Dispose()
         {
-            GC.SuppressFinalize(this);
+            base.Dispose();
             _timeoutCount = 0;
             _totalTimeoutDuration = 0;
             _timeoutReasons = new ConcurrentDictionary<string, int>(StringComparer.OrdinalIgnoreCase);

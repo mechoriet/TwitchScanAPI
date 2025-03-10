@@ -5,6 +5,6 @@ namespace TwitchScanAPI.Data.Statistics.Base
     public interface IStatistic : IDisposable
     {
         string Name { get; }
-        object GetResult();
+        object? GetResult(bool ignoreUpdatedFlag = false);
     }
 }

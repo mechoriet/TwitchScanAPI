@@ -1,9 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using TwitchScanAPI.Models.Twitch.Base;
 
 namespace TwitchScanAPI.Models.Twitch.Statistics;
 
-public class TimeoutMetrics
+public class TimeoutMetrics : TimedEntity
 {
     public long TotalTimeouts { get; set; }
     public long TotalTimeoutDuration { get; set; }

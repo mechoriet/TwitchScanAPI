@@ -7,12 +7,12 @@ using TwitchScanAPI.Models.Twitch.Chat;
 
 namespace TwitchScanAPI.Data.Statistics.Chat
 {
-    public class EmoteUsageStatistic : IStatistic
+    public class EmoteUsageStatistic : StatisticBase
     {
         private ConcurrentDictionary<string, int> _emoteCounts = new(StringComparer.OrdinalIgnoreCase);
-        public string Name => "EmoteUsage";
+        public override string Name => "EmoteUsage";
 
-        public object GetResult()
+        protected override object ComputeResult()
         {
             var topEmotes = _emoteCounts.OrderByDescending(kvp => kvp.Value).Take(20).ToList();
             return topEmotes;
@@ -22,14 +22,16 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         {
             var emotes = message.ChatMessage.Emotes;
 
-            foreach (var emote in emotes.Where(emote => !string.IsNullOrWhiteSpace(emote.Name)))
+            foreach (var emote in emotes.Where(e => !string.IsNullOrWhiteSpace(e.Name)))
                 _emoteCounts.AddOrUpdate(emote.Name, 1, (_, count) => count + 1);
+
+            HasUpdated = true;
             return Task.CompletedTask;
         }
-        
-        public void Dispose()
+
+        public override void Dispose()
         {
-            GC.SuppressFinalize(this);
+            base.Dispose();
             _emoteCounts = new ConcurrentDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         }
     }

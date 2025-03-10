@@ -13,7 +13,7 @@ using UserSentiment = TwitchScanAPI.Models.Twitch.Statistics.UserSentiment;
 
 namespace TwitchScanAPI.Data.Statistics.ML
 {
-    public class SentimentAnalysisStatistic : IStatistic
+    public class SentimentAnalysisStatistic : StatisticBase
     {
         private const int MinMessages = 5;
         private const int TopUsersCount = 10;
@@ -27,16 +27,16 @@ namespace TwitchScanAPI.Data.Statistics.ML
         private List<SentimentMessage> _topPositiveMessages = new();
         private readonly object _topNegativeMessagesLock = new();
         private readonly object _topPositiveMessagesLock = new();
-        
+
         private ConcurrentDictionary<string, Models.ML.SentimentAnalysis.UserSentiment> _userSentiments =
             new(StringComparer.OrdinalIgnoreCase);
 
-        public string Name => "SentimentAnalysis";
+        public override string Name => "SentimentAnalysis";
 
-        public object GetResult()
+        protected override object ComputeResult()
         {
             var sentimentData = _sentimentOverTime
-                    .Select(kv => new { kv.Key, Value = kv.Value.Compound });
+                .Select(kv => new { kv.Key, Value = kv.Value.Compound });
 
             var trend = TrendService.CalculateTrend(
                 sentimentData,
@@ -44,7 +44,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
                 d => d.Key
             );
 
-            var result = new SentimentAnalysisResult
+            return new SentimentAnalysisResult
             {
                 SentimentOverTime = GetSentimentOverTime(),
                 TopPositiveUsers = GetTopPositiveUsers(),
@@ -54,8 +54,6 @@ namespace TwitchScanAPI.Data.Statistics.ML
                 TopNegativeMessages = GetTopNegativeMessages(),
                 Trend = trend
             };
-
-            return result;
         }
 
         public Task Update(ChannelMessage message)
@@ -69,7 +67,6 @@ namespace TwitchScanAPI.Data.Statistics.ML
             // Update time-based sentiment scores
             var bucketTime = GetBucketTime(message.Time);
             var sentimentScores = _sentimentOverTime.GetOrAdd(bucketTime, _ => new SentimentScores());
-
             lock (sentimentScores.Lock)
             {
                 sentimentScores.MessageCount++;
@@ -82,7 +79,6 @@ namespace TwitchScanAPI.Data.Statistics.ML
             // Update per-user sentiment scores
             var userSentiment =
                 _userSentiments.GetOrAdd(username.Trim(), u => new Models.ML.SentimentAnalysis.UserSentiment(u));
-
             lock (userSentiment.Lock)
             {
                 userSentiment.MessageCount++;
@@ -95,7 +91,7 @@ namespace TwitchScanAPI.Data.Statistics.ML
 
             // Update top positive and negative messages
             UpdateTopMessages(userSentiment, text, results, message.Time);
-
+            HasUpdated = true;
             return Task.CompletedTask;
         }
 
@@ -198,14 +194,12 @@ namespace TwitchScanAPI.Data.Statistics.ML
                 Time = time
             };
 
-            // Update top positive messages
             lock (_topPositiveMessagesLock)
             {
                 if (results.Compound > 0)
                     AddTopMessage(_topPositiveMessages, sentimentMessage, (a, b) => b.Compound.CompareTo(a.Compound));
             }
 
-            // Update top negative messages
             lock (_topNegativeMessagesLock)
             {
                 if (results.Compound < 0)
@@ -218,10 +212,9 @@ namespace TwitchScanAPI.Data.Statistics.ML
         {
             var index = topMessages.BinarySearch(newMessage, Comparer<SentimentMessage>.Create(comparison));
             if (index < 0) index = ~index;
-
             topMessages.Insert(index, newMessage);
-
-            if (topMessages.Count > MaxTopMessages) topMessages.RemoveAt(topMessages.Count - 1);
+            if (topMessages.Count > MaxTopMessages)
+                topMessages.RemoveAt(topMessages.Count - 1);
         }
 
         private DateTime GetBucketTime(DateTime time)
@@ -230,13 +223,13 @@ namespace TwitchScanAPI.Data.Statistics.ML
             return new DateTime(bucketTicks, time.Kind);
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
-            GC.SuppressFinalize(this);
+            base.Dispose();
             _sentimentOverTime = new ConcurrentDictionary<DateTime, SentimentScores>();
             _userSentiments = new ConcurrentDictionary<string, Models.ML.SentimentAnalysis.UserSentiment>();
-            _topPositiveMessages = [];
-            _topNegativeMessages = [];
+            _topPositiveMessages = new List<SentimentMessage>();
+            _topNegativeMessages = new List<SentimentMessage>();
         }
     }
 }

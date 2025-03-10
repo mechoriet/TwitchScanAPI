@@ -7,42 +7,41 @@ using TwitchScanAPI.Models.Twitch.Chat;
 
 namespace TwitchScanAPI.Data.Statistics.User
 {
-    public class TotalUsersStatistic : IStatistic
+    public class TotalUsersStatistic : StatisticBase
     {
-        private ConcurrentDictionary<string, byte>
-            _users = new(StringComparer.OrdinalIgnoreCase); // Case-insensitive username comparison
+        private ConcurrentDictionary<string, byte> _users = new(StringComparer.OrdinalIgnoreCase);
 
-        public string Name => "TotalUsers";
+        public override string Name => "TotalUsers";
 
-        public object GetResult()
+        protected override object ComputeResult()
         {
-            // Return the count of unique users
             return _users.Count;
         }
 
         public Task Update(ChannelMessage message)
         {
             AddUser(message.ChatMessage.Username);
+            HasUpdated = true;
             return Task.CompletedTask;
         }
 
         public Task Update(UserEntity userEntity)
         {
             AddUser(userEntity.Username);
+            HasUpdated = true;
             return Task.CompletedTask;
         }
 
         private void AddUser(string username)
         {
-            if (string.IsNullOrWhiteSpace(username)) return; // Handle null or empty usernames
-
-            // Add the username to the dictionary (case-insensitive due to the StringComparer)
+            if (string.IsNullOrWhiteSpace(username))
+                return;
             _users.TryAdd(username.Trim(), 0);
         }
-        
-        public void Dispose()
+
+        public override void Dispose()
         {
-            GC.SuppressFinalize(this);
+            base.Dispose();
             _users = new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
         }
     }

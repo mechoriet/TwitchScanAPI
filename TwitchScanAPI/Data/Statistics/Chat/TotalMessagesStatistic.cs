@@ -6,12 +6,12 @@ using TwitchScanAPI.Models.Twitch.Chat;
 
 namespace TwitchScanAPI.Data.Statistics.Chat
 {
-    public class TotalMessagesStatistic : IStatistic
+    public class TotalMessagesStatistic : StatisticBase
     {
         private int _totalMessages;
-        public string Name => "TotalMessages";
+        public override string Name => "TotalMessages";
 
-        public object GetResult()
+        protected override object ComputeResult()
         {
             return _totalMessages;
         }
@@ -19,12 +19,13 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         public Task Update(ChannelMessage message)
         {
             Interlocked.Increment(ref _totalMessages);
+            HasUpdated = true;
             return Task.CompletedTask;
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
-            GC.SuppressFinalize(this);
+            base.Dispose();
             _totalMessages = 0;
         }
     }

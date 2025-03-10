@@ -6,28 +6,28 @@ using TwitchScanAPI.Models.Twitch.Chat;
 
 namespace TwitchScanAPI.Data.Statistics.Chat
 {
-    public class AverageMessageLengthStatistic : IStatistic
+    public class AverageMessageLengthStatistic : StatisticBase
     {
         private long _messageCount;
         private long _totalLength;
-        public string Name => "AverageMessageLength";
+        public override string Name => "AverageMessageLength";
 
-        public object GetResult()
+        protected override object ComputeResult()
         {
-            if (_messageCount == 0) return 0;
-            return (double)_totalLength / _messageCount;
+            return _messageCount == 0 ? 0 : (double)_totalLength / _messageCount;
         }
 
         public Task Update(ChannelMessage message)
         {
             Interlocked.Add(ref _totalLength, message.ChatMessage.Message.Length);
             Interlocked.Increment(ref _messageCount);
+            HasUpdated = true;
             return Task.CompletedTask;
         }
-        
-        public void Dispose()
+
+        public override void Dispose()
         {
-            GC.SuppressFinalize(this);
+            base.Dispose();
             _messageCount = 0;
             _totalLength = 0;
         }

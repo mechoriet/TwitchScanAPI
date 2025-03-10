@@ -7,28 +7,31 @@ using TwitchScanAPI.Models.Twitch.Chat;
 
 namespace TwitchScanAPI.Data.Statistics.Chat
 {
-    public class LinksSharedStatistic : IStatistic
+    public class LinksSharedStatistic : StatisticBase
     {
         private static readonly Regex LinkRegex = new(@"(http|https)://[^\s]+",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         private int _linkCount;
-        public string Name => "LinksShared";
+        public override string Name => "LinksShared";
 
-        public object GetResult()
+        protected override object ComputeResult()
         {
             return _linkCount;
         }
 
         public Task Update(ChannelMessage message)
         {
-            if (LinkRegex.IsMatch(message.ChatMessage.Message)) Interlocked.Increment(ref _linkCount);
+            if (LinkRegex.IsMatch(message.ChatMessage.Message))
+                Interlocked.Increment(ref _linkCount);
+
+            HasUpdated = true;
             return Task.CompletedTask;
         }
-        
-        public void Dispose()
+
+        public override void Dispose()
         {
-            GC.SuppressFinalize(this);
+            base.Dispose();
             _linkCount = 0;
         }
     }

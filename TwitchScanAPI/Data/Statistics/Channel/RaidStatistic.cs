@@ -8,7 +8,7 @@ using TwitchScanAPI.Models.Twitch.Statistics;
 
 namespace TwitchScanAPI.Data.Statistics.Channel
 {
-    public class RaidStatistic : IStatistic
+    public class RaidStatistic : StatisticBase
     {
         private const int BucketSize = 1; // Grouping raids into 1-minute periods
 
@@ -17,9 +17,10 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
         // Tracks raids over time (bucketed by minute)
         private ConcurrentDictionary<string, string> _raidsOverTime = new();
-        public string Name => "RaidStatistic";
 
-        public object GetResult()
+        public override string Name => "RaidStatistic";
+
+        protected override object ComputeResult()
         {
             // Aggregate raids over time, ordered chronologically
             var raidsOverTime = _raidsOverTime
@@ -42,21 +43,26 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         {
             // Increment raid count for the raider
             if (int.TryParse(raidNotification.MsgParamViewerCount, out var viewerCount))
+            {
                 _raidCounts.AddOrUpdate(
                     raidNotification.MsgParamLogin,
                     viewerCount,
                     (_, count) => count + viewerCount
                 );
+            }
             else
+            {
                 _raidCounts.AddOrUpdate(
                     raidNotification.MsgParamLogin,
                     1,
                     (_, count) => count + 1
                 );
+            }
 
             // Track the raid over time (batched by minute)
             var currentTime = DateTime.UtcNow;
             UpdateRaidsOverTime(currentTime, raidNotification.MsgParamLogin);
+            HasUpdated = true;
             return Task.CompletedTask;
         }
 
@@ -68,14 +74,14 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                     (int)roundedMinutes, 0)
                 .ToString("yyyy-MM-ddTHH:mm:ssZ");
 
-            // Add or update the raid count for the time bucket
+            // Add or update the raid bucket (here we simply store the username for the given time bucket)
             _raidsOverTime.AddOrUpdate(roundedTime, username, (_, _) => username);
         }
-        
-        public void Dispose()
+
+        public override void Dispose()
         {
-            GC.SuppressFinalize(this);
-            _raidCounts = new ConcurrentDictionary<string, int>();
+            base.Dispose();
+            _raidCounts = new ConcurrentDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             _raidsOverTime = new ConcurrentDictionary<string, string>();
         }
     }

@@ -11,7 +11,7 @@ using TwitchScanAPI.Services;
 
 namespace TwitchScanAPI.Data.Statistics.Channel
 {
-    public class SubscriptionStatistic : IStatistic
+    public class SubscriptionStatistic : StatisticBase
     {
         private const int BucketSize = 1; // Grouping subscriptions into 1-minute periods
 
@@ -23,9 +23,10 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
         // Tracks the total subscription months per subscriber (for gifted subscriptions)
         private ConcurrentDictionary<string, int> _topSubscriber = new(StringComparer.OrdinalIgnoreCase);
-        public string Name => "SubscriptionStatistic";
 
-        public object GetResult()
+        public override string Name => "SubscriptionStatistic";
+
+        protected override object ComputeResult()
         {
             // Aggregate subscriptions over time, ordered chronologically
             var subscriptionsOverTime = _subscriptionsOverTime
@@ -39,7 +40,6 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                 d => DateTime.Parse(d.Key)
             );
 
-            // Return the result with all necessary metrics
             return new SubscriptionStatisticResult
             {
                 TotalSubscribers = _subscriptionCounts.Values.Sum(),
@@ -65,12 +65,15 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             // Track subscription months for gifted subscriptions
             if (channelSubscription.Type == SubscriptionType.Gifted &&
                 !string.IsNullOrWhiteSpace(channelSubscription.UserName))
+            {
                 _topSubscriber.AddOrUpdate(channelSubscription.UserName, channelSubscription.Months,
                     (_, oldValue) => oldValue + channelSubscription.Months);
+            }
 
             // Track subscriptions over time (batched by minute)
             var currentTime = DateTime.UtcNow;
             UpdateSubscriptionsOverTime(currentTime);
+            HasUpdated = true;
             return Task.CompletedTask;
         }
 
@@ -85,13 +88,13 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             // Add or update the subscription count for the time bucket
             _subscriptionsOverTime.AddOrUpdate(roundedTime, 1, (_, count) => count + 1);
         }
-        
-        public void Dispose()
+
+        public override void Dispose()
         {
-            GC.SuppressFinalize(this);
+            base.Dispose();
             _subscriptionCounts = new ConcurrentDictionary<SubscriptionType, int>();
             _subscriptionsOverTime = new ConcurrentDictionary<string, long>();
-            _topSubscriber = new ConcurrentDictionary<string, int>();
+            _topSubscriber = new ConcurrentDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         }
     }
 }

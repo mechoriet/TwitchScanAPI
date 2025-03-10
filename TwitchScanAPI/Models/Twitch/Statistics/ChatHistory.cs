@@ -4,15 +4,9 @@ using TwitchScanAPI.Models.Twitch.Chat;
 
 namespace TwitchScanAPI.Models.Twitch.Statistics
 {
-    public class ChatHistory : TimedEntity
+    public class ChatHistory(string username, List<ChannelMessage> messages) : TimedEntity
     {
-        public ChatHistory(string username, List<ChannelMessage> messages)
-        {
-            Username = username;
-            Messages = messages;
-        }
-
-        public string Username { get; set; }
-        public List<ChannelMessage> Messages { get; set; }
+        public string Username { get; set; } = username;
+        public List<ChannelMessage> Messages { get; set; } = messages;
     }
 }

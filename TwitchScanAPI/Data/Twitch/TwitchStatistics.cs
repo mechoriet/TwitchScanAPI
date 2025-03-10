@@ -8,6 +8,7 @@ using System.Timers;
 using Microsoft.Extensions.Configuration;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
+using TwitchLib.PubSub.Events;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Data.Twitch.Manager;
 using TwitchScanAPI.DbContext;
@@ -138,6 +139,7 @@ namespace TwitchScanAPI.Data.Twitch
             _clientManager.OnReSubscriber += ClientManager_OnReSubscriber;
             _clientManager.OnGiftedSubscription += ClientManager_OnGiftedSubscription;
             _clientManager.OnCommunitySubscription += ClientManager_OnCommunitySubscription;
+            _clientManager.OnCommercial += ClientManager_OnCommercial;
             _clientManager.OnUserBanned += ClientManager_OnUserBanned;
             _clientManager.OnMessageCleared += ClientManager_OnMessageCleared;
             _clientManager.OnUserTimedOut += ClientManager_OnUserTimedOut;
@@ -315,6 +317,11 @@ namespace TwitchScanAPI.Data.Twitch
 
             await _statisticsManager.Update(subscription);
             await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
+        }
+
+        private async void ClientManager_OnCommercial(object? sender, OnCommercialArgs e)
+        {
+            await _statisticsManager.Update(new ChannelCommercial(ChannelName, e.Length));
         }
 
         private async void ClientManager_OnCommunitySubscription(object? sender, OnCommunitySubscriptionArgs e)

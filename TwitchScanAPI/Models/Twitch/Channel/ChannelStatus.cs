@@ -2,21 +2,12 @@
 
 namespace TwitchScanAPI.Models.Twitch.Channel
 {
-    public class ChannelStatus
+    public class ChannelStatus(string channelName, bool isOnline, long messageCount, long viewerCount, DateTime uptime)
     {
-        public ChannelStatus(string channelName, bool isOnline, long messageCount, long viewerCount, DateTime uptime)
-        {
-            ChannelName = channelName;
-            IsOnline = isOnline;
-            MessageCount = messageCount;
-            ViewerCount = viewerCount;
-            Uptime = uptime;
-        }
-
-        public string ChannelName { get; set; }
-        public bool IsOnline { get; set; }
-        public long MessageCount { get; set; }
-        public long ViewerCount { get; set; }
-        public DateTime Uptime { get; set; }
+        public string ChannelName { get; set; } = channelName;
+        public bool IsOnline { get; set; } = isOnline;
+        public long MessageCount { get; set; } = messageCount;
+        public long ViewerCount { get; set; } = viewerCount;
+        public DateTime Uptime { get; set; } = uptime;
     }
 }

@@ -10,20 +10,22 @@ using TwitchScanAPI.Models.Twitch.Statistics;
 namespace TwitchScanAPI.Data.Statistics.Chat
 {
     [IgnoreStatistic]
-    public class ChatHistoryStatistic : IStatistic
+    public class ChatHistoryStatistic : StatisticBase
     {
         private const int MaxMessagesPerUser = 2000; // Limit to avoid memory overload
 
-        // Stores chat history per user, each user has a list of messages
+        // Stores chat history per user
         private ConcurrentDictionary<string, List<ChannelMessage>> _chatHistory = new();
-        public string Name => "ChatHistory";
 
-        public object GetResult()
+        public override string Name => "ChatHistory";
+
+        protected override object ComputeResult()
         {
             var chatHistory = new List<ChatHistory>();
 
             // Convert the dictionary to a list of ChatHistory objects
-            foreach (var (username, messages) in _chatHistory) chatHistory.Add(new ChatHistory(username, messages));
+            foreach (var (username, messages) in _chatHistory)
+                chatHistory.Add(new ChatHistory(username, messages));
 
             return chatHistory;
         }
@@ -34,28 +36,25 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
             // Add the message to the user's chat history
             _chatHistory.AddOrUpdate(username,
-                [message], // If no history, start a new list
-                (_, existingMessages) =>
+                key => [message],
+                (key, existingMessages) =>
                 {
                     lock (existingMessages) // Ensure thread safety when modifying the list
                     {
-                        // Add the new message
                         existingMessages.Add(message);
-
-                        // limit the number of messages stored
                         if (existingMessages.Count > MaxMessagesPerUser)
                             existingMessages.RemoveAt(0); // Remove the oldest message if limit is exceeded
-
                         return existingMessages;
                     }
                 });
 
+            HasUpdated = true;
             return Task.CompletedTask;
         }
-        
-        public void Dispose()
+
+        public override void Dispose()
         {
-            GC.SuppressFinalize(this);
+            base.Dispose();
             _chatHistory = new ConcurrentDictionary<string, List<ChannelMessage>>();
         }
     }

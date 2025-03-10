@@ -6,31 +6,27 @@ using TwitchScanAPI.Models.Twitch.Chat;
 
 namespace TwitchScanAPI.Data.Statistics.Chat
 {
-    public class UniqueChattersStatistic : IStatistic
+    public class UniqueChattersStatistic : StatisticBase
     {
         private ConcurrentDictionary<string, byte> _uniqueChatters = new();
-        public string Name => "UniqueChatters";
+        public override string Name => "UniqueChatters";
 
-        public object GetResult()
+        protected override object ComputeResult()
         {
-            // Return the count of unique chatters
             return _uniqueChatters.Count;
         }
 
         public Task Update(ChannelMessage message)
         {
-            // Extract the username from the message and add it to the dictionary if not already present
-            var username =
-                message.ChatMessage.Username.ToLowerInvariant().Trim(); // Normalize to avoid case sensitivity issues
-
-            _uniqueChatters.TryAdd(username, 0); // Add the username if it's not already present
-
+            var username = message.ChatMessage.Username.ToLowerInvariant().Trim();
+            _uniqueChatters.TryAdd(username, 0);
+            HasUpdated = true;
             return Task.CompletedTask;
         }
-        
-        public void Dispose()
+
+        public override void Dispose()
         {
-            GC.SuppressFinalize(this);
+            base.Dispose();
             _uniqueChatters = new ConcurrentDictionary<string, byte>();
         }
     }

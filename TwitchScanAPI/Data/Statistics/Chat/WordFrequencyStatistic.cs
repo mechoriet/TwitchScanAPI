@@ -9,28 +9,24 @@ using TwitchScanAPI.Models.Twitch.Chat;
 
 namespace TwitchScanAPI.Data.Statistics.Chat
 {
-    public class WordFrequencyStatistic : IStatistic
+    public class WordFrequencyStatistic : StatisticBase
     {
-        private static readonly Regex
-            WordSplitter = new(@"\W+", RegexOptions.Compiled); // Splits by any non-word character
-
+        private static readonly Regex WordSplitter = new(@"\W+", RegexOptions.Compiled);
         private ConcurrentDictionary<string, int> _wordCounts = new();
-        public string Name => "WordFrequency";
 
-        public object GetResult()
+        public override string Name => "WordFrequency";
+
+        protected override object ComputeResult()
         {
-            // Optimized result collection using a min-heap to track the top 10 items
             var topWords = new SortedSet<(int count, string word)>();
 
             foreach (var kv in _wordCounts)
             {
                 topWords.Add((kv.Value, kv.Key));
-
-                // Only keep top 10
-                if (topWords.Count > 10) topWords.Remove(topWords.Min); // Remove smallest if over capacity
+                if (topWords.Count > 10)
+                    topWords.Remove(topWords.Min);
             }
 
-            // Convert result to dictionary
             return topWords
                 .OrderByDescending(entry => entry.count)
                 .ToDictionary(entry => entry.word, entry => entry.count);
@@ -42,17 +38,18 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             foreach (var word in words)
             {
                 var trimmed = word.Trim();
-                if (string.IsNullOrWhiteSpace(trimmed)) continue; // Skip empty or invalid words
-
+                if (string.IsNullOrWhiteSpace(trimmed))
+                    continue;
                 _wordCounts.AddOrUpdate(trimmed.ToLower(), 1, (_, count) => count + 1);
             }
 
+            HasUpdated = true;
             return Task.CompletedTask;
         }
-        
-        public void Dispose()
+
+        public override void Dispose()
         {
-            GC.SuppressFinalize(this);
+            base.Dispose();
             _wordCounts = new ConcurrentDictionary<string, int>();
         }
     }

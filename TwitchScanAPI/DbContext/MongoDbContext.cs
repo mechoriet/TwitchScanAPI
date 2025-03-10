@@ -14,12 +14,12 @@ namespace TwitchScanAPI.DbContext
 
         public MongoDbContext(IConfiguration configuration)
         {
+            
             var client = new MongoClient(configuration.GetConnectionString("MongoConnection"));
             _database = client.GetDatabase("TwitchScanDatabase");
 
             var objectSerializer = new ObjectSerializer(type =>
-                type.FullName != null && (ObjectSerializer.DefaultAllowedTypes(type) ||
-                                          type.FullName.StartsWith("TwitchScanAPI")));
+                type.FullName != null);
             BsonSerializer.RegisterSerializer(typeof(object), objectSerializer);
             BsonClassMap.RegisterClassMap<IdEntity>(cm =>
             {
@@ -69,6 +69,13 @@ namespace TwitchScanAPI.DbContext
                 cm.AutoMap();
                 cm.SetDiscriminator("RaidStatisticResult");
             });
+            
+            // CommercialStatisticResult
+            BsonClassMap.RegisterClassMap<CommercialStatisticResult>(cm =>
+            {
+                cm.AutoMap();
+                cm.SetDiscriminator("CommercialStatisticResult");
+            });
 
             // BotResult
             BsonClassMap.RegisterClassMap<BotResult>(cm =>
@@ -77,17 +84,21 @@ namespace TwitchScanAPI.DbContext
                 cm.SetDiscriminator("BotResult");
             });
 
-            // BotResult
+            // ChatHistory
             BsonClassMap.RegisterClassMap<ChatHistory>(cm =>
             {
                 cm.AutoMap();
                 cm.SetDiscriminator("ChatHistory");
             });
+            
+            // BanMetrics
             BsonClassMap.RegisterClassMap<BanMetrics>(cm =>
             {
                 cm.AutoMap();
-                cm.SetDiscriminator("Banmetrics");
+                cm.SetDiscriminator("BanMetrics");
             });
+            
+            // TimeoutMetrics
             BsonClassMap.RegisterClassMap<TimeoutMetrics>(cm =>
             {
                 cm.AutoMap();

@@ -80,7 +80,7 @@ namespace TwitchScanAPI.Data.Statistics.Base
             }
         }
 
-        public IDictionary<string, object> GetAllStatistics()
+        public Dictionary<string, object?> GetAllStatistics()
         {
             return _statistics
                 .Where(stat =>

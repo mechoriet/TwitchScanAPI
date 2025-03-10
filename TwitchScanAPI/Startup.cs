@@ -46,7 +46,7 @@ namespace TwitchScanAPI
             services.AddSingleton<TwitchVodService>();
             services.AddSingleton<TwitchChannelManager>();
             services.AddHttpClient<TwitchAuthService>();
-            
+
             // Register hosted services
             services.AddHostedService<TwitchChannelManagerHostedService>();
             services.AddHostedService<RestartHostedService>();

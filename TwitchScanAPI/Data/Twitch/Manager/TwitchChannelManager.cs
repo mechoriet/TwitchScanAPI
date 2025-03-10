@@ -242,7 +242,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             return GetChannel(channelName)?.GetUsers();
         }
-        
+
         /// <summary>
         ///     Check if all channels are offline
         /// </summary>

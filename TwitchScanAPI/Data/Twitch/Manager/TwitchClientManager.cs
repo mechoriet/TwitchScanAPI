@@ -11,6 +11,8 @@ using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Models;
+using TwitchLib.PubSub;
+using TwitchLib.PubSub.Events;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Emotes;
@@ -23,18 +25,22 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(10);
         private readonly string _channelName;
         private readonly IConfiguration _configuration;
-        
+        private int? ViewerCount { get; set; }
+        private bool IsOnline { get; set; }
+
         private static readonly ClientOptions ClientOptions = new()
         {
             MessagesAllowedInPeriod = 750,
             ThrottlingPeriod = TimeSpan.FromSeconds(30)
         };
+
         private WebSocketClient? _customClient;
 
         // BetterTTV & 7TV
         private readonly Timer _reconnectTimer;
         private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
         private readonly TwitchAPI _api = new();
+        private readonly TwitchPubSub _pubSubClient = new();
         private ChannelInformation? _cachedChannelInformation;
         private TwitchClient? _client;
         private bool _fetching;
@@ -54,7 +60,15 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _reconnectTimer.Elapsed += async (_, _) => await HandleReconnectAsync();
         }
 
-        private bool IsOnline { get; set; }
+        // Factory method
+        public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration)
+        {
+            var manager = new TwitchClientManager(channelName, configuration);
+            var channelInformation = await manager.GetChannelInfoAsync();
+            manager.ExternalChannelEmotes = await EmoteService.GetChannelEmotesAsync(channelInformation.Id);
+            await manager.StartClientAsync();
+            return manager;
+        }
 
         public void Dispose()
         {
@@ -78,17 +92,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public event EventHandler<OnUserTimedoutArgs>? OnUserTimedOut;
         public event EventHandler<OnChannelStateChangedArgs>? OnChannelStateChanged;
         public event EventHandler<ChannelInformation>? OnConnectionChanged;
+        public event EventHandler<OnCommercialArgs>? OnCommercial;
         public event EventHandler? OnDisconnected;
-
-        // Factory method
-        public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration)
-        {
-            var manager = new TwitchClientManager(channelName, configuration);
-            var channelInformation = await manager.GetChannelInfoAsync();
-            manager.ExternalChannelEmotes = await EmoteService.GetChannelEmotesAsync(channelInformation.Id);
-            await manager.StartClientAsync();
-            return manager;
-        }
 
         private void ConfigureTwitchApi()
         {
@@ -136,8 +141,14 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 _client.Initialize(credentials, _channelName);
 
                 SubscribeToClientEvents(_client);
+                
+                var channelInformation = await GetChannelInfoAsync();
+                if (string.IsNullOrEmpty(channelInformation.Id)) return;
+                _pubSubClient.ListenToVideoPlayback(channelInformation.Id);
+                _pubSubClient.ListenToFollows(channelInformation.Id);
 
                 _client.Connect();
+                _pubSubClient.Connect();
             }
             catch (Exception ex)
             {
@@ -164,6 +175,11 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             client.OnChannelStateChanged += OnChannelStateChangedHandler;
             client.OnDisconnected += OnTwitchDisconnectedHandler;
             client.OnReconnected += OnTwitchReconnectedHandler;
+
+            // PubSub
+            _pubSubClient.OnViewCount += PubSubClientOnViewCount;
+            _pubSubClient.OnCommercial += PubSubClientOnCommercial;
+            _pubSubClient.OnPubSubServiceConnected += PubSubClientOnPubSubServiceConnected;
         }
 
         private void UnsubscribeFromClientEvents(TwitchClient client)
@@ -183,6 +199,26 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             client.OnChannelStateChanged -= OnChannelStateChangedHandler;
             client.OnDisconnected -= OnTwitchDisconnectedHandler;
             client.OnReconnected -= OnTwitchReconnectedHandler;
+
+            // PubSub
+            _pubSubClient.OnViewCount -= PubSubClientOnViewCount;
+            _pubSubClient.OnCommercial -= PubSubClientOnCommercial;
+            _pubSubClient.OnPubSubServiceConnected -= PubSubClientOnPubSubServiceConnected;
+        }
+
+        private void PubSubClientOnPubSubServiceConnected(object? sender, EventArgs e)
+        {
+            _pubSubClient.SendTopics();
+        }
+
+        private void PubSubClientOnViewCount(object? sender, OnViewCountArgs e)
+        {
+            ViewerCount = e.Viewers;
+        }
+
+        private void PubSubClientOnCommercial(object? sender, OnCommercialArgs e)
+        {
+            OnCommercial?.Invoke(this, e);
         }
 
         // Event handlers
@@ -249,7 +285,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private void OnTwitchDisconnectedHandler(object? sender, EventArgs e)
         {
             Console.WriteLine("Twitch client disconnected. Attempting to reconnect...");
-            // You can optionally trigger custom logic here or just rely on TwitchLib's internal reconnect logic
         }
 
         private void OnTwitchReconnectedHandler(object? sender, EventArgs e)
@@ -284,7 +319,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 IsOnline = isOnline;
                 _cachedChannelInformation = streams?.Streams.Any() == true
                     ? new ChannelInformation(
-                        streams.Streams[0].ViewerCount,
+                        ViewerCount ?? streams.Streams[0].ViewerCount,
                         streams.Streams[0].Title,
                         streams.Streams[0].GameName,
                         streams.Streams[0].StartedAt,
@@ -320,7 +355,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             UnsubscribeFromClientEvents(_client);
             _client.Disconnect();
-            _client = null;
+            _pubSubClient.Disconnect();
         }
     }
 }
