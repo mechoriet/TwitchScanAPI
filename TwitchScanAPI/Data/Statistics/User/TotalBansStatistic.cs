@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
 using TwitchScanAPI.Data.Statistics.Base;
+using TwitchScanAPI.Models.Twitch.Statistics;
 using TwitchScanAPI.Models.Twitch.User;
 
 namespace TwitchScanAPI.Data.Statistics.User
@@ -16,10 +17,14 @@ namespace TwitchScanAPI.Data.Statistics.User
 
         public object GetResult()
         {
-            return new
+            return new BanMetrics
             {
                 TotalBans = _banCount,
-                BanReasons = _banReasons.OrderByDescending(kvp => kvp.Value).ToList()
+                BanReasons = _banReasons.OrderByDescending(kvp => kvp.Value).Select(kvp => new BanReasonResult
+                {
+                    Reason = kvp.Key,
+                    ReasonCount = kvp.Value
+                })
             };
         }
 
