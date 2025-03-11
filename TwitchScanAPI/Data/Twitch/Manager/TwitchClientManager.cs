@@ -25,7 +25,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(10);
         private readonly string _channelName;
         private readonly IConfiguration _configuration;
-        private int? ViewerCount { get; set; }
+        private readonly TwitchPubSubManager _pubSubManager;
+        private long? ViewerCount { get; set; }
+        private long? LastViewerCount { get; set; }
         private bool IsOnline { get; set; }
 
         private static readonly ClientOptions ClientOptions = new()
@@ -40,7 +42,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly Timer _reconnectTimer;
         private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
         private readonly TwitchAPI _api = new();
-        private readonly TwitchPubSub _pubSubClient = new();
         private ChannelInformation? _cachedChannelInformation;
         private TwitchClient? _client;
         private bool _fetching;
@@ -50,10 +51,11 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public List<MergedEmote>? ExternalChannelEmotes;
 
         // Constructor
-        private TwitchClientManager(string channelName, IConfiguration configuration)
+        private TwitchClientManager(string channelName, IConfiguration configuration, TwitchPubSubManager pubSubManager)
         {
             _channelName = channelName;
             _configuration = configuration;
+            _pubSubManager = pubSubManager;
             ConfigureTwitchApi();
 
             _reconnectTimer = new Timer(_retryInterval.TotalMilliseconds) { AutoReset = false };
@@ -61,13 +63,45 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         // Factory method
-        public static async Task<TwitchClientManager?> CreateAsync(string channelName, IConfiguration configuration)
+        public static async Task<TwitchClientManager?> CreateAsync(
+            string channelName,
+            IConfiguration configuration,
+            TwitchPubSubManager pubSubManager)
         {
-            var manager = new TwitchClientManager(channelName, configuration);
+            var manager = new TwitchClientManager(channelName, configuration, pubSubManager);
             var channelInformation = await manager.GetChannelInfoAsync();
             manager.ExternalChannelEmotes = await EmoteService.GetChannelEmotesAsync(channelInformation.Id);
+
+            // Subscribe to PubSub manager events
+            manager.SubscribeToPubSubManagerEvents();
+
+            // Add the channel to the PubSub manager if we have a valid ID
+            if (!string.IsNullOrEmpty(channelInformation.Id))
+            {
+                pubSubManager.SubscribeChannel(channelInformation.Id, channelName);
+            }
+
             await manager.StartClientAsync();
             return manager;
+        }
+
+        private void SubscribeToPubSubManagerEvents()
+        {
+            _pubSubManager.OnViewCountChanged += (_, args) =>
+            {
+                if (args.ChannelId == _cachedChannelInformation?.Id)
+                {
+                    ViewerCount = args.Viewers;
+                }
+            };
+
+            _pubSubManager.OnCommercialStarted += (_, args) =>
+            {
+                if (args.ChannelId == _cachedChannelInformation?.Id)
+                {
+                    OnCommercial?.Invoke(this, args);
+                }
+            };
         }
 
         public void Dispose()
@@ -76,6 +110,12 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             DisconnectClient();
             _reconnectTimer.Dispose();
             _customClient?.Dispose();
+
+            // Unsubscribe from PubSub topics if we have a valid ID
+            if (_cachedChannelInformation?.Id != null)
+            {
+                _pubSubManager.UnsubscribeChannel(_cachedChannelInformation.Id);
+            }
         }
 
         // Events to expose
@@ -141,14 +181,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 _client.Initialize(credentials, _channelName);
 
                 SubscribeToClientEvents(_client);
-                
-                var channelInformation = await GetChannelInfoAsync();
-                if (string.IsNullOrEmpty(channelInformation.Id)) return;
-                _pubSubClient.ListenToVideoPlayback(channelInformation.Id);
-                _pubSubClient.ListenToFollows(channelInformation.Id);
 
+                // No need to handle PubSub here as it's now managed by the TwitchPubSubManager
                 _client.Connect();
-                _pubSubClient.Connect();
             }
             catch (Exception ex)
             {
@@ -175,11 +210,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             client.OnChannelStateChanged += OnChannelStateChangedHandler;
             client.OnDisconnected += OnTwitchDisconnectedHandler;
             client.OnReconnected += OnTwitchReconnectedHandler;
-
-            // PubSub
-            _pubSubClient.OnViewCount += PubSubClientOnViewCount;
-            _pubSubClient.OnCommercial += PubSubClientOnCommercial;
-            _pubSubClient.OnPubSubServiceConnected += PubSubClientOnPubSubServiceConnected;
         }
 
         private void UnsubscribeFromClientEvents(TwitchClient client)
@@ -199,26 +229,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             client.OnChannelStateChanged -= OnChannelStateChangedHandler;
             client.OnDisconnected -= OnTwitchDisconnectedHandler;
             client.OnReconnected -= OnTwitchReconnectedHandler;
-
-            // PubSub
-            _pubSubClient.OnViewCount -= PubSubClientOnViewCount;
-            _pubSubClient.OnCommercial -= PubSubClientOnCommercial;
-            _pubSubClient.OnPubSubServiceConnected -= PubSubClientOnPubSubServiceConnected;
-        }
-
-        private void PubSubClientOnPubSubServiceConnected(object? sender, EventArgs e)
-        {
-            _pubSubClient.SendTopics();
-        }
-
-        private void PubSubClientOnViewCount(object? sender, OnViewCountArgs e)
-        {
-            ViewerCount = e.Viewers;
-        }
-
-        private void PubSubClientOnCommercial(object? sender, OnCommercialArgs e)
-        {
-            OnCommercial?.Invoke(this, e);
         }
 
         // Event handlers
@@ -313,13 +323,22 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     case false when isOnline:
                         ExternalChannelEmotes = await EmoteService.GetChannelEmotesAsync(streams!.Streams[0].UserId);
                         Console.WriteLine($"{_channelName} is now online.");
+
+                        // Add channel to PubSub when it comes online
+                        if (!string.IsNullOrEmpty(streams!.Streams[0].UserId))
+                        {
+                            _pubSubManager.SubscribeChannel(streams!.Streams[0].UserId, _channelName);
+                        }
+
                         break;
                 }
 
                 IsOnline = isOnline;
                 _cachedChannelInformation = streams?.Streams.Any() == true
                     ? new ChannelInformation(
-                        ViewerCount ?? streams.Streams[0].ViewerCount,
+                        ViewerCount != null && ViewerCount != LastViewerCount
+                            ? (long)ViewerCount
+                            : streams.Streams[0].ViewerCount,
                         streams.Streams[0].Title,
                         streams.Streams[0].GameName,
                         streams.Streams[0].StartedAt,
@@ -329,8 +348,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                         streams.Streams[0].UserId)
                     : new ChannelInformation(false);
 
+                LastViewerCount = ViewerCount;
                 OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
-
                 return _cachedChannelInformation;
             }
             catch (HttpRequestException ex)
@@ -355,7 +374,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             UnsubscribeFromClientEvents(_client);
             _client.Disconnect();
-            _pubSubClient.Disconnect();
         }
     }
 }

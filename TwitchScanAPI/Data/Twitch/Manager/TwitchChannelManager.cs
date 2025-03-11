@@ -17,7 +17,7 @@ using TwitchScanAPI.Services;
 namespace TwitchScanAPI.Data.Twitch.Manager
 {
     public class TwitchChannelManager(
-        IConfiguration configuration,
+        TwitchManagerFactory clientManagerFactory,
         NotificationService notificationService,
         MongoDbContext context)
         : IDisposable
@@ -51,7 +51,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             try
             {
-                var stats = await TwitchStatistics.CreateAsync(channelName, configuration, notificationService,
+                var stats = await TwitchStatistics.CreateAsync(channelName, clientManagerFactory, notificationService,
                     context);
                 if (stats == null)
                 {

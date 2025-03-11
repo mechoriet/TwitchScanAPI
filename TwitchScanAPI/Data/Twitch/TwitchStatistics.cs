@@ -72,11 +72,11 @@ namespace TwitchScanAPI.Data.Twitch
             GC.SuppressFinalize(this);
         }
 
-        public static async Task<TwitchStatistics?> CreateAsync(string channelName, IConfiguration configuration,
+        public static async Task<TwitchStatistics?> CreateAsync(string channelName, TwitchManagerFactory clientManagerFactory,
             NotificationService notificationService, MongoDbContext context)
         {
             var clientManager =
-                await TwitchClientManager.CreateAsync(channelName, configuration);
+                await clientManagerFactory.GetOrCreateClientManagerAsync(channelName);
 
             return clientManager == null
                 ? null

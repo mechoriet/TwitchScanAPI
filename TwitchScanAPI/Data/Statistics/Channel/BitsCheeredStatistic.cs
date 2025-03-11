@@ -20,7 +20,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             _topBitDonators.AddOrUpdate(
                 message.ChatMessage.Username,
                 message.ChatMessage.Bits,
-                (key, oldValue) => oldValue + message.ChatMessage.Bits
+                (_, oldValue) => oldValue + message.ChatMessage.Bits
             );
             HasUpdated = true;
             return Task.CompletedTask;

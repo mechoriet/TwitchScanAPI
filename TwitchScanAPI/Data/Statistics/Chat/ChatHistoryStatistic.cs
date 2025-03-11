@@ -36,8 +36,8 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
             // Add the message to the user's chat history
             _chatHistory.AddOrUpdate(username,
-                key => [message],
-                (key, existingMessages) =>
+                _ => [message],
+                (_, existingMessages) =>
                 {
                     lock (existingMessages) // Ensure thread safety when modifying the list
                     {
