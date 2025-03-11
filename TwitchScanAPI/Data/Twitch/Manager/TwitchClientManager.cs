@@ -70,7 +70,19 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             var manager = new TwitchClientManager(channelName, configuration, pubSubManager);
             var channelInformation = await manager.GetChannelInfoAsync();
-            manager.ExternalChannelEmotes = await EmoteService.GetChannelEmotesAsync(channelInformation.Id);
+            var userId = channelInformation.Id;
+            if (string.IsNullOrEmpty(userId))
+            {
+                var user = await manager._api.Helix.Users.GetUsersAsync(logins: [channelName]);
+                userId = user?.Users.FirstOrDefault()?.Id;
+            }
+
+            // Add channel to PubSub when it comes online
+            if (!string.IsNullOrEmpty(userId))
+            {
+                manager.ExternalChannelEmotes = await EmoteService.GetChannelEmotesAsync(userId);
+                manager._pubSubManager.SubscribeChannel(userId, channelName);
+            }
 
             // Subscribe to PubSub manager events
             manager.SubscribeToPubSubManagerEvents();
@@ -339,13 +351,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     case false when isOnline:
                         ExternalChannelEmotes = await EmoteService.GetChannelEmotesAsync(streams!.Streams[0].UserId);
                         Console.WriteLine($"{_channelName} is now online.");
-
-                        // Add channel to PubSub when it comes online
-                        if (!string.IsNullOrEmpty(streams!.Streams[0].UserId))
-                        {
-                            _pubSubManager.SubscribeChannel(streams!.Streams[0].UserId, _channelName);
-                        }
-
                         break;
                 }
 
