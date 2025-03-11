@@ -21,15 +21,21 @@ public class TwitchPubSubManager : IDisposable
             if (_channelSubscriptions.ContainsKey(channelId))
                 return;
 
-            var client = GetOrCreateLeastLoadedClient();
+            var clientCreation = GetOrCreateLeastLoadedClient();
             var channelData = new ChannelPubSubData(channelId, channelName);
             
             // Subscribe to topics for this channel
-            client.ListenToVideoPlayback(channelId);
+            clientCreation.client.ListenToVideoPlayback(channelId);
             
             // Track this subscription
-            channelData.AssignedClient = client;
+            channelData.AssignedClient = clientCreation.client;
             _channelSubscriptions[channelId] = channelData;
+            
+            // If the client was already created previously, resend the topics
+            if (clientCreation.existed)
+            {
+                clientCreation.client.SendTopics();
+            }
         }
     }
 
@@ -50,7 +56,7 @@ public class TwitchPubSubManager : IDisposable
         }
     }
 
-    private TwitchPubSub GetOrCreateLeastLoadedClient()
+    private (TwitchPubSub client, bool existed) GetOrCreateLeastLoadedClient()
     {
         // If we have existing clients with capacity, use the one with the least topics
         var availableClients = _pubSubClients
@@ -59,14 +65,14 @@ public class TwitchPubSubManager : IDisposable
             
         if (availableClients.Any())
         {
-            return availableClients.OrderBy(GetClientTopicCount).First();
+            return (availableClients.OrderBy(GetClientTopicCount).First(), true);
         }
         
         // If we need to create a new client and we're under the limit
-        if (_pubSubClients.Count >= MaxClients) return _pubSubClients.OrderBy(GetClientTopicCount).First();
+        if (_pubSubClients.Count >= MaxClients) return (_pubSubClients.OrderBy(GetClientTopicCount).First(), true);
         var newClient = CreatePubSubClient();
         _pubSubClients.Add(newClient);
-        return newClient;
+        return (newClient, false);
 
         // If we're at capacity, use the least loaded client
     }
