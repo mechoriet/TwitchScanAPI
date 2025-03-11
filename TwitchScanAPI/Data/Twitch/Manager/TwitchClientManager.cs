@@ -102,6 +102,22 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     OnCommercial?.Invoke(this, args);
                 }
             };
+            
+            _pubSubManager.StreamUp += (o, args) =>
+            {
+                if (args.ChannelId != _cachedChannelInformation?.Id) return;
+                IsOnline = true;
+                _cachedChannelInformation.IsOnline = true;
+                _ = GetChannelInfoAsync(true);
+            };
+            
+            _pubSubManager.StreamDown += (o, args) =>
+            {
+                if (args.ChannelId != _cachedChannelInformation?.Id) return;
+                IsOnline = false;
+                _cachedChannelInformation.IsOnline = false;
+                _ = GetChannelInfoAsync(true);
+            };
         }
 
         public void Dispose()
@@ -302,7 +318,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             Console.WriteLine("Twitch client reconnected successfully.");
         }
 
-        public async Task<ChannelInformation> GetChannelInfoAsync()
+        public async Task<ChannelInformation> GetChannelInfoAsync(bool fromPubSub = false)
         {
             // Use cached info if valid
             if (_fetching || (_cachedChannelInformation != null && DateTime.UtcNow - _lastFetchTime < _cacheDuration))
@@ -313,7 +329,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             try
             {
                 var streams = await _api.Helix.Streams.GetStreamsAsync(userLogins: [_channelName]);
-                var isOnline = streams?.Streams.Any() ?? false;
+                var isOnline = (IsOnline && fromPubSub) || streams?.Streams.Any() == true;
 
                 switch (IsOnline)
                 {
