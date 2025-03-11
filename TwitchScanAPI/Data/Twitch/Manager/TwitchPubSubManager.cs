@@ -26,8 +26,6 @@ public class TwitchPubSubManager : IDisposable
             
             // Subscribe to topics for this channel
             client.ListenToVideoPlayback(channelId);
-            client.ListenToFollows(channelId);
-            // Add more topics as needed
             
             // Track this subscription
             channelData.AssignedClient = client;
