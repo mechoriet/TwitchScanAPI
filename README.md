@@ -43,7 +43,7 @@ The system is built around the following core components:
 
 ### Prerequisites
 
-- [.NET 6.0 SDK](https://dotnet.microsoft.com/download/dotnet/6.0) or later
+- [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0) or later
 - [VaderSharp](https://github.com/codingupastorm/vadersharp) for sentiment analysis
 - [TwitchLib](https://github.com/TwitchLib/TwitchLib) Twitch Service interaction
 
