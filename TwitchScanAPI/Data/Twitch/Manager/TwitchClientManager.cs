@@ -333,7 +333,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _fetching = true;
             try
             {
-                Console.WriteLine($"Getting channel info... for channel {_channelName}");
                 var streams = await _api.getTwitchAPI().Helix.Streams.GetStreamsAsync(userLogins: [_channelName]);
                 var isOnline = (IsOnline && fromPubSub) || streams?.Streams.Any() == true;
 
