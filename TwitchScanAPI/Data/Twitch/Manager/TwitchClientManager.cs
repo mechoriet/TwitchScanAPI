@@ -139,6 +139,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 IsOnline = false;
                 _cachedChannelInformation.IsOnline = false;
                 OnDisconnected?.Invoke(this, EventArgs.Empty);
+                OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
             };
         }
 
