@@ -5,13 +5,11 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Timers;
 using Microsoft.Extensions.Configuration;
-using TwitchLib.Api;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Models;
-using TwitchLib.PubSub;
 using TwitchLib.PubSub.Events;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Models.Twitch.Channel;
@@ -41,7 +39,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         // BetterTTV & 7TV
         private readonly Timer _reconnectTimer;
         private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
-        private readonly TwitchAPI _api = new();
+        private readonly CustomTwitchAPI _api;
         private ChannelInformation _cachedChannelInformation = new(false, null);
         private TwitchClient? _client;
         private bool _fetching;
@@ -56,7 +54,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _channelName = channelName;
             _configuration = configuration;
             _pubSubManager = pubSubManager;
-            ConfigureTwitchApi();
+            _api = CustomTwitchAPI.getInstance(configuration);
 
             _reconnectTimer = new Timer(_retryInterval.TotalMilliseconds) { AutoReset = false };
             _reconnectTimer.Elapsed += async (_, _) => await HandleReconnectAsync();
@@ -73,7 +71,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             var userId = channelInformation.Id;
             if (string.IsNullOrEmpty(userId))
             {
-                var user = await manager._api.Helix.Users.GetUsersAsync(logins: [channelName]);
+                var user = await manager._api.getTwitchAPI().Helix.Users.GetUsersAsync(logins: [channelName]);
                 userId = user?.Users.FirstOrDefault()?.Id;
             }
 
@@ -163,12 +161,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public event EventHandler<ChannelInformation>? OnConnectionChanged;
         public event EventHandler<OnCommercialArgs>? OnCommercial;
         public event EventHandler? OnDisconnected;
-
-        private void ConfigureTwitchApi()
-        {
-            _api.Settings.ClientId = _configuration.GetValue<string>(Variables.TwitchClientId);
-            _api.Settings.Secret = _configuration.GetValue<string>(Variables.TwitchClientSecret);
-        }
 
         public async Task<ChannelInformation> AttemptConnectionAsync()
         {
@@ -341,7 +333,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _fetching = true;
             try
             {
-                var streams = await _api.Helix.Streams.GetStreamsAsync(userLogins: [_channelName]);
+                Console.WriteLine($"Getting channel info... for channel {_channelName}");
+                var streams = await _api.getTwitchAPI().Helix.Streams.GetStreamsAsync(userLogins: [_channelName]);
                 var isOnline = (IsOnline && fromPubSub) || streams?.Streams.Any() == true;
 
                 switch (IsOnline)
