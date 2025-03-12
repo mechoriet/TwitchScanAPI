@@ -11,7 +11,6 @@ using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
 using TwitchLib.Communication.Clients;
 using TwitchLib.Communication.Models;
-using TwitchLib.PubSub;
 using TwitchLib.PubSub.Events;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Models.Twitch.Channel;
@@ -22,6 +21,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 {
     public class TwitchClientManager : IDisposable
     {
+        private static readonly TwitchAPI Api = new();
         private readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(10);
         private readonly string _channelName;
         private readonly IConfiguration _configuration;
@@ -41,7 +41,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         // BetterTTV & 7TV
         private readonly Timer _reconnectTimer;
         private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
-        private readonly TwitchAPI _api = new();
         private ChannelInformation _cachedChannelInformation = new(false, null);
         private TwitchClient? _client;
         private bool _fetching;
@@ -73,7 +72,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             var userId = channelInformation.Id;
             if (string.IsNullOrEmpty(userId))
             {
-                var user = await manager._api.Helix.Users.GetUsersAsync(logins: [channelName]);
+                var user = await Api.Helix.Users.GetUsersAsync(logins: [channelName]);
                 userId = user?.Users.FirstOrDefault()?.Id;
             }
 
@@ -114,23 +113,29 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     OnCommercial?.Invoke(this, args);
                 }
             };
-            
+
             _pubSubManager.StreamUp += (o, args) =>
             {
-                if (args.ChannelId != _cachedChannelInformation.Id && !IsOnline) return;
+                if (args.ChannelId != _cachedChannelInformation.Id) return;
                 IsOnline = true;
                 _cachedChannelInformation.IsOnline = true;
-                _ = GetChannelInfoAsync(true);
+                UpdateChannelEmotes(args.ChannelId);
+                Console.WriteLine($"{_channelName} is now online.");
+                OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
             };
-            
+
             _pubSubManager.StreamDown += (o, args) =>
             {
-                if (args.ChannelId != _cachedChannelInformation.Id && IsOnline) return;
+                if (args.ChannelId != _cachedChannelInformation.Id) return;
                 IsOnline = false;
                 _cachedChannelInformation.IsOnline = false;
                 OnDisconnected?.Invoke(this, EventArgs.Empty);
-                _ = GetChannelInfoAsync(true);
             };
+        }
+
+        private async void UpdateChannelEmotes(string channelId)
+        {
+            ExternalChannelEmotes = await EmoteService.GetChannelEmotesAsync(channelId);
         }
 
         public void Dispose()
@@ -166,8 +171,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         private void ConfigureTwitchApi()
         {
-            _api.Settings.ClientId = _configuration.GetValue<string>(Variables.TwitchClientId);
-            _api.Settings.Secret = _configuration.GetValue<string>(Variables.TwitchClientSecret);
+            Api.Settings.ClientId = _configuration.GetValue<string>(Variables.TwitchClientId);
+            Api.Settings.Secret = _configuration.GetValue<string>(Variables.TwitchClientSecret);
         }
 
         public async Task<ChannelInformation> AttemptConnectionAsync()
@@ -331,31 +336,17 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             Console.WriteLine("Twitch client reconnected successfully.");
         }
 
-        public async Task<ChannelInformation> GetChannelInfoAsync(bool fromPubSub = false)
+        public async Task<ChannelInformation> GetChannelInfoAsync()
         {
             // Use cached info if valid
-            if (_fetching || (DateTime.UtcNow - _lastFetchTime < _cacheDuration))
+            if (_fetching || DateTime.UtcNow - _lastFetchTime < _cacheDuration)
                 return _cachedChannelInformation;
 
             _lastFetchTime = DateTime.UtcNow;
             _fetching = true;
             try
             {
-                var streams = await _api.Helix.Streams.GetStreamsAsync(userLogins: [_channelName]);
-                var isOnline = (IsOnline && fromPubSub) || streams?.Streams.Any() == true;
-
-                switch (IsOnline)
-                {
-                    case true when !isOnline:
-                        OnDisconnected?.Invoke(this, EventArgs.Empty);
-                        break;
-                    case false when isOnline:
-                        ExternalChannelEmotes = await EmoteService.GetChannelEmotesAsync(streams!.Streams[0].UserId);
-                        Console.WriteLine($"{_channelName} is now online.");
-                        break;
-                }
-
-                IsOnline = isOnline;
+                var streams = await Api.Helix.Streams.GetStreamsAsync(userLogins: [_channelName]);
                 _cachedChannelInformation = streams?.Streams.Any() == true
                     ? new ChannelInformation(
                         ViewerCount != null && ViewerCount != LastViewerCount
@@ -368,10 +359,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                         streams.Streams[0].Type,
                         IsOnline,
                         streams.Streams[0].UserId)
-                    : new ChannelInformation(false, _cachedChannelInformation.Id);
+                    : new ChannelInformation(IsOnline, _cachedChannelInformation.Id);
 
                 LastViewerCount = ViewerCount;
-                OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
                 return _cachedChannelInformation;
             }
             catch (HttpRequestException ex)
