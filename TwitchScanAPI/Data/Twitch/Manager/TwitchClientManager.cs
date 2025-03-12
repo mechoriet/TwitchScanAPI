@@ -117,7 +117,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             
             _pubSubManager.StreamUp += (o, args) =>
             {
-                if (args.ChannelId != _cachedChannelInformation.Id) return;
+                if (args.ChannelId != _cachedChannelInformation.Id && !IsOnline) return;
                 IsOnline = true;
                 _cachedChannelInformation.IsOnline = true;
                 _ = GetChannelInfoAsync(true);
@@ -125,9 +125,10 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             
             _pubSubManager.StreamDown += (o, args) =>
             {
-                if (args.ChannelId != _cachedChannelInformation.Id) return;
+                if (args.ChannelId != _cachedChannelInformation.Id && IsOnline) return;
                 IsOnline = false;
                 _cachedChannelInformation.IsOnline = false;
+                OnDisconnected?.Invoke(this, EventArgs.Empty);
                 _ = GetChannelInfoAsync(true);
             };
         }
