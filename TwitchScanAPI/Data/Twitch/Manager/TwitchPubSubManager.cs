@@ -127,6 +127,10 @@ public class TwitchPubSubManager : IDisposable
     public event EventHandler<OnStreamUpArgs>? StreamUp;
     public event EventHandler<OnStreamDownArgs>? StreamDown;
     
+    public void InvokeStreamUp(string channelId)
+    {
+        StreamUp?.Invoke(this, new OnStreamUpArgs { ChannelId = channelId });
+    }
     
     public void Dispose()
     {

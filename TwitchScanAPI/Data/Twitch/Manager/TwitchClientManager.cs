@@ -75,6 +75,10 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 var user = await Api.Helix.Users.GetUsersAsync(logins: [channelName]);
                 userId = user?.Users.FirstOrDefault()?.Id;
             }
+            else
+            {
+                manager.IsOnline = true;
+            }
 
             // Add channel to PubSub when it comes online
             if (!string.IsNullOrEmpty(userId))
@@ -93,6 +97,11 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             }
 
             await manager.StartClientAsync();
+
+            if (manager.IsOnline)
+            {
+                manager._pubSubManager.InvokeStreamUp(channelInformation.Id);
+            }
             return manager;
         }
 
