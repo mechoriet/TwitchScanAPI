@@ -1,6 +1,4 @@
-﻿using System.Threading.Tasks;
-
-namespace TwitchScanAPI.Data.Statistics.Base;
+﻿namespace TwitchScanAPI.Data.Statistics.Base;
 
 public abstract class StatisticBase : IStatistic
 {
