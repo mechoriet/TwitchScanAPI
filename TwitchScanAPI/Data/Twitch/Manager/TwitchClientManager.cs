@@ -357,9 +357,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                         streams.Streams[0].StartedAt,
                         streams.Streams[0].ThumbnailUrl,
                         streams.Streams[0].Type,
-                        true,
+                        IsOnline,
                         streams.Streams[0].UserId)
-                    : new ChannelInformation(false, _cachedChannelInformation.Id);
+                    : new ChannelInformation(IsOnline, _cachedChannelInformation.Id);
 
                 LastViewerCount = ViewerCount;
                 OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
