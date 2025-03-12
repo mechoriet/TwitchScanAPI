@@ -69,39 +69,31 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             var manager = new TwitchClientManager(channelName, configuration, pubSubManager);
             var channelInformation = await manager.GetChannelInfoAsync();
-            var userId = channelInformation.Id;
-            if (string.IsNullOrEmpty(userId))
+            var broadcasterId = channelInformation.Id;
+            if (string.IsNullOrEmpty(broadcasterId))
             {
                 var user = await Api.Helix.Users.GetUsersAsync(logins: [channelName]);
-                userId = user?.Users.FirstOrDefault()?.Id;
+                broadcasterId = user?.Users.FirstOrDefault()?.Id;
             }
             else
             {
                 manager.IsOnline = true;
             }
 
-            // Add channel to PubSub when it comes online
-            if (!string.IsNullOrEmpty(userId))
-            {
-                manager._pubSubManager.SubscribeChannel(userId, channelName);
-                manager._cachedChannelInformation.Id = userId;
-            }
-
             // Subscribe to PubSub manager events
             manager.SubscribeToPubSubManagerEvents();
 
-            // Add the channel to the PubSub manager if we have a valid ID
-            if (!string.IsNullOrEmpty(channelInformation.Id))
+            // Add channel to PubSub
+            if (!string.IsNullOrEmpty(broadcasterId))
             {
-                pubSubManager.SubscribeChannel(channelInformation.Id, channelName);
+                pubSubManager.SubscribeChannel(broadcasterId, channelName);
+                manager._cachedChannelInformation.Id = broadcasterId;
+
+                if (manager.IsOnline)
+                    pubSubManager.InvokeStreamUp(broadcasterId);
             }
 
             await manager.StartClientAsync();
-
-            if (manager.IsOnline)
-            {
-                manager._pubSubManager.InvokeStreamUp(channelInformation.Id);
-            }
             return manager;
         }
 
