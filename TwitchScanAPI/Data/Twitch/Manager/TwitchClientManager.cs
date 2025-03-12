@@ -42,7 +42,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly Timer _reconnectTimer;
         private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
         private readonly TwitchAPI _api = new();
-        private ChannelInformation? _cachedChannelInformation;
+        private ChannelInformation _cachedChannelInformation = new(false, null);
         private TwitchClient? _client;
         private bool _fetching;
         private bool _isReconnecting;
@@ -80,8 +80,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             // Add channel to PubSub when it comes online
             if (!string.IsNullOrEmpty(userId))
             {
-                manager.ExternalChannelEmotes = await EmoteService.GetChannelEmotesAsync(userId);
                 manager._pubSubManager.SubscribeChannel(userId, channelName);
+                manager._cachedChannelInformation.Id = userId;
             }
 
             // Subscribe to PubSub manager events
@@ -101,7 +101,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             _pubSubManager.OnViewCountChanged += (_, args) =>
             {
-                if (args.ChannelId == _cachedChannelInformation?.Id)
+                if (args.ChannelId == _cachedChannelInformation.Id)
                 {
                     ViewerCount = args.Viewers;
                 }
@@ -109,7 +109,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             _pubSubManager.OnCommercialStarted += (_, args) =>
             {
-                if (args.ChannelId == _cachedChannelInformation?.Id)
+                if (args.ChannelId == _cachedChannelInformation.Id)
                 {
                     OnCommercial?.Invoke(this, args);
                 }
@@ -117,7 +117,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             
             _pubSubManager.StreamUp += (o, args) =>
             {
-                if (args.ChannelId != _cachedChannelInformation?.Id) return;
+                if (args.ChannelId != _cachedChannelInformation.Id) return;
                 IsOnline = true;
                 _cachedChannelInformation.IsOnline = true;
                 _ = GetChannelInfoAsync(true);
@@ -125,7 +125,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             
             _pubSubManager.StreamDown += (o, args) =>
             {
-                if (args.ChannelId != _cachedChannelInformation?.Id) return;
+                if (args.ChannelId != _cachedChannelInformation.Id) return;
                 IsOnline = false;
                 _cachedChannelInformation.IsOnline = false;
                 _ = GetChannelInfoAsync(true);
@@ -140,7 +140,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _customClient?.Dispose();
 
             // Unsubscribe from PubSub topics if we have a valid ID
-            if (_cachedChannelInformation?.Id != null)
+            if (!string.IsNullOrEmpty(_cachedChannelInformation.Id))
             {
                 _pubSubManager.UnsubscribeChannel(_cachedChannelInformation.Id);
             }
@@ -333,8 +333,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public async Task<ChannelInformation> GetChannelInfoAsync(bool fromPubSub = false)
         {
             // Use cached info if valid
-            if (_fetching || (_cachedChannelInformation != null && DateTime.UtcNow - _lastFetchTime < _cacheDuration))
-                return _cachedChannelInformation ?? new ChannelInformation(false);
+            if (_fetching || (DateTime.UtcNow - _lastFetchTime < _cacheDuration))
+                return _cachedChannelInformation;
 
             _lastFetchTime = DateTime.UtcNow;
             _fetching = true;
@@ -367,7 +367,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                         streams.Streams[0].Type,
                         IsOnline,
                         streams.Streams[0].UserId)
-                    : new ChannelInformation(false);
+                    : new ChannelInformation(false, _cachedChannelInformation.Id);
 
                 LastViewerCount = ViewerCount;
                 OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
@@ -376,12 +376,12 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             catch (HttpRequestException ex)
             {
                 Console.WriteLine($"HTTP Request Error: {ex.Message}, Inner: {ex.InnerException?.Message}");
-                return new ChannelInformation(false);
+                return new ChannelInformation(false, _cachedChannelInformation.Id);
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
-                return new ChannelInformation(false);
+                return new ChannelInformation(false, _cachedChannelInformation.Id);
             }
             finally
             {

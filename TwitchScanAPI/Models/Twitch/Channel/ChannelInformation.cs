@@ -12,7 +12,7 @@ namespace TwitchScanAPI.Models.Twitch.Channel
         bool isOnline,
         string id)
     {
-        public ChannelInformation(bool isOnline) : this(0, string.Empty, string.Empty, DateTime.MinValue, string.Empty, string.Empty, isOnline, string.Empty)
+        public ChannelInformation(bool isOnline, string? id) : this(0, string.Empty, string.Empty, DateTime.MinValue, string.Empty, string.Empty, isOnline, id ?? string.Empty)
         {
         }
 
