@@ -224,8 +224,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 _client.Initialize(credentials, _channelName);
 
                 SubscribeToClientEvents(_client);
-
-                // No need to handle PubSub here as it's now managed by the TwitchPubSubManager
                 _client.Connect();
             }
             catch (Exception ex)
@@ -371,6 +369,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     : new ChannelInformation(IsOnline, _cachedChannelInformation.Id);
 
                 LastViewerCount = ViewerCount;
+                OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
                 return _cachedChannelInformation;
             }
             catch (HttpRequestException ex)
