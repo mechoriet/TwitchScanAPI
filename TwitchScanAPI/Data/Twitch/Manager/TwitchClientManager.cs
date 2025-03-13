@@ -339,6 +339,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private void OnTwitchReconnectedHandler(object? sender, EventArgs e)
         {
             Console.WriteLine("Twitch client reconnected successfully.");
+            if (_client == null) return;
+            UnsubscribeFromClientEvents(_client);
+            SubscribeToClientEvents(_client);
         }
 
         public async Task<ChannelInformation> GetChannelInfoAsync()
