@@ -115,7 +115,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 }
             };
 
-            _pubSubManager.StreamUp += (o, args) =>
+            _pubSubManager.OnStreamUp += (o, args) =>
             {
                 if (args.ChannelId != _cachedChannelInformation.Id) return;
                 IsOnline = true;
@@ -123,9 +123,10 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 UpdateChannelEmotes(args.ChannelId);
                 Console.WriteLine($"{_channelName} is now online.");
                 OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
+                _ = StartClientAsync();
             };
 
-            _pubSubManager.StreamDown += (o, args) =>
+            _pubSubManager.OnStreamDown += (o, args) =>
             {
                 if (args.ChannelId != _cachedChannelInformation.Id) return;
                 IsOnline = false;
@@ -218,6 +219,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
                 SubscribeToClientEvents(_client);
                 _client.Connect();
+                Console.WriteLine("Twitch client connected successfully to " + _channelName);
             }
             catch (Exception ex)
             {
@@ -347,12 +349,16 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             try
             {
                 var streams = await Api.Helix.Streams.GetStreamsAsync(userLogins: [_channelName]);
-                _cachedChannelInformation = streams?.Streams.Any() == true
+                var isOnline = streams?.Streams.Any() == true;
+                if (!IsOnline && isOnline)
+                    Console.WriteLine($"PubSub failed to detect {_channelName} online status.");
+
+                _cachedChannelInformation = isOnline
                     ? new ChannelInformation(
                         ViewerCount != null && ViewerCount != LastViewerCount
                             ? (long)ViewerCount
-                            : streams.Streams[0].ViewerCount,
-                        streams.Streams[0].Title,
+                            : streams!.Streams[0].ViewerCount,
+                        streams!.Streams[0].Title,
                         streams.Streams[0].GameName,
                         streams.Streams[0].StartedAt,
                         streams.Streams[0].ThumbnailUrl,
@@ -368,12 +374,12 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             catch (HttpRequestException ex)
             {
                 Console.WriteLine($"HTTP Request Error: {ex.Message}, Inner: {ex.InnerException?.Message}");
-                return new ChannelInformation(false, _cachedChannelInformation.Id);
+                return new ChannelInformation(IsOnline, _cachedChannelInformation.Id);
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
-                return new ChannelInformation(false, _cachedChannelInformation.Id);
+                return new ChannelInformation(IsOnline, _cachedChannelInformation.Id);
             }
             finally
             {

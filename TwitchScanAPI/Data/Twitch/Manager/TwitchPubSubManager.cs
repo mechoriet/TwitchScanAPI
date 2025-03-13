@@ -97,12 +97,12 @@ public class TwitchPubSubManager : IDisposable
         
         client.OnStreamUp += (_, args) =>
         {
-            StreamUp?.Invoke(this, args);
+            OnStreamUp?.Invoke(this, args);
         };
         
         client.OnStreamDown += (_, args) =>
         {
-            StreamDown?.Invoke(this, args);
+            OnStreamDown?.Invoke(this, args);
         };
         
         client.OnCommercial += (_, args) =>
@@ -124,12 +124,12 @@ public class TwitchPubSubManager : IDisposable
     // Events for the TwitchClientManager to subscribe to
     public event EventHandler<ViewCountChangedEventArgs>? OnViewCountChanged;
     public event EventHandler<OnCommercialArgs>? OnCommercialStarted;
-    public event EventHandler<OnStreamUpArgs>? StreamUp;
-    public event EventHandler<OnStreamDownArgs>? StreamDown;
+    public event EventHandler<OnStreamUpArgs>? OnStreamUp;
+    public event EventHandler<OnStreamDownArgs>? OnStreamDown;
     
     public void InvokeStreamUp(string channelId)
     {
-        StreamUp?.Invoke(this, new OnStreamUpArgs { ChannelId = channelId });
+        OnStreamUp?.Invoke(this, new OnStreamUpArgs { ChannelId = channelId });
     }
     
     public void Dispose()
