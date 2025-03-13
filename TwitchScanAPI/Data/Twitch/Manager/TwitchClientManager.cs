@@ -84,16 +84,14 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             manager.SubscribeToPubSubManagerEvents();
 
             // Add channel to PubSub
-            if (!string.IsNullOrEmpty(broadcasterId))
-            {
-                pubSubManager.SubscribeChannel(broadcasterId, channelName);
-                manager._cachedChannelInformation.Id = broadcasterId;
+            if (string.IsNullOrEmpty(broadcasterId)) return manager;
+            
+            pubSubManager.SubscribeChannel(broadcasterId, channelName);
+            manager._cachedChannelInformation.Id = broadcasterId;
 
-                if (manager.IsOnline)
-                    pubSubManager.InvokeStreamUp(broadcasterId);
-            }
+            if (manager.IsOnline)
+                pubSubManager.InvokeStreamUp(broadcasterId);
 
-            await manager.StartClientAsync();
             return manager;
         }
 
@@ -133,6 +131,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 _cachedChannelInformation.IsOnline = false;
                 OnDisconnected?.Invoke(this, EventArgs.Empty);
                 OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
+                DisconnectClient();
             };
         }
 
