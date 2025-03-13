@@ -214,6 +214,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             {
                 _customClient?.Dispose();
                 _customClient = new WebSocketClient(ClientOptions);
+                if (_client != null)
+                    UnsubscribeFromClientEvents(_client);
+                
                 _client = new TwitchClient(_customClient) { AutoReListenOnException = true };
                 _client.Initialize(credentials, _channelName);
 
@@ -390,8 +393,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public void DisconnectClient()
         {
             if (_client?.IsConnected != true) return;
-
-            UnsubscribeFromClientEvents(_client);
+            
             _client.Disconnect();
         }
     }
