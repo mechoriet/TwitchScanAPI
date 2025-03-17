@@ -39,7 +39,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private WebSocketClient? _customClient;
 
         // BetterTTV & 7TV
-        private readonly Timer _reconnectTimer;
+        private Timer? _reconnectTimer;
         private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
         private ChannelInformation _cachedChannelInformation = new(false, null);
         private TwitchClient? _client;
@@ -57,6 +57,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _pubSubManager = pubSubManager;
             ConfigureTwitchApi();
 
+            if (_reconnectTimer != null) return;
             _reconnectTimer = new Timer(_retryInterval.TotalMilliseconds) { AutoReset = false };
             _reconnectTimer.Elapsed += async (_, _) => await HandleReconnectAsync();
         }
@@ -85,7 +86,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             // Add channel to PubSub
             if (string.IsNullOrEmpty(broadcasterId)) return manager;
-            
+
             pubSubManager.SubscribeChannel(broadcasterId, channelName);
             manager._cachedChannelInformation.Id = broadcasterId;
 
@@ -144,8 +145,19 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             GC.SuppressFinalize(this);
             DisconnectClient();
-            _reconnectTimer.Dispose();
-            _customClient?.Dispose();
+            
+            try
+            {
+                _reconnectTimer?.Dispose();
+                _customClient?.Dispose();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+
+            _reconnectTimer = null;
+            _customClient = null;
 
             // Unsubscribe from PubSub topics if we have a valid ID
             if (!string.IsNullOrEmpty(_cachedChannelInformation.Id))
@@ -198,7 +210,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             if (_isReconnecting) return;
             _isReconnecting = true;
-            _reconnectTimer.Start();
+            _reconnectTimer?.Start();
         }
 
         private async Task StartClientAsync()
@@ -215,7 +227,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 _customClient = new WebSocketClient(ClientOptions);
                 if (_client != null)
                     UnsubscribeFromClientEvents(_client);
-                
+
                 _client = new TwitchClient(_customClient) { AutoReListenOnException = true };
                 _client.Initialize(credentials, _channelName);
 
@@ -395,7 +407,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public void DisconnectClient()
         {
             if (_client?.IsConnected != true) return;
-            
+
             _client.Disconnect();
         }
     }
