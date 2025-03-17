@@ -223,8 +223,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             try
             {
-                _customClient?.Dispose();
-                _customClient = new WebSocketClient(ClientOptions);
+                _customClient ??= new WebSocketClient(ClientOptions);
+                
                 if (_client != null)
                     UnsubscribeFromClientEvents(_client);
 
