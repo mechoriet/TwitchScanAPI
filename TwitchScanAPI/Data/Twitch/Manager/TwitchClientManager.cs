@@ -31,8 +31,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private bool _isOnline;
 
         // Thread-safe property access for IsOnline
-        private bool IsOnline 
-        { 
+        private bool IsOnline
+        {
             get => _isOnline;
             set
             {
@@ -203,7 +203,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             GC.SuppressFinalize(this);
             _disposed = true;
-            
+
             if (_client != null)
             {
                 _client.Disconnect();
@@ -275,7 +275,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     break;
             }
         }
-        
+
         public void Reconnect()
         {
             if (_disposed) return;
@@ -458,7 +458,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 // Channel disconnected unexpectedly
                 Console.WriteLine($"Twitch client disconnected for {_channelName}. Attempting to reconnect...");
             }
-            
+
             ScheduleReconnect();
         }
 
@@ -510,6 +510,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 {
                     // If the API says the channel is online but PubSub says it's offline (or vice versa),
                     // log a warning about the discrepancy
+                    // PubSub needs to be single source of truth, but API says offline (need check how we can handle this)
                     case false when isOnline:
                         Console.WriteLine($"API detected {_channelName} as online, but PubSub shows offline.");
                         break;
@@ -530,30 +531,10 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                         stream.Type,
                         true,
                         stream.UserId);
-
-                    /* PubSub needs to be single source of truth, but API says offline (TODO: check how we can handle this)
-                    // If the API confirms the channel is online but our internal state shows offline,
-                    // update the internal state
-                    if (!IsOnline)
-                    {
-                        IsOnline = true;
-                        await StartClientAsync();
-                    } */
                 }
                 else
                 {
                     _cachedChannelInformation = new ChannelInformation(IsOnline, _cachedChannelInformation.Id);
-                    /* PubSub needs to be single source of truth, but API says offline (TODO: check how we can handle this)
-                    //API confirms channel is offline
-
-                    // If our internal state shows online but API confirms offline,
-                    // update the internal state
-                    if (IsOnline)
-                    {
-                        IsOnline = false;
-                        DisconnectClient();
-                        OnDisconnected?.Invoke(this, EventArgs.Empty);
-                    } */
                 }
 
                 LastViewerCount = ViewerCount;
@@ -567,7 +548,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             }
             catch (HttpRequestException ex)
             {
-                Console.WriteLine($"HTTP Request Error for {_channelName}: {ex.Message}, Inner: {ex.InnerException?.Message}");
+                Console.WriteLine(
+                    $"HTTP Request Error for {_channelName}: {ex.Message}, Inner: {ex.InnerException?.Message}");
                 return _cachedChannelInformation;
             }
             catch (Exception ex)
