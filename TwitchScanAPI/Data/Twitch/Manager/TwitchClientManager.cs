@@ -280,6 +280,11 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             if (_disposed) return;
 
+            _client?.Disconnect();
+            var credentials = new ConnectionCredentials(
+                _configuration.GetValue<string>(Variables.TwitchChatName),
+                _configuration.GetValue<string>(Variables.TwitchOauthKey));
+            _client?.SetConnectionCredentials(credentials);
             _client?.Reconnect();
         }
 
@@ -322,7 +327,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             var credentials = new ConnectionCredentials(
                 _configuration.GetValue<string>(Variables.TwitchChatName),
                 _configuration.GetValue<string>(Variables.TwitchOauthKey));
-
+            
             try
             {
                 _customClient ??= new WebSocketClient(ClientOptions);
