@@ -362,19 +362,6 @@ namespace TwitchScanAPI.Data.Twitch
                     await _statisticsManager.Update(channelMessage);
                 }
 
-                // If we're receiving messages but think the channel is offline, update our status
-                if (!IsOnline)
-                {
-                    IsOnline = true;
-                    _statisticsManager.PropagateEvents = true;
-                    Console.WriteLine($"Channel '{ChannelName}' is now online (message received).");
-
-                    // Notify of status change
-                    var channelInfo = await _clientManager.GetChannelInfoAsync();
-                    await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName,
-                        true, MessageCount, channelInfo.Viewers, channelInfo.Uptime));
-                }
-
                 // Check for observed words
                 if (_observedWordsManager.IsMatch(channelMessage.ChatMessage.Message))
                     await _notificationService.ReceiveObservedMessageAsync(ChannelName, channelMessage);
