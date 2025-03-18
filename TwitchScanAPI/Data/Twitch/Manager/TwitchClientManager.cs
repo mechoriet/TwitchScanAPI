@@ -29,6 +29,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private long? ViewerCount { get; set; }
         private long? LastViewerCount { get; set; }
         private bool _isOnline;
+        private int _consecutiveStreamStateChecks;
 
         // Thread-safe property access for IsOnline
         private bool IsOnline
@@ -116,19 +117,19 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     Console.WriteLine($"Could not find broadcaster ID for '{channelName}'");
                     return null;
                 }
-
+                
+                // Set the cached channel information
+                manager._cachedChannelInformation.Id = broadcasterId;
+                
                 // Subscribe to PubSub manager events
                 manager.SubscribeToPubSubManagerEvents();
 
                 // Add channel to PubSub
                 pubSubManager.SubscribeChannel(broadcasterId, channelName);
-                manager._cachedChannelInformation.Id = broadcasterId;
 
-                if (manager.IsOnline)
-                {
-                    pubSubManager.InvokeStreamUp(broadcasterId);
-                    await manager.StartClientAsync();
-                }
+                if (!manager.IsOnline) return manager;
+                pubSubManager.InvokeStreamUp(broadcasterId);
+                await manager.StartClientAsync();
 
                 return manager;
             }
@@ -506,17 +507,25 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
                 var isOnline = streams?.Streams.Length != 0;
 
-                switch (IsOnline)
+                if (IsOnline != isOnline)
                 {
-                    // If the API says the channel is online but PubSub says it's offline (or vice versa),
-                    // log a warning about the discrepancy
-                    // PubSub needs to be single source of truth, but API says offline (need check how we can handle this)
-                    case false when isOnline:
-                        Console.WriteLine($"API detected {_channelName} as online, but PubSub shows offline.");
-                        break;
-                    case true when !isOnline:
-                        Console.WriteLine($"API detected {_channelName} as offline, but PubSub shows online.");
-                        break;
+                    _consecutiveStreamStateChecks++;
+
+                    var apiState = isOnline ? "online" : "offline";
+                    var pubSubState = IsOnline ? "online" : "offline";
+
+                    Console.WriteLine($"API detected {_channelName} as {apiState}, but PubSub shows {pubSubState}.");
+
+                    if (_consecutiveStreamStateChecks >= 3)
+                    {
+                        IsOnline = isOnline;
+                        _consecutiveStreamStateChecks = 0;
+                        Console.WriteLine($"Marked {_channelName} as {apiState} after 3 consecutive checks.");
+                    }
+                }
+                else
+                {
+                    _consecutiveStreamStateChecks = 0;
                 }
 
                 if (IsOnline && streams?.Streams.Length != 0)
