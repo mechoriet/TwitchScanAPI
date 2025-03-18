@@ -117,10 +117,10 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     Console.WriteLine($"Could not find broadcaster ID for '{channelName}'");
                     return null;
                 }
-                
+
                 // Set the cached channel information
                 manager._cachedChannelInformation.Id = broadcasterId;
-                
+
                 // Subscribe to PubSub manager events
                 manager.SubscribeToPubSubManagerEvents();
 
@@ -129,7 +129,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
                 if (!manager.IsOnline) return manager;
                 pubSubManager.InvokeStreamUp(broadcasterId);
-                await manager.StartClientAsync();
 
                 return manager;
             }
@@ -521,6 +520,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                         IsOnline = isOnline;
                         _consecutiveStreamStateChecks = 0;
                         Console.WriteLine($"Marked {_channelName} as {apiState} after 3 consecutive checks.");
+                        if (!isOnline)
+                            OnDisconnected?.Invoke(this, EventArgs.Empty);
                     }
                 }
                 else
