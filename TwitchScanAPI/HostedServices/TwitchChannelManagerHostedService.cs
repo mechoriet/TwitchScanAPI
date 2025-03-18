@@ -65,9 +65,7 @@ namespace TwitchScanAPI.HostedServices
                 var oauth = await _authService.GetOAuthTokenAsync();
                 if (string.IsNullOrEmpty(oauth)) throw new Exception("OAuth token is empty");
                 _configuration[Variables.TwitchOauthKey] = oauth;
-
-                // Update OAuth token for all TwitchStatistics instances
-                foreach (var channel in _channelManager.TwitchStats) channel.RefreshConnection();
+                Console.WriteLine($"Refreshed OAuth token successfully");
             }
             catch (Exception ex)
             {

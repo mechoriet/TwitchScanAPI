@@ -127,22 +127,6 @@ namespace TwitchScanAPI.Data.Twitch
             manager.Reset();
         }
 
-        public void RefreshConnection()
-        {
-            if (_disposed) return;
-
-            try
-            {
-                _clientManager.Reconnect();
-                Console.WriteLine($"Reconnected to channel '{ChannelName}' with refreshed OAuth token.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(
-                    $"Failed to reconnect to channel '{ChannelName}' after refreshing OAuth token: {ex.Message}");
-            }
-        }
-
         private void SubscribeToClientEvents()
         {
             _clientManager.OnMessageReceived += ClientManager_OnMessageReceived;

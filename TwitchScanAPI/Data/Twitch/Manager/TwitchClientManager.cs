@@ -276,18 +276,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             }
         }
 
-        public void Reconnect()
-        {
-            if (_disposed) return;
-
-            _client?.Disconnect();
-            var credentials = new ConnectionCredentials(
-                _configuration.GetValue<string>(Variables.TwitchChatName),
-                _configuration.GetValue<string>(Variables.TwitchOauthKey));
-            _client?.SetConnectionCredentials(credentials);
-            _client?.Reconnect();
-        }
-
         private void HandleFetchTimeout()
         {
             lock (_fetchLock)
