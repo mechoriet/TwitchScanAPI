@@ -1,8 +1,7 @@
-﻿// TwitchChannelObserver.cs (Full Implementation)
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
@@ -21,11 +20,19 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         MongoDbContext context)
         : IDisposable
     {
-        public readonly List<TwitchStatistics> TwitchStats = new();
+        private readonly Lock _lockObject = new();
+        private bool _disposed;
+
+        public readonly List<TwitchStatistics> TwitchStats = [];
 
         public void Dispose()
         {
-            foreach (var channel in TwitchStats) channel.Dispose();
+            if (_disposed) return;
+
+            _disposed = true;
+
+            foreach (var channel in TwitchStats) 
+                channel.Dispose();
 
             GC.SuppressFinalize(this);
         }
@@ -35,6 +42,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public async Task<ResultMessage<string?>> Init(string channelName)
         {
+            if (_disposed) 
+                return new ResultMessage<string?>(null, new Error("Service is shutting down", StatusCodes.Status503ServiceUnavailable));
+
             channelName = channelName.Trim();
             if (string.IsNullOrWhiteSpace(channelName) || channelName.Length < 2)
             {
@@ -42,10 +52,13 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 return new ResultMessage<string?>(null, error);
             }
 
-            if (TwitchStats.Any(x => string.Equals(x.ChannelName, channelName, StringComparison.OrdinalIgnoreCase)))
+            lock (_lockObject)
             {
-                var error = new Error($"{channelName} already exists in Observer", StatusCodes.Status409Conflict);
-                return new ResultMessage<string?>(null, error);
+                if (TwitchStats.Any(x => string.Equals(x.ChannelName, channelName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    var error = new Error($"{channelName} already exists in Observer", StatusCodes.Status409Conflict);
+                    return new ResultMessage<string?>(null, error);
+                }
             }
 
             try
@@ -58,7 +71,12 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     return new ResultMessage<string?>(null, error);
                 }
 
-                TwitchStats.Add(stats);
+                lock (_lockObject)
+                {
+                    TwitchStats.Add(stats);
+                }
+
+                Console.WriteLine($"Initialized channel: {channelName}");
             }
             catch (Exception e)
             {
@@ -74,6 +92,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public async Task<ResultMessage<string?>> InitMultiple(string[] channelNames)
         {
+            if (_disposed) 
+                return new ResultMessage<string?>(null, new Error("Service is shutting down", StatusCodes.Status503ServiceUnavailable));
+
             var results = new List<ResultMessage<string?>>();
             foreach (var channelName in channelNames)
             {
@@ -94,6 +115,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public ResultMessage<string?> Remove(string channelName)
         {
+            if (_disposed) 
+                return new ResultMessage<string?>(null, new Error("Service is shutting down", StatusCodes.Status503ServiceUnavailable));
+
             var channel = GetChannel(channelName);
             if (channel == null)
             {
@@ -102,7 +126,15 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             }
 
             channel.Dispose();
-            TwitchStats.Remove(channel);
+
+            lock (_lockObject)
+            {
+                TwitchStats.Remove(channel);
+            }
+
+            clientManagerFactory.RemoveClientManager(channelName);
+            Console.WriteLine($"Removed channel: {channelName}");
+
             return new ResultMessage<string?>(channelName, null);
         }
 
@@ -111,6 +143,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public bool AddTextToObserve(string channelName, string text)
         {
+            if (_disposed) return false;
+            if (string.IsNullOrWhiteSpace(text)) return false;
+
             var channel = GetChannel(channelName);
             if (channel == null) return false;
 
@@ -123,13 +158,31 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public async Task<IEnumerable<InitiatedChannel>> GetInitiatedChannels()
         {
+            if (_disposed) return Array.Empty<InitiatedChannel>();
+
             var channels = new List<InitiatedChannel>();
-            foreach (var stat in TwitchStats)
+
+            List<TwitchStatistics> statsSnapshot;
+            lock (_lockObject)
             {
-                var channelInfo = await stat.GetChannelInfoAsync();
-                channels.Add(new InitiatedChannel(stat.ChannelName, stat.MessageCount, stat.StartedAt,
-                    channelInfo.Uptime,
-                    channelInfo.IsOnline, channelInfo.Title, channelInfo.Game));
+                statsSnapshot = TwitchStats.ToList();
+            }
+
+            foreach (var stat in statsSnapshot)
+            {
+                try
+                {
+                    var channelInfo = await stat.GetChannelInfoAsync();
+                    channels.Add(new InitiatedChannel(stat.ChannelName, stat.MessageCount, stat.StartedAt,
+                        channelInfo.Uptime,
+                        channelInfo.IsOnline, channelInfo.Title, channelInfo.Game));
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error getting channel info for {stat.ChannelName}: {ex.Message}");
+                    channels.Add(new InitiatedChannel(stat.ChannelName, stat.MessageCount, stat.StartedAt,
+                        DateTime.Now, false, "Error fetching info", ""));
+                }
             }
 
             return channels;
@@ -140,12 +193,12 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public async Task<IEnumerable<string>> GetPossibleStatistics()
         {
+            if (_disposed) return Array.Empty<string>();
+
             var stats = await GetAllStatistics();
-            return TwitchStats.SelectMany(_ =>
-            {
-                var collection = stats.Keys;
-                return collection;
-            }).Distinct();
+            return stats.SelectMany(kvp => 
+                kvp.Value?.Keys ?? Enumerable.Empty<string>()
+            ).Distinct();
         }
 
         /// <summary>
@@ -153,8 +206,28 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public async Task<IDictionary<string, IDictionary<string, object>?>> GetAllStatistics()
         {
+            if (_disposed) return new Dictionary<string, IDictionary<string, object>?>();
+
             var stats = new Dictionary<string, IDictionary<string, object>?>();
-            foreach (var channel in TwitchStats) stats[channel.ChannelName] = await channel.GetStatisticsAsync();
+
+            List<TwitchStatistics> statsSnapshot;
+            lock (_lockObject)
+            {
+                statsSnapshot = TwitchStats.ToList();
+            }
+
+            foreach (var channel in statsSnapshot)
+            {
+                try
+                {
+                    stats[channel.ChannelName] = await channel.GetStatisticsAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error fetching statistics for {channel.ChannelName}: {ex.Message}");
+                    stats[channel.ChannelName] = new Dictionary<string, object>();
+                }
+            }
 
             return stats;
         }
@@ -164,8 +237,20 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public async Task<IDictionary<string, object>?> GetAllStatistics(string channelName)
         {
-            var stats = await GetChannel(channelName)?.GetStatisticsAsync()!;
-            return stats;
+            if (_disposed) return new Dictionary<string, object>();
+
+            var channel = GetChannel(channelName);
+            if (channel == null) return null;
+
+            try
+            {
+                return await channel.GetStatisticsAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching statistics for {channelName}: {ex.Message}");
+                return new Dictionary<string, object>();
+            }
         }
 
         /// <summary>
@@ -173,7 +258,25 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public async Task SaveSnapshotsAsync()
         {
-            foreach (var channel in TwitchStats.Where(channel => channel.IsOnline)) await channel.SaveSnapshotAsync();
+            if (_disposed) return;
+
+            List<TwitchStatistics> statsSnapshot;
+            lock (_lockObject)
+            {
+                statsSnapshot = TwitchStats.ToList();
+            }
+
+            foreach (var channel in statsSnapshot.Where(channel => channel.IsOnline)) 
+            {
+                try
+                {
+                    await channel.SaveSnapshotAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error saving snapshot for {channel.ChannelName}: {ex.Message}");
+                }
+            }
         }
 
         /// <summary>
@@ -182,9 +285,19 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public async Task SaveSnapshotToChannelAsync(string channelName, StatisticsManager? manager = null,
             DateTime? date = null, int? viewCount = null)
         {
+            if (_disposed) return;
+
             var channel = GetChannel(channelName);
             if (channel == null) return;
-            await channel.SaveSnapshotAsync(manager, date, viewCount);
+
+            try
+            {
+                await channel.SaveSnapshotAsync(manager, date, viewCount);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving snapshot for {channelName}: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -192,6 +305,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public IEnumerable<StatisticTimeline> GetViewCountHistory(string channelName)
         {
+            if (_disposed) return Array.Empty<StatisticTimeline>();
+
             try
             {
                 return context.StatisticHistory
@@ -207,22 +322,33 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
-                return new List<StatisticTimeline>();
+                Console.WriteLine($"Error getting view count history: {e.Message}");
+                return Array.Empty<StatisticTimeline>();
             }
         }
 
         /// <summary>
         ///     Get the history of a specific key from the statistic history
         /// </summary>
-        public StatisticHistory GetHistoryByKey(string channelName, string id)
+        public StatisticHistory? GetHistoryByKey(string channelName, string id)
         {
-            if (!Guid.TryParse(id, out var guidKey)) throw new FormatException("Invalid GUID format");
+            if (_disposed) return null;
 
-            return context.StatisticHistory
-                .Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName) &
-                      Builders<StatisticHistory>.Filter.Eq(x => x.Id, guidKey))
-                .FirstOrDefault();
+            if (!Guid.TryParse(id, out var guidKey)) 
+                throw new FormatException("Invalid GUID format");
+
+            try
+            {
+                return context.StatisticHistory
+                    .Find(Builders<StatisticHistory>.Filter.Eq(x => x.UserName, channelName) &
+                          Builders<StatisticHistory>.Filter.Eq(x => x.Id, guidKey))
+                    .FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting history by key: {ex.Message}");
+                return null;
+            }
         }
 
         /// <summary>
@@ -230,8 +356,11 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public IEnumerable<ChatHistory> GetChatHistory(string channelName, string username)
         {
+            if (_disposed) return Array.Empty<ChatHistory>();
+            if (string.IsNullOrWhiteSpace(username)) return Array.Empty<ChatHistory>();
+
             var channel = GetChannel(channelName);
-            return channel == null ? new List<ChatHistory>() : channel.GetChatHistory(username);
+            return channel == null ? Array.Empty<ChatHistory>() : channel.GetChatHistory(username);
         }
 
         /// <summary>
@@ -239,6 +368,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public IEnumerable<string>? GetUsers(string channelName)
         {
+            if (_disposed) return null;
+
             return GetChannel(channelName)?.GetUsers();
         }
 
@@ -247,7 +378,12 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public bool AllChannelsOffline()
         {
-            return TwitchStats.All(x => !x.IsOnline);
+            if (_disposed) return true;
+
+            lock (_lockObject)
+            {
+                return TwitchStats.All(x => !x.IsOnline);
+            }
         }
 
         /// <summary>
@@ -255,8 +391,13 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         private TwitchStatistics? GetChannel(string channelName)
         {
-            return TwitchStats.FirstOrDefault(x =>
-                string.Equals(x.ChannelName, channelName, StringComparison.OrdinalIgnoreCase));
+            if (_disposed || string.IsNullOrWhiteSpace(channelName)) return null;
+
+            lock (_lockObject)
+            {
+                return TwitchStats.FirstOrDefault(x =>
+                    string.Equals(x.ChannelName, channelName.Trim(), StringComparison.OrdinalIgnoreCase));
+            }
         }
     }
 }

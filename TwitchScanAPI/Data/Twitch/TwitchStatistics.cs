@@ -1,10 +1,8 @@
-﻿// TwitchStatistics.cs
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
 using TwitchLib.PubSub.Events;
@@ -18,6 +16,7 @@ using TwitchScanAPI.Models.Twitch.Chat;
 using TwitchScanAPI.Models.Twitch.Statistics;
 using TwitchScanAPI.Models.Twitch.User;
 using TwitchScanAPI.Services;
+using Timer = System.Timers.Timer;
 
 namespace TwitchScanAPI.Data.Twitch
 {
@@ -33,7 +32,10 @@ namespace TwitchScanAPI.Data.Twitch
         private readonly StatisticsManager _statisticsManager;
         private readonly Timer _statisticsTimer;
         private readonly UserManager _userManager;
-        public bool IsOnline;
+        private bool _isProcessingOfflineStatus;
+        private bool _disposed;
+        private readonly Lock _lockObject = new();
+        public bool IsOnline { get; private set; }
 
         private TwitchStatistics(string channelName, TwitchClientManager clientManager,
             NotificationService notificationService, MongoDbContext context)
@@ -54,7 +56,11 @@ namespace TwitchScanAPI.Data.Twitch
             {
                 AutoReset = true
             };
-            _statisticsTimer.Elapsed += async (_, _) => { await SendStatisticsAsync(); };
+            _statisticsTimer.Elapsed += async (_, _) =>
+            {
+                if (!_disposed)
+                    await SendStatisticsAsync();
+            };
             _statisticsTimer.Start();
         }
 
@@ -64,6 +70,9 @@ namespace TwitchScanAPI.Data.Twitch
 
         public void Dispose()
         {
+            if (_disposed) return;
+
+            _disposed = true;
             _statisticsManager.Reset();
             _clientManager.Dispose();
             _statisticsTimer.Stop();
@@ -71,7 +80,8 @@ namespace TwitchScanAPI.Data.Twitch
             GC.SuppressFinalize(this);
         }
 
-        public static async Task<TwitchStatistics?> CreateAsync(string channelName, TwitchManagerFactory clientManagerFactory,
+        public static async Task<TwitchStatistics?> CreateAsync(string channelName,
+            TwitchManagerFactory clientManagerFactory,
             NotificationService notificationService, MongoDbContext context)
         {
             var clientManager =
@@ -85,6 +95,8 @@ namespace TwitchScanAPI.Data.Twitch
         public async Task SaveSnapshotAsync(StatisticsManager? manager = null, DateTime? date = null,
             int? viewCount = null)
         {
+            if (_disposed) return;
+
             manager ??= _statisticsManager;
 
             // Try getting the peak viewers from the statistics
@@ -93,6 +105,7 @@ namespace TwitchScanAPI.Data.Twitch
                 var statistics = manager.GetAllStatistics();
                 statistics.TryGetValue("ChannelMetrics", out var value);
                 var viewerStatistics = value is ChannelMetrics metrics ? metrics.ViewerStatistics : null;
+
                 // Save the statistics to the database
                 var statisticHistory = new StatisticHistory(ChannelName,
                     viewCount ?? viewerStatistics?.PeakViewers ?? 0,
@@ -102,6 +115,7 @@ namespace TwitchScanAPI.Data.Twitch
                 };
 
                 await _context.StatisticHistory.InsertOneAsync(statisticHistory);
+                Console.WriteLine($"Saved snapshot for channel '{ChannelName}' with {MessageCount} messages");
             }
             catch (Exception ex)
             {
@@ -113,13 +127,13 @@ namespace TwitchScanAPI.Data.Twitch
             manager.Reset();
         }
 
-        public async Task RefreshConnectionAsync()
+        public void RefreshConnection()
         {
-            _clientManager.DisconnectClient();
+            if (_disposed) return;
 
             try
             {
-                await _clientManager.AttemptConnectionAsync();
+                _clientManager.Reconnect();
                 Console.WriteLine($"Reconnected to channel '{ChannelName}' with refreshed OAuth token.");
             }
             catch (Exception ex)
@@ -150,17 +164,83 @@ namespace TwitchScanAPI.Data.Twitch
 
         private async void ClientManagerOnDisconnected(object? sender, EventArgs e)
         {
-            IsOnline = false;
-            _statisticsManager.PropagateEvents = false;
-            await SaveSnapshotAsync();
+            try
+            {
+                await HandleChannelOfflineAsync();
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine($"Error handling channel disconnect for '{ChannelName}': {err.Message}");
+            }
+        }
+
+        private async Task HandleChannelOfflineAsync()
+        {
+            // Use a lock to prevent multiple simultaneous calls from processing offline status
+            lock (_lockObject)
+            {
+                if (_isProcessingOfflineStatus) return;
+                _isProcessingOfflineStatus = true;
+            }
+
+            try
+            {
+                // Only save data if we were previously online
+                if (IsOnline)
+                {
+                    IsOnline = false;
+                    _statisticsManager.PropagateEvents = false;
+                    await SaveSnapshotAsync();
+                    Console.WriteLine($"Channel '{ChannelName}' went offline. Snapshot saved.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error handling offline status for '{ChannelName}': {ex.Message}");
+            }
+            finally
+            {
+                lock (_lockObject)
+                {
+                    _isProcessingOfflineStatus = false;
+                }
+            }
         }
 
         private async void ClientManagerOnConnectionChanged(object? sender, ChannelInformation channelInformation)
         {
-            IsOnline = channelInformation.IsOnline;
-            _statisticsManager.PropagateEvents = IsOnline;
-            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName,
-                channelInformation.IsOnline, MessageCount, channelInformation.Viewers, channelInformation.Uptime));
+            try
+            {
+                if (_disposed) return;
+
+                var wasOnline = IsOnline;
+                IsOnline = channelInformation.IsOnline;
+
+                // Only change propagation when the status actually changes
+                if (wasOnline != IsOnline)
+                {
+                    _statisticsManager.PropagateEvents = IsOnline;
+
+                    switch (IsOnline)
+                    {
+                        // If the channel just went offline, save a snapshot
+                        case false when wasOnline:
+                            await HandleChannelOfflineAsync();
+                            break;
+                        // If the channel just came online, log it
+                        case true when !wasOnline:
+                            Console.WriteLine($"Channel '{ChannelName}' is now online.");
+                            break;
+                    }
+                }
+
+                await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName,
+                    channelInformation.IsOnline, MessageCount, channelInformation.Viewers, channelInformation.Uptime));
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error handling connection change for '{ChannelName}': {e.Message}");
+            }
         }
 
         public void AddTextToObserve(string text)
@@ -173,11 +253,21 @@ namespace TwitchScanAPI.Data.Twitch
             return await _clientManager.GetChannelInfoAsync();
         }
 
-        public async Task<IDictionary<string, object>> GetStatisticsAsync()
+        public async Task<Dictionary<string, object?>> GetStatisticsAsync()
         {
+            if (_disposed) return new Dictionary<string, object?>();
+
             try
             {
                 var channelInfo = await _clientManager.GetChannelInfoAsync();
+
+                // If the channel is offline according to the channel info, but we think it's online,
+                // update our status
+                if (!channelInfo.IsOnline && IsOnline)
+                {
+                    await HandleChannelOfflineAsync();
+                }
+
                 await _statisticsManager.Update(channelInfo);
 
                 return _statisticsManager.GetAllStatistics();
@@ -186,7 +276,7 @@ namespace TwitchScanAPI.Data.Twitch
             {
                 Console.WriteLine(
                     $"Error fetching statistics for channel '{ChannelName}': {ex.Message} {ex.StackTrace}");
-                return new Dictionary<string, object>(); // Return empty if there's an error
+                return new Dictionary<string, object?>(); // Return empty if there's an error
             }
         }
 
@@ -202,184 +292,341 @@ namespace TwitchScanAPI.Data.Twitch
 
         private async Task SendStatisticsAsync()
         {
-            var channelInformation = await _clientManager.GetChannelInfoAsync();
-            await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName,
-                channelInformation.IsOnline, MessageCount, channelInformation.Viewers, channelInformation.Uptime));
-            if (!channelInformation.IsOnline)
-                return;
+            if (_disposed) return;
 
-            var statistics = await GetStatisticsAsync();
-            await _notificationService.ReceiveStatisticsAsync(ChannelName, statistics);
+            try
+            {
+                var channelInformation = await _clientManager.GetChannelInfoAsync();
+
+                // Double-check if the channel status changed
+                if (IsOnline != channelInformation.IsOnline)
+                {
+                    switch (IsOnline)
+                    {
+                        case true when !channelInformation.IsOnline:
+                            await HandleChannelOfflineAsync();
+                            break;
+                        case false when channelInformation.IsOnline:
+                            IsOnline = true;
+                            _statisticsManager.PropagateEvents = true;
+                            Console.WriteLine($"Channel '{ChannelName}' is now online.");
+                            break;
+                    }
+                }
+
+                await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName,
+                    channelInformation.IsOnline, MessageCount, channelInformation.Viewers, channelInformation.Uptime));
+
+                if (!channelInformation.IsOnline)
+                    return;
+
+                var statistics = await GetStatisticsAsync();
+                await _notificationService.ReceiveStatisticsAsync(ChannelName, statistics);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in SendStatisticsAsync for '{ChannelName}': {ex.Message}");
+            }
         }
 
         #region Event Handlers
 
         private async void ClientManager_OnMessageReceived(object? sender, OnMessageReceivedArgs e)
         {
-            var chatMessage = e.ChatMessage;
-            var channelMessage = new ChannelMessage(ChannelName, new TwitchChatMessage
+            try
             {
-                Username = chatMessage.Username,
-                Message = chatMessage.Message,
-                ColorHex = chatMessage.ColorHex,
-                Bits = chatMessage.Bits,
-                BitsInDollars = chatMessage.BitsInDollars,
-                Emotes = e.ChatMessage.EmoteSet.Emotes
-                    .Select(em => new TwitchEmote(em.Id, em.Name, em.StartIndex, em.EndIndex))
-                    .ToList()
-            });
+                if (_disposed) return;
 
-            // Add BTTV and 7TV emotes to the message
-            StaticTwitchHelper.AddEmotesToMessage(channelMessage, _clientManager.ExternalChannelEmotes);
-            await _notificationService.ReceiveChannelMessageAsync(ChannelName, channelMessage);
-            await _notificationService.ReceiveMessageCountAsync(ChannelName, MessageCount);
+                var chatMessage = e.ChatMessage;
+                var channelMessage = new ChannelMessage(ChannelName, new TwitchChatMessage
+                {
+                    Username = chatMessage.Username,
+                    Message = chatMessage.Message,
+                    ColorHex = chatMessage.ColorHex,
+                    Bits = chatMessage.Bits,
+                    BitsInDollars = chatMessage.BitsInDollars,
+                    Emotes = e.ChatMessage.EmoteSet.Emotes
+                        .Select(em => new TwitchEmote(em.Id, em.Name, em.StartIndex, em.EndIndex))
+                        .ToList()
+                });
 
-            // Update message count and statistics if not a bot
-            if (!Variables.BotNames.Contains(channelMessage.ChatMessage.Username, StringComparer.OrdinalIgnoreCase))
-            {
-                MessageCount++;
-                await _statisticsManager.Update(channelMessage);
+                // Add BTTV and 7TV emotes to the message
+                StaticTwitchHelper.AddEmotesToMessage(channelMessage, _clientManager.ExternalChannelEmotes);
+                await _notificationService.ReceiveChannelMessageAsync(ChannelName, channelMessage);
+                await _notificationService.ReceiveMessageCountAsync(ChannelName, MessageCount);
+
+                // Update message count and statistics if not a bot
+                if (!Variables.BotNames.Contains(channelMessage.ChatMessage.Username, StringComparer.OrdinalIgnoreCase))
+                {
+                    MessageCount++;
+                    await _statisticsManager.Update(channelMessage);
+                }
+
+                // If we're receiving messages but think the channel is offline, update our status
+                if (!IsOnline)
+                {
+                    IsOnline = true;
+                    _statisticsManager.PropagateEvents = true;
+                    Console.WriteLine($"Channel '{ChannelName}' is now online (message received).");
+
+                    // Notify of status change
+                    var channelInfo = await _clientManager.GetChannelInfoAsync();
+                    await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName,
+                        true, MessageCount, channelInfo.Viewers, channelInfo.Uptime));
+                }
+
+                // Check for observed words
+                if (_observedWordsManager.IsMatch(channelMessage.ChatMessage.Message))
+                    await _notificationService.ReceiveObservedMessageAsync(ChannelName, channelMessage);
+
+                // Check for elevated users
+                if (IsElevatedUser(chatMessage))
+                    await _notificationService.ReceiveElevatedMessageAsync(ChannelName, channelMessage);
             }
-
-            // Check for observed words
-            if (_observedWordsManager.IsMatch(channelMessage.ChatMessage.Message))
-                await _notificationService.ReceiveObservedMessageAsync(ChannelName, channelMessage);
-
-            // Check for elevated users
-            if (IsElevatedUser(chatMessage))
-                await _notificationService.ReceiveElevatedMessageAsync(ChannelName, channelMessage);
+            catch (Exception err)
+            {
+                Console.WriteLine($"Error processing message for '{ChannelName}': {err.Message}");
+            }
         }
 
         private async void ClientManager_OnUserJoined(object? sender, OnUserJoinedArgs e)
         {
-            if (!_userManager.AddUser(e.Username)) return;
-            await _statisticsManager.Update(new UserJoined(e.Username));
-            await _notificationService.ReceiveUserJoinedAsync(ChannelName, e.Username, e.Channel);
+            try
+            {
+                if (_disposed) return;
+
+                if (!_userManager.AddUser(e.Username)) return;
+                await _statisticsManager.Update(new UserJoined(e.Username));
+                await _notificationService.ReceiveUserJoinedAsync(ChannelName, e.Username, e.Channel);
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine($"Error processing user join for '{ChannelName}': {err.Message}");
+            }
         }
 
         private async void ClientManager_OnUserLeft(object? sender, OnUserLeftArgs e)
         {
-            if (!_userManager.RemoveUser(e.Username)) return;
-            await _statisticsManager.Update(new UserLeft(e.Username));
-            await _notificationService.ReceiveUserLeftAsync(ChannelName, e.Username);
+            try
+            {
+                if (_disposed) return;
+
+                if (!_userManager.RemoveUser(e.Username)) return;
+                await _statisticsManager.Update(new UserLeft(e.Username));
+                await _notificationService.ReceiveUserLeftAsync(ChannelName, e.Username);
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine($"Error processing user leave for '{ChannelName}': {err.Message}");
+            }
         }
 
         private async void ClientManager_OnNewSubscriber(object? sender, OnNewSubscriberArgs e)
         {
-            var subscription = new ChannelSubscription(SubscriptionType.New)
+            try
             {
-                UserName = e.Subscriber.Login,
-                DisplayName = e.Subscriber.DisplayName,
-                Message = e.Subscriber.ResubMessage,
-                SubscriptionPlanName = e.Subscriber.SubscriptionPlanName,
-                SubscriptionPlan = e.Subscriber.SubscriptionPlan.ToString(),
-                Months = 1,
-                MultiMonth = ParseInt(e.Subscriber.MsgParamCumulativeMonths, 1)
-            };
+                if (_disposed) return;
 
-            await _statisticsManager.Update(subscription);
-            await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
+                var subscription = new ChannelSubscription(SubscriptionType.New)
+                {
+                    UserName = e.Subscriber.Login,
+                    DisplayName = e.Subscriber.DisplayName,
+                    Message = e.Subscriber.ResubMessage,
+                    SubscriptionPlanName = e.Subscriber.SubscriptionPlanName,
+                    SubscriptionPlan = e.Subscriber.SubscriptionPlan.ToString(),
+                    Months = 1,
+                    MultiMonth = ParseInt(e.Subscriber.MsgParamCumulativeMonths, 1)
+                };
+
+                await _statisticsManager.Update(subscription);
+                await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine($"Error processing new subscriber for '{ChannelName}': {err.Message}");
+            }
         }
 
         private async void ClientManager_OnReSubscriber(object? sender, OnReSubscriberArgs e)
         {
-            var subscription = new ChannelSubscription(SubscriptionType.Re)
+            try
             {
-                UserName = e.ReSubscriber.Login,
-                DisplayName = e.ReSubscriber.DisplayName,
-                Message = e.ReSubscriber.ResubMessage,
-                SubscriptionPlanName = e.ReSubscriber.SubscriptionPlanName,
-                SubscriptionPlan = e.ReSubscriber.SubscriptionPlan.ToString(),
-                Months = ParseInt(e.ReSubscriber.MsgParamStreakMonths, 1),
-                MultiMonth = ParseInt(e.ReSubscriber.MsgParamCumulativeMonths, 1)
-            };
+                if (_disposed) return;
 
-            await _statisticsManager.Update(subscription);
-            await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
+                var subscription = new ChannelSubscription(SubscriptionType.Re)
+                {
+                    UserName = e.ReSubscriber.Login,
+                    DisplayName = e.ReSubscriber.DisplayName,
+                    Message = e.ReSubscriber.ResubMessage,
+                    SubscriptionPlanName = e.ReSubscriber.SubscriptionPlanName,
+                    SubscriptionPlan = e.ReSubscriber.SubscriptionPlan.ToString(),
+                    Months = ParseInt(e.ReSubscriber.MsgParamStreakMonths, 1),
+                    MultiMonth = ParseInt(e.ReSubscriber.MsgParamCumulativeMonths, 1)
+                };
+
+                await _statisticsManager.Update(subscription);
+                await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine($"Error processing re-subscriber for '{ChannelName}': {err.Message}");
+            }
         }
 
         private async void ClientManager_OnGiftedSubscription(object? sender, OnGiftedSubscriptionArgs e)
         {
-            var subscription = new ChannelSubscription(SubscriptionType.Gifted)
+            try
             {
-                UserName = e.GiftedSubscription.Login,
-                DisplayName = e.GiftedSubscription.DisplayName,
-                RecipientUserName = e.GiftedSubscription.MsgParamRecipientUserName,
-                RecipientDisplayName = e.GiftedSubscription.MsgParamRecipientDisplayName,
-                SubscriptionPlanName = e.GiftedSubscription.MsgParamSubPlanName,
-                SubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString(),
-                Months = ParseInt(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, 1),
-                MultiMonth = ParseInt(e.GiftedSubscription.MsgParamMonths, 1),
-                Message = e.GiftedSubscription.SystemMsg,
-                GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlanName
-            };
+                if (_disposed) return;
 
-            await _statisticsManager.Update(subscription);
-            await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
+                var subscription = new ChannelSubscription(SubscriptionType.Gifted)
+                {
+                    UserName = e.GiftedSubscription.Login,
+                    DisplayName = e.GiftedSubscription.DisplayName,
+                    RecipientUserName = e.GiftedSubscription.MsgParamRecipientUserName,
+                    RecipientDisplayName = e.GiftedSubscription.MsgParamRecipientDisplayName,
+                    SubscriptionPlanName = e.GiftedSubscription.MsgParamSubPlanName,
+                    SubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString(),
+                    Months = ParseInt(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, 1),
+                    MultiMonth = ParseInt(e.GiftedSubscription.MsgParamMonths, 1),
+                    Message = e.GiftedSubscription.SystemMsg,
+                    GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlanName
+                };
+
+                await _statisticsManager.Update(subscription);
+                await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine($"Error processing gifted subscription for '{ChannelName}': {err.Message}");
+            }
         }
 
         private async void ClientManager_OnCommercial(object? sender, OnCommercialArgs e)
         {
-            await _statisticsManager.Update(new ChannelCommercial(ChannelName, e.Length));
+            try
+            {
+                if (_disposed) return;
+
+                await _statisticsManager.Update(new ChannelCommercial(ChannelName, e.Length));
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine($"Error processing commercial for '{ChannelName}': {err.Message}");
+            }
         }
 
         private async void ClientManager_OnCommunitySubscription(object? sender, OnCommunitySubscriptionArgs e)
         {
-            var subscription = new ChannelSubscription(SubscriptionType.Community)
+            try
             {
-                UserName = e.GiftedSubscription.Login,
-                DisplayName = e.GiftedSubscription.DisplayName,
-                GiftedSubscriptionCount = e.GiftedSubscription.MsgParamMassGiftCount,
-                GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString(),
-                MultiMonth = ParseInt(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, 1)
-            };
+                if (_disposed) return;
 
-            await _statisticsManager.Update(subscription);
-            await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
+                var subscription = new ChannelSubscription(SubscriptionType.Community)
+                {
+                    UserName = e.GiftedSubscription.Login,
+                    DisplayName = e.GiftedSubscription.DisplayName,
+                    GiftedSubscriptionCount = e.GiftedSubscription.MsgParamMassGiftCount,
+                    GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString(),
+                    MultiMonth = ParseInt(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, 1)
+                };
+
+                await _statisticsManager.Update(subscription);
+                await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine($"Error processing community subscription for '{ChannelName}': {err.Message}");
+            }
         }
 
         private async void ClientManager_OnUserBanned(object? sender, OnUserBannedArgs e)
         {
-            var bannedUser = new UserBanned(e.UserBan.Username, e.UserBan.BanReason);
+            try
+            {
+                if (_disposed) return;
 
-            await _statisticsManager.Update(bannedUser);
-            await _notificationService.ReceiveBannedUserAsync(ChannelName, bannedUser);
+                var bannedUser = new UserBanned(e.UserBan.Username, e.UserBan.BanReason);
+
+                await _statisticsManager.Update(bannedUser);
+                await _notificationService.ReceiveBannedUserAsync(ChannelName, bannedUser);
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine($"Error processing banned user for '{ChannelName}': {err.Message}");
+            }
         }
 
         private async void ClientManager_OnMessageCleared(object? sender, OnMessageClearedArgs e)
         {
-            var clearedMessage = new ClearedMessage
+            try
             {
-                Message = e.Message,
-                TargetMessageId = e.TargetMessageId,
-                TmiSentTs = e.TmiSentTs
-            };
+                if (_disposed) return;
 
-            await _statisticsManager.Update(clearedMessage);
-            await _notificationService.ReceiveClearedMessageAsync(ChannelName, clearedMessage);
+                var clearedMessage = new ClearedMessage
+                {
+                    Message = e.Message,
+                    TargetMessageId = e.TargetMessageId,
+                    TmiSentTs = e.TmiSentTs
+                };
+
+                await _statisticsManager.Update(clearedMessage);
+                await _notificationService.ReceiveClearedMessageAsync(ChannelName, clearedMessage);
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine($"Error processing cleared message for '{ChannelName}': {err.Message}");
+            }
         }
 
         private async void ClientManager_OnUserTimedOut(object? sender, OnUserTimedoutArgs e)
         {
-            var timedOutUser = new UserTimedOut
+            try
             {
-                Username = e.UserTimeout.Username,
-                TimeoutReason = e.UserTimeout.TimeoutReason,
-                TimeoutDuration = e.UserTimeout.TimeoutDuration
-            };
+                if (_disposed) return;
 
-            await _statisticsManager.Update(timedOutUser);
-            await _notificationService.ReceiveTimedOutUserAsync(ChannelName, timedOutUser);
+                var timedOutUser = new UserTimedOut
+                {
+                    Username = e.UserTimeout.Username,
+                    TimeoutReason = e.UserTimeout.TimeoutReason,
+                    TimeoutDuration = e.UserTimeout.TimeoutDuration
+                };
+
+                await _statisticsManager.Update(timedOutUser);
+                await _notificationService.ReceiveTimedOutUserAsync(ChannelName, timedOutUser);
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine($"Error processing timed out user for '{ChannelName}': {err.Message}");
+            }
         }
 
         private async void ClientManagerOnChannelStateChanged(object? sender, OnChannelStateChangedArgs e)
         {
-            await _statisticsManager.Update(e.ChannelState);
+            try
+            {
+                if (_disposed) return;
+
+                await _statisticsManager.Update(e.ChannelState);
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine($"Error processing channel state change for '{ChannelName}': {err.Message}");
+            }
         }
 
         private async void ClientManagerOnOnRaidNotification(object? sender, OnRaidNotificationArgs e)
         {
-            await _statisticsManager.Update(e.RaidNotification);
+            try
+            {
+                if (_disposed) return;
+
+                await _statisticsManager.Update(e.RaidNotification);
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine($"Error processing raid notification for '{ChannelName}': {err.Message}");
+            }
         }
 
         #endregion

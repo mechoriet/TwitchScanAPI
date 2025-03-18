@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace TwitchScanAPI.Data.Twitch.Manager
 {
@@ -9,18 +10,34 @@ namespace TwitchScanAPI.Data.Twitch.Manager
     {
         private readonly HashSet<string> _wordsToObserve = new(StringComparer.OrdinalIgnoreCase);
         private Regex? _observePatternRegex;
+        private readonly Lock _lockObject = new();
 
         public void AddTextToObserve(string text)
         {
-            if (_wordsToObserve.Add(text)) UpdateRegex();
+            if (string.IsNullOrWhiteSpace(text)) return;
+
+            lock (_lockObject)
+            {
+                if (_wordsToObserve.Add(text.Trim())) 
+                    UpdateRegex();
+            }
         }
 
         private void UpdateRegex()
         {
-            if (_wordsToObserve.Any())
+            if (_wordsToObserve.Count != 0)
             {
-                var pattern = string.Join("|", _wordsToObserve.Select(Regex.Escape));
-                _observePatternRegex = new Regex($@"\b({pattern})\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+                try
+                {
+                    var pattern = string.Join("|", _wordsToObserve.Select(Regex.Escape));
+                    _observePatternRegex = new Regex($@"\b({pattern})\b", 
+                        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error updating regex pattern: {ex.Message}");
+                    _observePatternRegex = null;
+                }
             }
             else
             {
@@ -30,7 +47,12 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         public bool IsMatch(string message)
         {
-            return _observePatternRegex?.IsMatch(message) ?? false;
+            if (string.IsNullOrEmpty(message)) return false;
+
+            lock (_lockObject)
+            {
+                return _observePatternRegex?.IsMatch(message) ?? false;
+            }
         }
     }
 }

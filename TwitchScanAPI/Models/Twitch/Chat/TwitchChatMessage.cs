@@ -11,7 +11,7 @@ namespace TwitchScanAPI.Models.Twitch.Chat
         public string ColorHex { get; set; }
         public int Bits { get; set; }
         public double BitsInDollars { get; set; }
-        public List<TwitchEmote> Emotes { get; set; } = new();
+        public List<TwitchEmote> Emotes { get; set; } = [];
     }
 
     public class TwitchEmote

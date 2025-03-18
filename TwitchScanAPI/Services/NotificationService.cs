@@ -12,7 +12,7 @@ namespace TwitchScanAPI.Services
 {
     public class NotificationService(IHubContext<TwitchHub, ITwitchHub> hubContext)
     {
-        public Task ReceiveStatisticsAsync(string channelName, IDictionary<string, object> statistics)
+        public Task ReceiveStatisticsAsync(string channelName, Dictionary<string, object?> statistics)
         {
             return hubContext.Clients.Group(channelName).ReceiveStatistics(statistics);
         }

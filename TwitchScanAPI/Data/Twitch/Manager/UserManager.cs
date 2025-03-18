@@ -10,17 +10,19 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         public bool AddUser(string username)
         {
-            return _users.TryAdd(username, username);
+            return !string.IsNullOrWhiteSpace(username) && _users.TryAdd(username.Trim(), username);
         }
 
         public bool RemoveUser(string username)
         {
-            return _users.TryRemove(username, out _);
+            return !string.IsNullOrWhiteSpace(username) && _users.TryRemove(username.Trim(), out _);
         }
 
         public IEnumerable<string> GetUsers()
         {
             return _users.Keys;
         }
+
+        public int Count => _users.Count;
     }
 }

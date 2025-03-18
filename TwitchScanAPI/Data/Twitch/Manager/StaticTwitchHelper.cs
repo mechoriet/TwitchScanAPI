@@ -14,30 +14,50 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         public static void AddEmotesToMessage(ChannelMessage channelMessage, IEnumerable<MergedEmote>? emotes)
         {
-            if (emotes == null)
+            if (emotes == null || channelMessage?.ChatMessage?.Message == null)
                 return;
 
             var message = channelMessage.ChatMessage.Message;
 
+            // Ensure emotes collection is initialized
+            channelMessage.ChatMessage.Emotes ??= [];
+
             foreach (var emote in emotes)
             {
-                if (message.IndexOf(emote.Name, StringComparison.Ordinal) == -1)
+                if (string.IsNullOrEmpty(emote.Name) || message.IndexOf(emote.Name, StringComparison.Ordinal) == -1)
                     continue;
 
                 var emoteRegex = EmoteRegexCache.GetOrAdd(emote.Name, name =>
                 {
-                    var pattern = $@"(?<!\S){Regex.Escape(name)}(?!\S)";
-                    return new Regex(pattern, RegexOptions.Compiled);
+                    try
+                    {
+                        var pattern = $@"(?<!\S){Regex.Escape(name)}(?!\S)";
+                        return new Regex(pattern, RegexOptions.Compiled);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error creating regex for emote '{name}': {ex.Message}");
+                        return null;
+                    }
                 });
 
-                var matches = emoteRegex.Matches(message);
-                if (matches.Count == 0)
-                    continue;
+                if (emoteRegex == null) continue;
 
-                // Bulk add emotes for this match
-                var emotesToAdd = matches.Select(match => 
-                    new TwitchEmote(emote.Id, emote.Name, emote.Url, match)).ToList();
-                channelMessage.ChatMessage.Emotes.AddRange(emotesToAdd);
+                try
+                {
+                    var matches = emoteRegex.Matches(message);
+                    if (matches.Count == 0)
+                        continue;
+
+                    // Bulk add emotes for this match
+                    var emotesToAdd = matches.Select(match => 
+                        new TwitchEmote(emote.Id, emote.Name, emote.Url, match)).ToList();
+                    channelMessage.ChatMessage.Emotes.AddRange(emotesToAdd);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error processing emote '{emote.Name}': {ex.Message}");
+                }
             }
         }
     }

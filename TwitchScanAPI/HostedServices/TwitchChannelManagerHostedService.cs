@@ -67,7 +67,7 @@ namespace TwitchScanAPI.HostedServices
                 _configuration[Variables.TwitchOauthKey] = oauth;
 
                 // Update OAuth token for all TwitchStatistics instances
-                foreach (var channel in _channelManager.TwitchStats) await channel.RefreshConnectionAsync();
+                foreach (var channel in _channelManager.TwitchStats) channel.RefreshConnection();
             }
             catch (Exception ex)
             {
