@@ -214,6 +214,8 @@ namespace TwitchScanAPI.Data.Twitch
                         // If the channel just came online, log it
                         case true when !wasOnline:
                             Console.WriteLine($"Channel '{ChannelName}' is now online.");
+                            // Clean any data from statistics manager that might still be in memory
+                            _statisticsManager.Reset();
                             break;
                     }
                 }

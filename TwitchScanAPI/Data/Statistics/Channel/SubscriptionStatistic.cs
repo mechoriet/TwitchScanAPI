@@ -42,7 +42,10 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
             return new SubscriptionStatisticResult
             {
-                TotalSubscribers = _subscriptionCounts.Values.Sum(),
+                // Community subscriptions are not included in the total subscriber count
+                // They represent the action of gifting an anonymous subscription to the community, not a specific user
+                TotalSubscribers = _subscriptionCounts.Where(sub => sub.Key != SubscriptionType.Community)
+                    .Sum(sub => sub.Value),
                 TotalNewSubscribers = _subscriptionCounts.GetValueOrDefault(SubscriptionType.New),
                 TotalReSubscribers = _subscriptionCounts.GetValueOrDefault(SubscriptionType.Re),
                 TotalGiftedSubscriptions = _subscriptionCounts.GetValueOrDefault(SubscriptionType.Gifted),
