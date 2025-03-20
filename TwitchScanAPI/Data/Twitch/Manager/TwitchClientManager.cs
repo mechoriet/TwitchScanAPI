@@ -526,7 +526,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 {
                     var stream = streams!.Streams[0];
                     _cachedChannelInformation = new ChannelInformation(
-                        ViewerCount ?? stream.ViewerCount,
+                        ViewerCount != null && ViewerCount != LastViewerCount
+                            ? ViewerCount.Value
+                            : streams.Streams[0].ViewerCount,
                         stream.Title,
                         stream.GameName,
                         stream.StartedAt,
