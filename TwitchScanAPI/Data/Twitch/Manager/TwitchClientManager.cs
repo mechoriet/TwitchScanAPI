@@ -163,7 +163,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 if (args.ChannelId != _cachedChannelInformation.Id) return;
 
                 IsOnline = true;
-                UpdateChannelEmotes(args.ChannelId);
+                UpdateChannelEmotes(_channelName);
                 Console.WriteLine($"{_channelName} is now online (via PubSub).");
                 OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
                 _ = StartClientAsync();
@@ -187,7 +187,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             try
             {
-                ExternalChannelEmotes = await EmoteService.GetChannelEmotesAsync(channelId);
+                var result = Api.Helix.Users.GetUsersAsync(logins:[channelId]);
+                ExternalChannelEmotes = await EmoteService.GetChannelEmotesAsync(result.Result.Users.FirstOrDefault()?.Id);
                 Console.WriteLine($"Loaded {ExternalChannelEmotes?.Count ?? 0} external emotes for {_channelName}");
             }
             catch (Exception ex)
