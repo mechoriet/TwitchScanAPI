@@ -62,10 +62,11 @@ namespace TwitchScanAPI.Models.Twitch.Chat
             StartIndex = match.Index;
             EndIndex = StartIndex + match.Length;
         }
-
+        private static readonly string Prefix = "https://static-cdn.jtvnw.net/emoticons/v2/";
+        private static readonly string Suffix = "/default/dark/1.0";
         private static string GenerateImageUrl(string id)
         {
-            return $"https://static-cdn.jtvnw.net/emoticons/v2/{id}/default/dark/1.0";
+            return string.Concat(Prefix, id, Suffix);
         }
 
         private void SetIndices(string message)
