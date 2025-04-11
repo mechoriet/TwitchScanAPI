@@ -99,7 +99,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             const int ngramSize = 3; // Trigrams for N-gram analysis
 
             // Generate n-grams for the new message
-            var newMessageNGrams = StatisticsUtils.GetNGrams(newMessage.MessageText, ngramSize);
+            var newMessageNGrams = newMessage.CachedNGrams ??= StatisticsUtils.GetNGrams(newMessage.MessageText, ngramSize);
 
             foreach (var existingMessage in _recentMessages.ToArray())
             {
@@ -107,8 +107,11 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                 if (existingMessage.Username == newMessage.Username) continue;
                 if (Math.Abs((newMessage.Timestamp - existingMessage.Timestamp).TotalSeconds) > 10) continue;
 
+                // Skip if message lengths are very different (optional filter)
+                if (Math.Abs(newMessage.MessageText.Length - existingMessage.MessageText.Length) > 20) continue;
+                
                 // Generate n-grams for the existing message
-                var existingMessageNGrams = StatisticsUtils.GetNGrams(existingMessage.MessageText, ngramSize);
+                var existingMessageNGrams = existingMessage.CachedNGrams ??= StatisticsUtils.GetNGrams(existingMessage.MessageText, ngramSize);
 
                 // Calculate Jaccard similarity
                 var similarity = StatisticsUtils.CalculateJaccardSimilarity(newMessageNGrams, existingMessageNGrams);

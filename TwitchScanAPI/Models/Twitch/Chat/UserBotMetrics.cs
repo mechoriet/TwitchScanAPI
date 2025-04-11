@@ -125,6 +125,8 @@ namespace TwitchScanAPI.Models.Twitch.Chat
         public string Username { get; set; }
         public string MessageText { get; set; }
         public DateTime Timestamp { get; set; }
+        
+        public HashSet<string>? CachedNGrams { get; set; }
     }
 
     // Represents the result for a user
