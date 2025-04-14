@@ -515,6 +515,12 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                         Console.WriteLine($"Marked {_channelName} as {apiState} after 3 consecutive checks.");
                         if (!isOnline)
                             OnDisconnected?.Invoke(this, EventArgs.Empty);
+                        else
+                        {
+                            OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
+                            _ = StartClientAsync();
+                            Console.WriteLine($"{_channelName} is now online (via API).");
+                        }
                     }
                 }
                 else
