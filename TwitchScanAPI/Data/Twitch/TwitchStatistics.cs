@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
-using TwitchLib.PubSub.Events;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Data.Twitch.Manager;
 using TwitchScanAPI.DbContext;
@@ -74,7 +73,6 @@ namespace TwitchScanAPI.Data.Twitch
 
             _disposed = true;
             _statisticsManager.Reset();
-            _clientManager.Dispose();
             _statisticsTimer.Stop();
             _statisticsTimer.Dispose();
             GC.SuppressFinalize(this);
@@ -136,7 +134,6 @@ namespace TwitchScanAPI.Data.Twitch
             _clientManager.OnReSubscriber += ClientManager_OnReSubscriber;
             _clientManager.OnGiftedSubscription += ClientManager_OnGiftedSubscription;
             _clientManager.OnCommunitySubscription += ClientManager_OnCommunitySubscription;
-            _clientManager.OnCommercial += ClientManager_OnCommercial;
             _clientManager.OnUserBanned += ClientManager_OnUserBanned;
             _clientManager.OnMessageCleared += ClientManager_OnMessageCleared;
             _clientManager.OnUserTimedOut += ClientManager_OnUserTimedOut;
@@ -472,20 +469,6 @@ namespace TwitchScanAPI.Data.Twitch
             catch (Exception err)
             {
                 Console.WriteLine($"Error processing gifted subscription for '{ChannelName}': {err.Message}");
-            }
-        }
-
-        private async void ClientManager_OnCommercial(object? sender, OnCommercialArgs e)
-        {
-            try
-            {
-                if (_disposed) return;
-
-                await _statisticsManager.Update(new ChannelCommercial(ChannelName, e.Length));
-            }
-            catch (Exception err)
-            {
-                Console.WriteLine($"Error processing commercial for '{ChannelName}': {err.Message}");
             }
         }
 

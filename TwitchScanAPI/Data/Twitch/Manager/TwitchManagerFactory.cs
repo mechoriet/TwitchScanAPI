@@ -6,9 +6,8 @@ using Microsoft.Extensions.Configuration;
 
 namespace TwitchScanAPI.Data.Twitch.Manager;
 
-public class TwitchManagerFactory(IConfiguration configuration) : IDisposable
+public class TwitchManagerFactory(IConfiguration configuration)
 {
-    private readonly TwitchPubSubManager _pubSubManager = new();
     private readonly Dictionary<string, TwitchClientManager> _clientManagers = new(StringComparer.OrdinalIgnoreCase);
     private readonly Lock _lockObject = new();
     private bool _disposed;
@@ -30,7 +29,7 @@ public class TwitchManagerFactory(IConfiguration configuration) : IDisposable
             }
         }
 
-        var newManager = await TwitchClientManager.CreateAsync(channelName, configuration, _pubSubManager);
+        var newManager = await TwitchClientManager.CreateAsync(channelName, configuration);
         if (newManager == null) return newManager;
         lock (_lockObject)
         {
@@ -53,25 +52,5 @@ public class TwitchManagerFactory(IConfiguration configuration) : IDisposable
             manager.Dispose();
             _clientManagers.Remove(channelName);
         }
-    }
-
-    public void Dispose()
-    {
-        if (_disposed) return;
-
-        _disposed = true;
-
-        lock (_lockObject)
-        {
-            foreach (var manager in _clientManagers.Values)
-            {
-                manager.Dispose();
-            }
-
-            _clientManagers.Clear();
-        }
-
-        _pubSubManager.Dispose();
-        GC.SuppressFinalize(this);
     }
 }
