@@ -292,6 +292,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             catch (Exception ex)
             {
                 Console.WriteLine($"Error starting Twitch client for {_channelName}: {ex.Message}");
+                Dispose();
                 ScheduleReconnect();
             }
 
@@ -406,23 +407,16 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 // Channel disconnected unexpectedly
                 Console.WriteLine($"Twitch client disconnected for {_channelName}. Attempting to reconnect...");
             }
-
-            ScheduleReconnect();
         }
 
         private void OnTwitchConnectionErrorHandler(object? sender, OnConnectionErrorArgs e)
         {
             Console.WriteLine($"Twitch connection error for {_channelName}: {e.Error.Message}");
-            ScheduleReconnect();
         }
 
         private void OnTwitchReconnectedHandler(object? sender, EventArgs e)
         {
             Console.WriteLine($"Twitch client reconnected successfully to {_channelName}");
-
-            if (_client == null) return;
-            UnsubscribeFromClientEvents(_client);
-            SubscribeToClientEvents(_client);
         }
 
         public async Task<ChannelInformation> GetChannelInfoAsync(bool forceRefresh = false)
