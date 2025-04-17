@@ -102,10 +102,10 @@ namespace TwitchScanAPI.Data.Statistics.ML
                 .Select(kvp => new SentimentOverTime
                 {
                     Time = kvp.Key,
-                    AveragePositive = kvp.Value.MessageCount > 0 ? kvp.Value.Positive / kvp.Value.MessageCount : 0,
-                    AverageNegative = kvp.Value.MessageCount > 0 ? kvp.Value.Negative / kvp.Value.MessageCount : 0,
-                    AverageNeutral = kvp.Value.MessageCount > 0 ? kvp.Value.Neutral / kvp.Value.MessageCount : 0,
-                    AverageCompound = kvp.Value.MessageCount > 0 ? kvp.Value.Compound / kvp.Value.MessageCount : 0,
+                    AveragePositive = kvp.Value.MessageCount > 0 ? Math.Round(kvp.Value.Positive / kvp.Value.MessageCount, 3) : 0,
+                    AverageNegative = kvp.Value.MessageCount > 0 ? Math.Round(kvp.Value.Negative / kvp.Value.MessageCount, 3) : 0,
+                    AverageNeutral = kvp.Value.MessageCount > 0 ? Math.Round(kvp.Value.Neutral / kvp.Value.MessageCount, 3) : 0,
+                    AverageCompound = kvp.Value.MessageCount > 0 ? Math.Round(kvp.Value.Compound / kvp.Value.MessageCount, 3) : 0,
                     MessageCount = (int)kvp.Value.MessageCount
                 });
         }
