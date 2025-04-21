@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -17,29 +18,46 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
         protected override object ComputeResult()
         {
-            var topWords = new SortedSet<(int count, string word)>();
+            var heap = new PriorityQueue<string, int>();
 
-            foreach (var kv in _wordCounts)
+            foreach (var (word, count) in _wordCounts)
             {
-                topWords.Add((kv.Value, kv.Key));
-                if (topWords.Count > 10)
-                    topWords.Remove(topWords.Min);
+                heap.Enqueue(word, count);
+
+                if (heap.Count > 10)
+                    heap.Dequeue(); // remove lowest count
             }
 
-            return topWords
+            // Extract and sort descending
+            var result = new List<(string word, int count)>();
+            while (heap.Count > 0)
+            {
+                var word = heap.Dequeue();
+                result.Add((word, _wordCounts[word]));
+            }
+
+            return result
                 .OrderByDescending(entry => entry.count)
                 .ToDictionary(entry => entry.word, entry => entry.count);
         }
 
         public Task Update(ChannelMessage message)
         {
-            var words = WordSplitter.Split(message.ChatMessage.Message);
+            var chatMsg = message.ChatMessage;
+            var emoteTexts = new HashSet<string>(chatMsg.Emotes.Select(e => e.Name), StringComparer.OrdinalIgnoreCase);
+
+            var words = WordSplitter.Split(chatMsg.Message);
             foreach (var word in words)
             {
                 var trimmed = word.Trim();
                 if (string.IsNullOrWhiteSpace(trimmed))
                     continue;
-                _wordCounts.AddOrUpdate(trimmed.ToLower(), 1, (_, count) => count + 1);
+
+                var lower = trimmed.ToLowerInvariant();
+                if (emoteTexts.Contains(lower))
+                    continue; // Skip emotes
+
+                _wordCounts.AddOrUpdate(lower, 1, (_, count) => count + 1);
             }
 
             HasUpdated = true;

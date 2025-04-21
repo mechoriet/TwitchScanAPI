@@ -17,10 +17,6 @@ namespace TwitchScanAPI.Models.Twitch.Chat
 
     public class TwitchEmote
     {
-        public TwitchEmote(string name, int startIndex, int endIndex)
-            : this(name, name, GenerateImageUrl(name), startIndex, endIndex)
-        {
-        }
 
         public TwitchEmote(string id, string name, int startIndex, int endIndex)
             : this(id, name, GenerateImageUrl(id), startIndex, endIndex)

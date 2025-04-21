@@ -17,19 +17,27 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
         protected override object ComputeResult()
         {
-            // Use a sorted set as a min-heap to track the top 10 items.
-            var topSentences = new SortedSet<(int count, string sentence)>();
+            var heap = new PriorityQueue<string, int>();
 
-            foreach (var kv in _sentenceCounts)
+            foreach (var (word, count) in _sentenceCounts)
             {
-                topSentences.Add((kv.Value, kv.Key));
-                if (topSentences.Count > 10)
-                    topSentences.Remove(topSentences.Min);
+                heap.Enqueue(word, count);
+
+                if (heap.Count > 10)
+                    heap.Dequeue(); // remove lowest count
             }
 
-            return topSentences
+            // Extract and sort descending
+            var result = new List<(string word, int count)>();
+            while (heap.Count > 0)
+            {
+                var word = heap.Dequeue();
+                result.Add((word, _sentenceCounts[word]));
+            }
+
+            return result
                 .OrderByDescending(entry => entry.count)
-                .ToDictionary(entry => entry.sentence, entry => entry.count);
+                .ToDictionary(entry => entry.word, entry => entry.count);
         }
 
         public Task Update(ChannelMessage message)

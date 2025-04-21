@@ -19,9 +19,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             var message = channelMessage.ChatMessage.Message;
 
-            // Ensure emotes collection is initialized
-            channelMessage.ChatMessage.Emotes ??= [];
-
             foreach (var emote in emotes)
             {
                 if (string.IsNullOrEmpty(emote.Name) || message.IndexOf(emote.Name, StringComparison.Ordinal) == -1)
@@ -37,11 +34,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Error creating regex for emote '{name}': {ex.Message}");
-                        return null;
+                        return new Regex(string.Empty); // Fallback to an empty regex
                     }
                 });
-
-                if (emoteRegex == null) continue;
 
                 try
                 {

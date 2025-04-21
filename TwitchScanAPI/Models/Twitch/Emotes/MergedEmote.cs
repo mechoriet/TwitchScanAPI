@@ -1,16 +1,9 @@
 ﻿namespace TwitchScanAPI.Models.Twitch.Emotes
 {
-    public class MergedEmote
+    public class MergedEmote(string id, string name, string url)
     {
-        public MergedEmote(string id, string name, string url)
-        {
-            Id = id;
-            Name = name;
-            Url = url;
-        }
-
-        public string Id { get; set; }
-        public string Name { get; set; }
-        public string Url { get; set; }
+        public string Id { get; set; } = id;
+        public string Name { get; set; } = name;
+        public string Url { get; set; } = url;
     }
 }
