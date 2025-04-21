@@ -53,6 +53,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private System.Timers.Timer? _fetchTimeoutTimer;
         private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
         private readonly TimeSpan _fetchTimeout = TimeSpan.FromSeconds(15);
+        private System.Timers.Timer? _emoteUpdateTimer;
         private ChannelInformation _cachedChannelInformation = new(false, null);
         private TwitchClient? _client;
         private bool _fetching;
@@ -129,6 +130,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             IsOnline = true;
             UpdateChannelEmotes(_cachedChannelInformation.Id);
+            StartEmoteUpdateTimer();
             Console.WriteLine($"{_channelName} is now online.");
             OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
             _ = StartClientAsync();
@@ -147,6 +149,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             // Don't dispose the client immediately - just mark as offline
             // The IRC connection should stay alive for potential reconnection
             // Only dispose if the client manager itself is being shut down
+            StopEmoteUpdateTimer();
+            ExternalChannelEmotes = [];
             OnDisconnected?.Invoke(this, EventArgs.Empty);
             OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
         }
@@ -515,6 +519,34 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     _fetchTimeoutTimer?.Stop();
                 }
             }
+        }
+        private void StartEmoteUpdateTimer()
+        {
+            _emoteUpdateTimer = new System.Timers.Timer(TimeSpan.FromMinutes(15).TotalMilliseconds); // Set interval to 5 minutes
+            _emoteUpdateTimer.Elapsed += async (_, _) => await UpdateChannelEmotesWithLogging();
+            _emoteUpdateTimer.AutoReset = true;
+            _emoteUpdateTimer.Start();
+        }
+
+        private Task UpdateChannelEmotesWithLogging()
+        {
+            try
+            {
+                UpdateChannelEmotes(_channelName);
+                return Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during emote update: {ex.Message}");
+                return Task.CompletedTask;
+            }
+        }
+
+        private void StopEmoteUpdateTimer()
+        {
+            _emoteUpdateTimer?.Stop();
+            _emoteUpdateTimer?.Dispose();
+            _emoteUpdateTimer = null;
         }
     }
 }
