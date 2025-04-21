@@ -6,11 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using TwitchLib.Api;
-using TwitchLib.Client;
 using TwitchLib.Client.Events;
-using TwitchLib.Client.Models;
-using TwitchLib.Communication.Clients;
-using TwitchLib.Communication.Models;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Emotes;
@@ -24,6 +20,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(10);
         private readonly string _channelName;
         private readonly IConfiguration _configuration;
+        private readonly SharedTwitchClientManager _sharedTwitchClientManager;
         private long? ViewerCount { get; set; }
         private long? LastViewerCount { get; set; }
         private bool _isOnline;
@@ -40,24 +37,11 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             }
         }
 
-        private static readonly ClientOptions ClientOptions = new()
-        {
-            MessagesAllowedInPeriod = 750,
-            ThrottlingPeriod = TimeSpan.FromSeconds(30)
-        };
-
-        private WebSocketClient? _customClient;
-
         // BetterTTV & 7TV
-        private System.Timers.Timer? _reconnectTimer;
         private System.Timers.Timer? _fetchTimeoutTimer;
-        private readonly TimeSpan _retryInterval = TimeSpan.FromSeconds(30);
-        private readonly TimeSpan _fetchTimeout = TimeSpan.FromSeconds(15);
         private System.Timers.Timer? _emoteUpdateTimer;
         private ChannelInformation _cachedChannelInformation = new(false, null);
-        private TwitchClient? _client;
         private bool _fetching;
-        private bool _isReconnecting;
         private readonly Lock _fetchLock = new();
         private CancellationTokenSource? _fetchCancellationTokenSource;
 
@@ -65,19 +49,21 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public List<MergedEmote>? ExternalChannelEmotes;
 
         // Constructor
-        private TwitchClientManager(string channelName, IConfiguration configuration)
+        private TwitchClientManager(string channelName, IConfiguration configuration, SharedTwitchClientManager sharedTwitchClientManager)
         {
             _channelName = channelName;
             _configuration = configuration;
+            _sharedTwitchClientManager = sharedTwitchClientManager;
             ConfigureTwitchApi();
         }
 
         // Factory method
         public static async Task<TwitchClientManager?> CreateAsync(
             string channelName,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            SharedTwitchClientManager sharedTwitchClientManager)
         {
-            var manager = new TwitchClientManager(channelName, configuration);
+            var manager = new TwitchClientManager(channelName, configuration, sharedTwitchClientManager);
 
             try
             {
@@ -133,14 +119,27 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             StartEmoteUpdateTimer();
             Console.WriteLine($"{_channelName} is now online.");
             OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
-            _ = StartClientAsync();
+            _sharedTwitchClientManager.JoinChannel(
+                _channelName, 
+                OnMessageReceivedHandler,
+                OnUserJoinedHandler,
+                OnUserLeftHandler,
+                OnNewSubscriberHandler,
+                OnReSubscriberHandler,
+                OnGiftedSubscriptionHandler,
+                OnCommunitySubscriptionHandler,
+                OnUserBannedHandler,
+                OnMessageClearedHandler,
+                OnUserTimedOutHandler,
+                OnChannelStateChangedHandler,
+                OnRaidNotificationHandler);
         }
 
         private void OnStreamDown()
         {
             if (string.IsNullOrEmpty(_cachedChannelInformation.Id)) return;
 
-            var wasOnline = IsOnline || _client?.IsConnected == true;
+            var wasOnline = IsOnline;
             IsOnline = false;
 
             if (!wasOnline) return;
@@ -153,6 +152,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             ExternalChannelEmotes = [];
             OnDisconnected?.Invoke(this, EventArgs.Empty);
             OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
+            _sharedTwitchClientManager.LeaveChannel(_channelName);
         }
 
         private async void UpdateChannelEmotes(string channelId)
@@ -173,30 +173,17 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             try
             {
-                _reconnectTimer?.Stop();
-                _reconnectTimer?.Dispose();
                 _fetchTimeoutTimer?.Stop();
                 _fetchTimeoutTimer?.Dispose();
-                _customClient?.Dispose();
                 _fetchCancellationTokenSource?.Cancel();
                 _fetchCancellationTokenSource?.Dispose();
-
-                if (_client != null)
-                {
-                    UnsubscribeFromClientEvents(_client);
-                    _client.Disconnect();
-                }
             }
             catch (Exception e)
             {
                 Console.WriteLine($"Error during disposal of TwitchClientManager for {_channelName}: {e.Message}");
             }
-
-            _reconnectTimer = null;
             _fetchTimeoutTimer = null;
-            _customClient = null;
             _fetchCancellationTokenSource = null;
-            _client = null;
         }
 
         // Events to expose
@@ -220,132 +207,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             Api.Settings.ClientId = _configuration.GetValue<string>(Variables.TwitchClientId);
             Api.Settings.Secret = _configuration.GetValue<string>(Variables.TwitchClientSecret);
         }
-
-        private async Task AttemptConnectionAsync()
-        {
-            // Always try to reconnect if the IRC client is not connected,
-            // regardless of what the API says about stream status
-            if (_client is not { IsConnected: true })
-            {
-                await StartClientAsync();
-            }
-            else if (!IsOnline && _client?.IsConnected != true)
-            {
-                // If we're offline and not connected, schedule a retry
-                ScheduleReconnect();
-            }
-        }
-
-        private void HandleFetchTimeout()
-        {
-            lock (_fetchLock)
-            {
-                if (!_fetching) return;
-
-                _fetching = false;
-                _fetchCancellationTokenSource?.Cancel();
-                _fetchCancellationTokenSource?.Dispose();
-                _fetchCancellationTokenSource = null;
-
-                Console.WriteLine($"Fetch operation timed out for channel {_channelName}");
-            }
-        }
-
-        private async Task HandleReconnectAsync()
-        {
-            _isReconnecting = false;
-            await AttemptConnectionAsync();
-        }
-
-        private void ScheduleReconnect()
-        {
-            if (_isReconnecting) return;
-
-            _isReconnecting = true;
-            _reconnectTimer?.Start();
-        }
-
-        private Task StartClientAsync()
-        {
-            if (_client?.IsConnected == true) return Task.CompletedTask;
-
-            var credentials = new ConnectionCredentials(
-                _configuration.GetValue<string>(Variables.TwitchChatName),
-                _configuration.GetValue<string>(Variables.TwitchOauthKey));
-
-            try
-            {
-                _reconnectTimer = new System.Timers.Timer(_retryInterval.TotalMilliseconds) { AutoReset = false };
-                _reconnectTimer.Elapsed += async (_, _) => await HandleReconnectAsync();
-
-                _fetchTimeoutTimer = new System.Timers.Timer(_fetchTimeout.TotalMilliseconds) { AutoReset = false };
-                _fetchTimeoutTimer.Elapsed += (_, _) => HandleFetchTimeout();
-                
-                _customClient ??= new WebSocketClient(ClientOptions);
-
-                if (_client != null)
-                    UnsubscribeFromClientEvents(_client);
-
-                _client = new TwitchClient(_customClient) { AutoReListenOnException = true };
-                _client.Initialize(credentials, _channelName);
-
-                SubscribeToClientEvents(_client);
-                _client.Connect();
-                Console.WriteLine($"Twitch client connected successfully to {_channelName}");
-
-                // Don't set online status here - let the connection events handle it
-                // IsOnline should be managed by API status, not IRC connection status
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error starting Twitch client for {_channelName}: {ex.Message}");
-                // Don't dispose everything - just schedule a reconnect attempt
-                ScheduleReconnect();
-            }
-
-            return Task.CompletedTask;
-        }
-
-        private void SubscribeToClientEvents(TwitchClient client)
-        {
-            // Subscribe all events
-            client.OnMessageReceived += OnMessageReceivedHandler;
-            client.OnUserJoined += OnUserJoinedHandler;
-            client.OnUserLeft += OnUserLeftHandler;
-            client.OnNewSubscriber += OnNewSubscriberHandler;
-            client.OnReSubscriber += OnReSubscriberHandler;
-            client.OnGiftedSubscription += OnGiftedSubscriptionHandler;
-            client.OnCommunitySubscription += OnCommunitySubscriptionHandler;
-            client.OnRaidNotification += OnRaidNotificationHandler;
-            client.OnUserBanned += OnUserBannedHandler;
-            client.OnMessageCleared += OnMessageClearedHandler;
-            client.OnUserTimedout += OnUserTimedOutHandler;
-            client.OnChannelStateChanged += OnChannelStateChangedHandler;
-            client.OnDisconnected += OnTwitchDisconnectedHandler;
-            client.OnReconnected += OnTwitchReconnectedHandler;
-            client.OnConnectionError += OnTwitchConnectionErrorHandler;
-        }
-
-        private void UnsubscribeFromClientEvents(TwitchClient client)
-        {
-            // Unsubscribe all events
-            client.OnMessageReceived -= OnMessageReceivedHandler;
-            client.OnUserJoined -= OnUserJoinedHandler;
-            client.OnUserLeft -= OnUserLeftHandler;
-            client.OnNewSubscriber -= OnNewSubscriberHandler;
-            client.OnReSubscriber -= OnReSubscriberHandler;
-            client.OnGiftedSubscription -= OnGiftedSubscriptionHandler;
-            client.OnCommunitySubscription -= OnCommunitySubscriptionHandler;
-            client.OnRaidNotification -= OnRaidNotificationHandler;
-            client.OnUserBanned -= OnUserBannedHandler;
-            client.OnMessageCleared -= OnMessageClearedHandler;
-            client.OnUserTimedout -= OnUserTimedOutHandler;
-            client.OnChannelStateChanged -= OnChannelStateChangedHandler;
-            client.OnDisconnected -= OnTwitchDisconnectedHandler;
-            client.OnReconnected -= OnTwitchReconnectedHandler;
-            client.OnConnectionError -= OnTwitchConnectionErrorHandler;
-        }
-
         // Event handlers
         private void OnMessageReceivedHandler(object? sender, OnMessageReceivedArgs args)
         {
@@ -405,29 +266,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private void OnChannelStateChangedHandler(object? sender, OnChannelStateChangedArgs args)
         {
             OnChannelStateChanged?.Invoke(sender, args);
-        }
-
-        private void OnTwitchDisconnectedHandler(object? sender, EventArgs e)
-        {
-            Console.WriteLine($"Twitch client disconnected for {_channelName}.");
-            
-            // Always attempt to reconnect when IRC connection is lost
-            // regardless of what the API says about stream status
-            if (_client != null && !_client.IsConnected)
-            {
-                Console.WriteLine($"Scheduling reconnection attempt for {_channelName}...");
-                ScheduleReconnect();
-            }
-        }
-
-        private void OnTwitchConnectionErrorHandler(object? sender, OnConnectionErrorArgs e)
-        {
-            Console.WriteLine($"Twitch connection error for {_channelName}: {e.Error.Message}");
-        }
-
-        private void OnTwitchReconnectedHandler(object? sender, EventArgs e)
-        {
-            Console.WriteLine($"Twitch client reconnected successfully to {_channelName}");
         }
 
         public async Task<ChannelInformation> GetChannelInfoAsync(bool forceRefresh = false)
