@@ -448,7 +448,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
                 if (IsOnline != isOnline)
                 {
-                    IsOnline = isOnline;
                     if (!isOnline)
                     {
                         OnStreamDown();
