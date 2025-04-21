@@ -8,7 +8,7 @@ using TwitchScanAPI.Models.ML.SentimentAnalysis;
 using TwitchScanAPI.Models.Twitch.Chat;
 using TwitchScanAPI.Models.Twitch.Statistics;
 using TwitchScanAPI.Services;
-using VaderSharp;
+using VaderSharp2;
 using UserSentiment = TwitchScanAPI.Models.Twitch.Statistics.UserSentiment;
 
 namespace TwitchScanAPI.Data.Statistics.ML
