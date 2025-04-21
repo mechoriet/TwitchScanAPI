@@ -13,6 +13,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
     {
         // Snapshot management
         private const int SnapshotTopX = 100; // Number of top users to snapshot
+        private const int maxuserstoreport = 10; // Number of users to report
 
         // Lock object for thread safety during cleanup
         private readonly object _cleanupLock = new();
@@ -42,6 +43,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
                     Username = kvp.Key,
                     LikelinessPercentage = Math.Min(kvp.Value.BotScore, 100.0)
                 })
+                .Take(maxuserstoreport)
                 .ToList();
 
             return new BotResult
