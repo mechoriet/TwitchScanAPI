@@ -12,6 +12,7 @@ namespace TwitchScanAPI.Models.Twitch.Chat
         public int Bits { get; set; }
         public double BitsInDollars { get; set; }
         public List<TwitchEmote> Emotes { get; set; } = [];
+        public bool FirstTime { get; set; }
     }
 
     public class TwitchEmote

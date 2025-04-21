@@ -330,6 +330,7 @@ namespace TwitchScanAPI.Data.Twitch
                     ColorHex = chatMessage.ColorHex,
                     Bits = chatMessage.Bits,
                     BitsInDollars = chatMessage.BitsInDollars,
+                    FirstTime = chatMessage.IsFirstMessage,
                     Emotes = e.ChatMessage.EmoteSet.Emotes
                         .Select(em => new TwitchEmote(em.Id, em.Name, em.StartIndex, em.EndIndex))
                         .ToList()
