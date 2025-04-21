@@ -8,6 +8,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager;
 
 public class TwitchManagerFactory(IConfiguration configuration)
 {
+    private readonly SharedTwitchClientManager _sharedTwitchClientManager = new(configuration);
     private readonly Dictionary<string, TwitchClientManager> _clientManagers = new(StringComparer.OrdinalIgnoreCase);
     private readonly Lock _lockObject = new();
 
@@ -26,7 +27,7 @@ public class TwitchManagerFactory(IConfiguration configuration)
             }
         }
 
-        var newManager = await TwitchClientManager.CreateAsync(channelName, configuration);
+        var newManager = await TwitchClientManager.CreateAsync(channelName, configuration, _sharedTwitchClientManager);
         if (newManager == null) return newManager;
         lock (_lockObject)
         {
