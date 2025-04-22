@@ -43,9 +43,8 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             var totalWatchTimeHours = _viewersOverTime.Values.Sum() / 60.0;
 
             // Calculate the trend
-            var viewerData = _viewerHistory.ToList();
             var trend = TrendService.CalculateTrend(
-                viewerData,
+                _viewerHistory,
                 d => d.Viewers,
                 d => d.Timestamp
             );
