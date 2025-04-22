@@ -82,7 +82,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             {
                 var channelInformation = await Api.Helix.Streams.GetStreamsAsync(
                     userLogins: [channelName]);
-                var broadcasterId = channelInformation.Streams.FirstOrDefault()?.Id;
+                var broadcasterId = channelInformation.Streams.FirstOrDefault()?.UserId;
                 if (string.IsNullOrEmpty(broadcasterId))
                 {
                     try
