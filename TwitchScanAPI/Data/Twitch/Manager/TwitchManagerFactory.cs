@@ -10,12 +10,9 @@ public class TwitchManagerFactory(IConfiguration configuration)
 {
     private readonly Dictionary<string, TwitchClientManager> _clientManagers = new(StringComparer.OrdinalIgnoreCase);
     private readonly Lock _lockObject = new();
-    private bool _disposed;
 
     public async Task<TwitchClientManager?> GetOrCreateClientManagerAsync(string channelName)
     {
-        if (_disposed) return null;
-
         if (string.IsNullOrWhiteSpace(channelName))
             return null;
 
@@ -41,8 +38,6 @@ public class TwitchManagerFactory(IConfiguration configuration)
 
     public void RemoveClientManager(string channelName)
     {
-        if (_disposed) return;
-
         channelName = channelName.ToLower().Trim();
 
         lock (_lockObject)
