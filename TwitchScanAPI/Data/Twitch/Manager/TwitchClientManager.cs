@@ -370,7 +370,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             try
             {
-                UpdateChannelEmotes(_channelName);
+                UpdateChannelEmotes(_cachedChannelInformation.Id);
                 return Task.CompletedTask;
             }
             catch (Exception ex)
