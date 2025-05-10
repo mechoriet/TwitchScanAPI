@@ -32,7 +32,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             _reloadTokenTimer = new Timer();
             _reloadTokenTimer.Interval = 1000 * 60 * 30; // 30 minutes
-            _reloadTokenTimer.Elapsed += (sender, args) =>
+            _reloadTokenTimer.Elapsed += (_, _) =>
             {
                 UpdateToken(configuration);
             };
@@ -140,7 +140,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     handler.Invoke(sender, args);
                 }
             };
-            _client.OnLog += (sender, args) =>
+            /*_client.OnLog += (_, args) =>
             {
                 var logMessage = args.Data;
                 //Console.WriteLine($"[LOG] {logMessage}");
@@ -150,7 +150,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     return;
                 }
                 Console.WriteLine($"[LOG] shared {logMessage}");
-            };
+            };*/
             
             _client.Connect();
         }
