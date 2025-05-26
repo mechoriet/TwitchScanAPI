@@ -17,10 +17,10 @@ namespace TwitchScanAPI.Data.Twitch.Manager
     public class TwitchClientManager : IDisposable
     {
         private static readonly TwitchAPI Api = new();
-        private readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(10);
         private readonly string _channelName;
         private readonly IConfiguration _configuration;
         private readonly SharedTwitchClientManager _sharedTwitchClientManager;
+        private readonly StreamInfoBatchService _streamInfoBatchService;
         private long? ViewerCount { get; set; }
         private long? LastViewerCount { get; set; }
         private bool _isOnline;
@@ -49,11 +49,12 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public List<MergedEmote>? ExternalChannelEmotes;
 
         // Constructor
-        private TwitchClientManager(string channelName, IConfiguration configuration, SharedTwitchClientManager sharedTwitchClientManager)
+        private TwitchClientManager(string channelName, IConfiguration configuration, SharedTwitchClientManager sharedTwitchClientManager, StreamInfoBatchService streamInfoBatchService)
         {
             _channelName = channelName;
             _configuration = configuration;
             _sharedTwitchClientManager = sharedTwitchClientManager;
+            _streamInfoBatchService = streamInfoBatchService;
             ConfigureTwitchApi();
         }
 
@@ -61,9 +62,10 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public static async Task<TwitchClientManager?> CreateAsync(
             string channelName,
             IConfiguration configuration,
-            SharedTwitchClientManager sharedTwitchClientManager)
+            SharedTwitchClientManager sharedTwitchClientManager,
+            StreamInfoBatchService streamInfoBatchService)
         {
-            var manager = new TwitchClientManager(channelName, configuration, sharedTwitchClientManager);
+            var manager = new TwitchClientManager(channelName, configuration, sharedTwitchClientManager, streamInfoBatchService);
 
             try
             {
@@ -268,16 +270,25 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             OnChannelStateChanged?.Invoke(sender, args);
         }
 
+        
+        private readonly TimeSpan _cacheDurationOnline = TimeSpan.FromSeconds(10);
+        private readonly TimeSpan _cacheDurationOffline = TimeSpan.FromSeconds(25);
         public async Task<ChannelInformation> GetChannelInfoAsync(bool forceRefresh = false)
         {
-            // Use cached info if valid and not forcing refresh
-            if (!forceRefresh && !_fetching && DateTime.UtcNow - _lastFetchTime < _cacheDuration)
-                return _cachedChannelInformation;
-
             lock (_fetchLock)
             {
-                if (_fetching && !forceRefresh) return _cachedChannelInformation;
+                var isCurrentlyOnline = IsOnline; // snapshot to avoid race condition
+                var effectiveCacheDuration = isCurrentlyOnline ? _cacheDurationOnline : _cacheDurationOffline;
+                // Moved this check inside the lock
+                if (!forceRefresh && !_fetching && DateTime.UtcNow - _lastFetchTime < effectiveCacheDuration)
+                {
+                    return _cachedChannelInformation; 
+                }
 
+                if (_fetching && !forceRefresh)
+                {
+                    return _cachedChannelInformation;
+                }
                 _fetching = true;
                 _fetchCancellationTokenSource?.Cancel();
                 _fetchCancellationTokenSource?.Dispose();
@@ -286,14 +297,11 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 _fetchTimeoutTimer?.Start();
             }
 
-            _lastFetchTime = DateTime.UtcNow;
-
             try
             {
-                var streams = await Api.Helix.Streams.GetStreamsAsync(
-                    userLogins: [_channelName]);
-
-                var isOnline = streams?.Streams.Length != 0;
+                var streams = await _streamInfoBatchService.RequestRawStreamAsync(_channelName);
+                _lastFetchTime = DateTime.UtcNow;
+                var isOnline = streams != null;
 
                 if (IsOnline != isOnline)
                 {
@@ -309,20 +317,19 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     }
                 }
 
-                if (IsOnline && streams?.Streams.Length != 0)
+                if (IsOnline && streams != null)
                 {
-                    var stream = streams!.Streams[0];
                     _cachedChannelInformation = new ChannelInformation(
                         ViewerCount != null && ViewerCount != LastViewerCount
                             ? ViewerCount.Value
-                            : streams.Streams[0].ViewerCount,
-                        stream.Title,
-                        stream.GameName,
-                        stream.StartedAt,
-                        stream.ThumbnailUrl,
-                        stream.Type,
+                            : streams.ViewerCount,
+                        streams.Title,
+                        streams.GameName,
+                        streams.StartedAt,
+                        streams.ThumbnailUrl,
+                        streams.Type,
                         true,
-                        stream.UserId);
+                        streams.UserId);
                 }
                 else
                 {
