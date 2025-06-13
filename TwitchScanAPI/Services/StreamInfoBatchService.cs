@@ -12,11 +12,11 @@ namespace TwitchScanAPI.Services;
 
 public class StreamInfoBatchService
 {
-    private static readonly object Lock = new();
-    private static readonly HashSet<string> PendingChannels = new();
+    private static readonly Lock Lock = new();
+    private static readonly HashSet<string> PendingChannels = [];
     private static readonly Dictionary<string, TaskCompletionSource<Stream?>> ResponseMap = new();
     private static Timer _timer;
-    private static TwitchAPI _api = new();
+    private static readonly TwitchAPI _api = new();
     private readonly IConfiguration _configuration;
 
     public StreamInfoBatchService(IConfiguration configuration)
@@ -49,16 +49,16 @@ public class StreamInfoBatchService
         }
     }
     
-    private double _pendingEma = 0;
+    private double _pendingEma;
     private const double EmaAlpha = 0.3; // smoothing factor (lower = smoother)
     private int GetAdaptiveDelay(int currentPendingCount)
     {
         // Update EMA
         _pendingEma = EmaAlpha * currentPendingCount + (1 - EmaAlpha) * _pendingEma;
 
-        // Map EMA (1–20) to delay (600–100 ms)
+        // Map EMA (1–20) to delay (800–100 ms)
         const double minDelay = 100;
-        const double maxDelay = 600;
+        const double maxDelay = 800;
         var clampedEma = Math.Clamp(_pendingEma, 1, 20);
 
         // Invert: more requests = shorter delay
@@ -73,22 +73,24 @@ public class StreamInfoBatchService
 
         lock (Lock)
         {
-            batch = PendingChannels.Take(20).ToList();
+            batch = PendingChannels.Take(100).ToList();
             foreach (var name in batch)
                 PendingChannels.Remove(name);
         }
+        if (batch.Count == 0)
+            return;
         Console.WriteLine($"[BatchService] Processing {batch.Count} channels: [{string.Join(", ", batch)}]");
         try
         {
-            var response = await _api.Helix.Streams.GetStreamsAsync(userLogins: batch);
-            var resultDict = response.Streams.ToDictionary(s => s.UserLogin, s => s);
+            var response = await _api.Helix.Streams.GetStreamsAsync(userIds: batch);
+            var resultDict = response.Streams.ToDictionary(s => s.UserId, s => s);
 
             foreach (var channel in batch)
             {
-                if (!ResponseMap.TryGetValue(channel, out var tcs)) continue;
-                resultDict.TryGetValue(channel, out var stream);
-                tcs.SetResult(stream); // will be null if offline
-                ResponseMap.Remove(channel);
+                if (!ResponseMap.Remove(channel, out var tcs)) continue;
+                if (tcs.Task.IsCompleted)
+                    continue;
+                tcs.SetResult(resultDict.TryGetValue(channel, out var stream) ? stream : null);
             }
         }
         catch (Exception ex)
@@ -96,9 +98,9 @@ public class StreamInfoBatchService
             Console.WriteLine($"Error during batch fetch: {ex.Message}");
             foreach (var channel in batch)
             {
-                if (!ResponseMap.TryGetValue(channel, out var tcs)) continue;
-                tcs.SetException(ex);
-                ResponseMap.Remove(channel);
+                if (!ResponseMap.Remove(channel, out var tcs)) continue;
+                if(!tcs.Task.IsCompleted)
+                    tcs.SetException(ex);
             }
         }
     }

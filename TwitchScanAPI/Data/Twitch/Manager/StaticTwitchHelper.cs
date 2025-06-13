@@ -12,9 +12,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
     {
         private static readonly ConcurrentDictionary<string, Regex> EmoteRegexCache = new();
 
-        public static void AddEmotesToMessage(ChannelMessage channelMessage, IEnumerable<MergedEmote>? emotes)
+        public static void AddEmotesToMessage(ChannelMessage? channelMessage, IEnumerable<MergedEmote>? emotes)
         {
-            if (emotes == null || channelMessage?.ChatMessage?.Message == null)
+            if (emotes == null || channelMessage?.ChatMessage.Message == null)
                 return;
 
             var message = channelMessage.ChatMessage.Message;

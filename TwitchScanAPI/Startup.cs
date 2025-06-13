@@ -31,7 +31,7 @@ namespace TwitchScanAPI
                     {
                         builder.SetIsOriginAllowedToAllowWildcardSubdomains()
                             .SetIsOriginAllowed(_ => true)
-                            .WithOrigins("https://dreckbu.de", "http://localhost:4200")
+                            .WithOrigins("https://dreckbu.de", "http://localhost:4200","https://twitchmetrics.xyz")
                             .AllowAnyHeader()
                             .AllowAnyMethod()
                             .AllowCredentials(); // Allow credentials for SignalR

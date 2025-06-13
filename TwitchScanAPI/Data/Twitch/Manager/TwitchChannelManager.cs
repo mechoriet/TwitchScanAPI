@@ -158,7 +158,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         /// </summary>
         public async Task<IEnumerable<InitiatedChannel>> GetInitiatedChannels()
         {
-            if (_disposed) return Array.Empty<InitiatedChannel>();
+            if (_disposed) return [];
 
             var channels = new List<InitiatedChannel>();
 
