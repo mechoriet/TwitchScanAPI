@@ -11,6 +11,7 @@ using TwitchScanAPI.Global;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Emotes;
 using TwitchScanAPI.Services;
+using Timer = System.Timers.Timer;
 
 namespace TwitchScanAPI.Data.Twitch.Manager
 {
@@ -18,6 +19,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
     {
         private static readonly TwitchAPI Api = new();
         private readonly string _channelName;
+        private string _channelId;
         private readonly IConfiguration _configuration;
         private readonly SharedTwitchClientManager _sharedTwitchClientManager;
         private readonly StreamInfoBatchService _streamInfoBatchService;
@@ -38,8 +40,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         // BetterTTV & 7TV
-        private System.Timers.Timer? _fetchTimeoutTimer;
-        private System.Timers.Timer? _emoteUpdateTimer;
+        private Timer? _fetchTimeoutTimer;
+        private Timer? _emoteUpdateTimer;
+        private Timer? _followerUpdateTimer;
         private ChannelInformation _cachedChannelInformation = new(false, null);
         private bool _fetching;
         private readonly Lock _fetchLock = new();
@@ -97,7 +100,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
                 // Set the cached channel information
                 manager._cachedChannelInformation.Id = broadcasterId;
-
+                manager._channelId = broadcasterId;
                 if (!manager.IsOnline) return manager;
 
                 // If the channel is online, start the client
@@ -107,6 +110,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             catch (Exception ex)
             {
                 Console.WriteLine($"Error creating client manager for '{channelName}': {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
                 manager.Dispose();
                 return null;
             }
@@ -135,6 +139,13 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 OnUserTimedOutHandler,
                 OnChannelStateChangedHandler,
                 OnRaidNotificationHandler);
+            //do this at last
+            Task.Run(async () =>
+            {
+                await Task.Delay(2000);
+                GetFollowersFromStream(true);
+                StartFollowerUpdateTimer();
+            });
         }
 
         private void OnStreamDown()
@@ -151,6 +162,11 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             // The IRC connection should stay alive for potential reconnection
             // Only dispose if the client manager itself is being shut down
             StopEmoteUpdateTimer();
+            //fetch follows last time
+            //stop follow timer
+            GetFollowersFromStream(true);
+            StopFollowerUpdateTimer();
+            
             ExternalChannelEmotes = [];
             OnDisconnected?.Invoke(this, EventArgs.Empty);
             OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
@@ -202,6 +218,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public event EventHandler<OnUserTimedoutArgs>? OnUserTimedOut;
         public event EventHandler<OnChannelStateChangedArgs>? OnChannelStateChanged;
         public event EventHandler<ChannelInformation>? OnConnectionChanged;
+        public event EventHandler<ChannelFollowers> OnFollowerCountUpdate;
         public event EventHandler? OnDisconnected;
 
         private void ConfigureTwitchApi()
@@ -272,7 +289,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         
         private readonly TimeSpan _cacheDurationOnline = TimeSpan.FromSeconds(10);
-        private readonly TimeSpan _cacheDurationOffline = TimeSpan.FromSeconds(25);
+        private readonly TimeSpan _cacheDurationOffline = TimeSpan.FromSeconds(20);
         public async Task<ChannelInformation> GetChannelInfoAsync(bool forceRefresh = false)
         {
             lock (_fetchLock)
@@ -299,7 +316,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             try
             {
-                var streams = await _streamInfoBatchService.RequestRawStreamAsync(_channelName);
+                var streams = await _streamInfoBatchService.RequestRawStreamAsync(_channelId);
                 _lastFetchTime = DateTime.UtcNow;
                 var isOnline = streams != null;
 
@@ -367,7 +384,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
         private void StartEmoteUpdateTimer()
         {
-            _emoteUpdateTimer = new System.Timers.Timer(TimeSpan.FromMinutes(15).TotalMilliseconds); // Set interval to 5 minutes
+            _emoteUpdateTimer = new Timer(TimeSpan.FromMinutes(15).TotalMilliseconds); // Set interval to 15 minutes
             _emoteUpdateTimer.Elapsed += async (_, _) => await UpdateChannelEmotesWithLogging();
             _emoteUpdateTimer.AutoReset = true;
             _emoteUpdateTimer.Start();
@@ -392,6 +409,30 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _emoteUpdateTimer?.Stop();
             _emoteUpdateTimer?.Dispose();
             _emoteUpdateTimer = null;
+        }
+
+
+        private void StartFollowerUpdateTimer()
+        {
+            _followerUpdateTimer = new Timer(TimeSpan.FromMinutes(15).TotalMilliseconds); // Set interval to 5 minutes
+            _followerUpdateTimer.Elapsed += (_, _) => GetFollowersFromStream(false);
+            _followerUpdateTimer.AutoReset = true;
+            _followerUpdateTimer.Start();
+        }
+
+        private void StopFollowerUpdateTimer()
+        {
+            _followerUpdateTimer?.Stop();
+            _followerUpdateTimer?.Dispose();
+            _followerUpdateTimer = null;
+        }
+        private void GetFollowersFromStream(bool force)
+        {
+            var result = Api.Helix.Channels.GetChannelFollowersAsync(broadcasterId: _channelId, accessToken: _configuration[Variables.TwitchOauthKey]);
+            var resultTotal = result.Result.Total;
+            OnFollowerCountUpdate.Invoke(this,new ChannelFollowers(_channelName, resultTotal, force));
+            Console.WriteLine($"{resultTotal} channels followers from {_channelName}");
+            
         }
     }
 }

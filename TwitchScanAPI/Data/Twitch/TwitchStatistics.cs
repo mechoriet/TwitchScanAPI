@@ -141,6 +141,7 @@ namespace TwitchScanAPI.Data.Twitch
             _clientManager.OnDisconnected += ClientManagerOnDisconnected;
             _clientManager.OnChannelStateChanged += ClientManagerOnChannelStateChanged;
             _clientManager.OnRaidNotification += ClientManagerOnOnRaidNotification;
+            _clientManager.OnFollowerCountUpdate += ClientManagerFollowerCountUpdate;
         }
 
         private async void ClientManagerOnDisconnected(object? sender, EventArgs e)
@@ -585,6 +586,19 @@ namespace TwitchScanAPI.Data.Twitch
             catch (Exception err)
             {
                 Console.WriteLine($"Error processing raid notification for '{ChannelName}': {err.Message}");
+            }
+        }
+        
+        private async void ClientManagerFollowerCountUpdate(object? sender, ChannelFollowers e)
+        {
+            try
+            {
+                if (_disposed) return;
+                await _statisticsManager.Update(e);
+            }
+            catch (Exception err)
+            {
+                Console.WriteLine($"Error processing followers count for '{ChannelName}': {err.Message}");
             }
         }
 
