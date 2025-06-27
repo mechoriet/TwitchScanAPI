@@ -179,7 +179,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error getting channel info for {stat.ChannelName}: {ex.Message}");
+                    Console.WriteLine($"TwitchChannelManager: Error getting channel info for {stat.ChannelName}: {ex.Message}");
                     channels.Add(new InitiatedChannel(stat.ChannelName, stat.MessageCount, stat.StartedAt,
                         DateTime.Now, false, "Error fetching info", ""));
                 }
