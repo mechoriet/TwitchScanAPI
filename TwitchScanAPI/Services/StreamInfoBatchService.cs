@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -12,11 +13,11 @@ namespace TwitchScanAPI.Services;
 
 public class StreamInfoBatchService
 {
-    private static readonly Lock Lock = new();
+    private readonly Lock _lock = new();
     private static readonly HashSet<string> PendingChannels = [];
-    private static readonly Dictionary<string, TaskCompletionSource<Stream?>> ResponseMap = new();
+    private readonly ConcurrentDictionary<string, TaskCompletionSource<Stream?>> _responseMap = new();
     private static Timer _timer;
-    private static readonly TwitchAPI _api = new();
+    private static readonly TwitchAPI Api = new();
     private readonly IConfiguration _configuration;
 
     public StreamInfoBatchService(IConfiguration configuration)
@@ -28,24 +29,23 @@ public class StreamInfoBatchService
     
     private void ConfigureTwitchApi()
     {
-        _api.Settings.ClientId = _configuration.GetValue<string>(Variables.TwitchClientId);
-        _api.Settings.Secret = _configuration.GetValue<string>(Variables.TwitchClientSecret);
+        Api.Settings.ClientId = _configuration.GetValue<string>(Variables.TwitchClientId);
+        Api.Settings.Secret = _configuration.GetValue<string>(Variables.TwitchClientSecret);
     }
 
     public Task<Stream?> RequestRawStreamAsync(string channelName)
     {
-        lock (Lock)
+        lock (_lock)
         {
-            if (!ResponseMap.ContainsKey(channelName))
-            {
-                PendingChannels.Add(channelName);
-                ResponseMap[channelName] = new TaskCompletionSource<Stream?>();
-            }
-
+            var tcs = _responseMap.GetOrAdd(channelName, _ => new TaskCompletionSource<Stream?>());
+        
+            // Only add to pending if this is a new entry
+            if (!PendingChannels.Add(channelName)) return tcs.Task;
             var pendingCount = PendingChannels.Count;
             var delay = GetAdaptiveDelay(pendingCount);
-            _timer.Change(delay, Timeout.Infinite); // debounce timer
-            return ResponseMap[channelName].Task;
+            _timer.Change(delay, Timeout.Infinite);
+
+            return tcs.Task;
         }
     }
     
@@ -56,9 +56,9 @@ public class StreamInfoBatchService
         // Update EMA
         _pendingEma = EmaAlpha * currentPendingCount + (1 - EmaAlpha) * _pendingEma;
 
-        // Map EMA (1–20) to delay (800–100 ms)
-        const double minDelay = 100;
-        const double maxDelay = 800;
+        // Map EMA (1–20) to delay (1200–300 ms)
+        const double minDelay = 300;
+        const double maxDelay = 1200;
         var clampedEma = Math.Clamp(_pendingEma, 1, 20);
 
         // Invert: more requests = shorter delay
@@ -71,7 +71,7 @@ public class StreamInfoBatchService
     {
         List<string> batch;
 
-        lock (Lock)
+        lock (_lock)
         {
             batch = PendingChannels.Take(100).ToList();
             foreach (var name in batch)
@@ -79,18 +79,18 @@ public class StreamInfoBatchService
         }
         if (batch.Count == 0)
             return;
-        Console.WriteLine($"[BatchService] Processing {batch.Count} channels: [{string.Join(", ", batch)}]");
+        //Console.WriteLine($"[BatchService] Processing {batch.Count} channels: [{string.Join(", ", batch)}]");
         try
         {
-            var response = await _api.Helix.Streams.GetStreamsAsync(userIds: batch);
+            var response = await Api.Helix.Streams.GetStreamsAsync(userIds: batch);
             var resultDict = response.Streams.ToDictionary(s => s.UserId, s => s);
 
             foreach (var channel in batch)
             {
-                if (!ResponseMap.Remove(channel, out var tcs)) continue;
+                if (!_responseMap.Remove(channel, out var tcs)) continue;
                 if (tcs.Task.IsCompleted)
                     continue;
-                tcs.SetResult(resultDict.TryGetValue(channel, out var stream) ? stream : null);
+                tcs.TrySetResult(resultDict.GetValueOrDefault(channel));
             }
         }
         catch (Exception ex)
@@ -98,9 +98,9 @@ public class StreamInfoBatchService
             Console.WriteLine($"Error during batch fetch: {ex.Message}");
             foreach (var channel in batch)
             {
-                if (!ResponseMap.Remove(channel, out var tcs)) continue;
+                if (!_responseMap.Remove(channel, out var tcs)) continue;
                 if(!tcs.Task.IsCompleted)
-                    tcs.SetException(ex);
+                    tcs.TrySetException(ex);
             }
         }
     }
