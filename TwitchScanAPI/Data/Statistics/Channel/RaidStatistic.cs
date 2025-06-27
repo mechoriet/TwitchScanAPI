@@ -13,10 +13,10 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         private const int BucketSize = 1; // Grouping raids into 1-minute periods
 
         // Tracks the count of raids
-        private ConcurrentDictionary<string, int> _raidCounts = new(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, int> _raidCounts = new(StringComparer.OrdinalIgnoreCase);
 
         // Tracks raids over time (bucketed by minute)
-        private ConcurrentDictionary<string, string> _raidsOverTime = new();
+        private readonly ConcurrentDictionary<string, string> _raidsOverTime = new();
 
         public override string Name => "RaidStatistic";
 
@@ -41,11 +41,12 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
         public Task Update(RaidNotification raidNotification)
         {
+            var username = raidNotification.MsgParamLogin;
             // Increment raid count for the raider
             if (int.TryParse(raidNotification.MsgParamViewerCount, out var viewerCount))
             {
                 _raidCounts.AddOrUpdate(
-                    raidNotification.MsgParamLogin,
+                    username,
                     viewerCount,
                     (_, count) => count + viewerCount
                 );
@@ -53,7 +54,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             else
             {
                 _raidCounts.AddOrUpdate(
-                    raidNotification.MsgParamLogin,
+                    username,
                     1,
                     (_, count) => count + 1
                 );
@@ -81,8 +82,8 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         public override void Dispose()
         {
             base.Dispose();
-            _raidCounts = new ConcurrentDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            _raidsOverTime = new ConcurrentDictionary<string, string>();
+            _raidCounts.Clear();
+            _raidsOverTime.Clear();
         }
     }
 }
