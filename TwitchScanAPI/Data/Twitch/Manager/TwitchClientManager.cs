@@ -370,7 +370,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error getting channel info for {_channelName}: {ex.Message}");
+                Console.WriteLine($"TwitchClientManager: Error getting channel info for {_channelName}: {ex.Message}");
+                Console.WriteLine($"StackTrace:\n{ex.StackTrace}");
                 return _cachedChannelInformation;
             }
             finally
@@ -431,7 +432,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             var result = Api.Helix.Channels.GetChannelFollowersAsync(broadcasterId: _channelId, accessToken: _configuration[Variables.TwitchOauthKey]);
             var resultTotal = result.Result.Total;
             OnFollowerCountUpdate.Invoke(this,new ChannelFollowers(_channelName, resultTotal, force));
-            Console.WriteLine($"{resultTotal} channels followers from {_channelName}");
+            //Console.WriteLine($"{resultTotal} channels followers from {_channelName}");
             
         }
     }
