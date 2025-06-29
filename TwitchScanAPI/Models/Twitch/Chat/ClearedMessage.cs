@@ -1,4 +1,5 @@
-﻿using TwitchScanAPI.Models.Twitch.Base;
+﻿using System;
+using TwitchScanAPI.Models.Twitch.Base;
 
 namespace TwitchScanAPI.Models.Twitch.Chat
 {

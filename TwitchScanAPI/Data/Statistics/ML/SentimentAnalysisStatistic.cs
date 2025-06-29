@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.ML.SentimentAnalysis;
@@ -18,12 +19,40 @@ namespace TwitchScanAPI.Data.Statistics.ML
         private const int MinMessages = 5;
         private const int TopUsersCount = 10;
         private const int MaxTopMessages = 10;
+        private static readonly SentimentIntensityAnalyzer Analyzer = CreateAnalyzerWithNeutralTerms();
 
-        private static readonly SentimentIntensityAnalyzer Analyzer = new();
+        private static SentimentIntensityAnalyzer CreateAnalyzerWithNeutralTerms()
+        {
+            var analyzer = new SentimentIntensityAnalyzer();
+    
+            try
+            {
+                // Access the private readonly Lexicon field
+                var lexiconField = typeof(SentimentIntensityAnalyzer)
+                    .GetField("Lexicon", BindingFlags.NonPublic | BindingFlags.Instance);
+        
+                if (lexiconField?.GetValue(analyzer) is Dictionary<string, double> lexicon)
+                {
+                    // Add your neutral commands
+                    lexicon["!join"] = 0.0;
+                    lexicon["!give"] = 0.0;
+                }
+                else
+                {
+                    Console.WriteLine("Could not access Lexicon field");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to modify lexicon: {ex.Message}");
+            }
+    
+            return analyzer;
+        }
 
         private readonly TimeSpan _bucketSize = TimeSpan.FromMinutes(1);
         private ConcurrentDictionary<DateTime, SentimentScores> _sentimentOverTime = new();
-        private List<SentimentMessage> _topNegativeMessages = new();
+        private List<SentimentMessage> _topNegativeMessages = [];
         private List<SentimentMessage> _topPositiveMessages = new();
         private readonly object _topNegativeMessagesLock = new();
         private readonly object _topPositiveMessagesLock = new();

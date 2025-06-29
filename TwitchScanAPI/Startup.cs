@@ -50,6 +50,7 @@ namespace TwitchScanAPI
             // Register hosted services
             services.AddHostedService<TwitchChannelManagerHostedService>();
             services.AddHostedService<RestartHostedService>();
+            services.AddMemoryCache();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

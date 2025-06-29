@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
+using TwitchScanAPI.Data.Statistics.Annotations;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Data.Statistics.Utilities;
 using TwitchScanAPI.Models.Twitch.Chat;
@@ -9,6 +10,7 @@ using TwitchScanAPI.Models.Twitch.Statistics;
 
 namespace TwitchScanAPI.Data.Statistics.Chat
 {
+    [IgnoreStatistic]
     public class BotLikelinessStatistic : StatisticBase
     {
         // Snapshot management
@@ -55,7 +57,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
         public Task Update(ChannelMessage message)
         {
-            var username = message.ChatMessage.Username.ToLowerInvariant();
+            /*var username = message.ChatMessage.Username.ToLowerInvariant();
             var messageText = message.ChatMessage.Message.ToLowerInvariant().Trim();
 
             // Update user's individual metrics
@@ -73,11 +75,12 @@ namespace TwitchScanAPI.Data.Statistics.Chat
             _recentMessages.Enqueue(messageEntry);
 
             // Clean up messages outside the time window
+            */
             CleanupOldMessages();
-
+            /*
             // Analyze similarity with recent messages
             AnalyzeMessageSimilarity(messageEntry);
-            HasUpdated = true;
+            HasUpdated = true;*/
             return Task.CompletedTask;
         }
 
