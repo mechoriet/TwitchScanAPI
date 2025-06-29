@@ -210,6 +210,7 @@ namespace TwitchScanAPI.Data.Twitch
                         // If the channel just went offline, save a snapshot
                         case false when wasOnline:
                             await HandleChannelOfflineAsync();
+                            _statisticsManager.Reset();
                             break;
                         // If the channel just came online, log it
                         case true when !wasOnline:
@@ -328,7 +329,7 @@ namespace TwitchScanAPI.Data.Twitch
                 {
                     Username = chatMessage.Username,
                     Message = chatMessage.Message,
-                    ColorHex = chatMessage.ColorHex,
+                    ColorHex = string.IsInterned(chatMessage.ColorHex) ?? string.Intern(chatMessage.ColorHex),
                     Bits = chatMessage.Bits,
                     BitsInDollars = chatMessage.BitsInDollars,
                     FirstTime = chatMessage.IsFirstMessage,

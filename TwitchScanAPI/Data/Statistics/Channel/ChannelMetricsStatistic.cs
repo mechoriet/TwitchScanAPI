@@ -10,13 +10,27 @@ using TwitchScanAPI.Services;
 
 namespace TwitchScanAPI.Data.Statistics.Channel
 {
+    public readonly struct ViewerEntry(uint timestampSeconds, int viewers)
+    {
+        // Unix timestamp (4 bytes)
+        public readonly int Viewers = viewers;           // Viewer count (4 bytes)
+
+        // Convert back to DateTime when needed
+        public DateTime GetDateTime() => DateTimeOffset.FromUnixTimeSeconds(timestampSeconds).DateTime;
+    
+        // Constructor from DateTime
+        public ViewerEntry(DateTime timestamp, int viewers) 
+            : this((uint)((DateTimeOffset)timestamp).ToUnixTimeSeconds(), viewers)
+        {
+        }
+    }
     public class ChannelMetricsStatistic : StatisticBase
     {
         public override string Name => "ChannelMetrics";
         private const int BucketSize = 1; // Grouping viewers into 1-minute periods
 
         // For Viewer Count Tracking
-        private ConcurrentQueue<(DateTime Timestamp, long Viewers)> _viewerHistory = new();
+        private ConcurrentQueue<ViewerEntry> _viewerHistory = new();
 
         // For Viewers Over Time
         private ConcurrentDictionary<string, long> _viewersOverTime = new();
@@ -27,6 +41,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         private long _peakViewers;
         private long _totalViewers;
         private long _viewerCountEntries;
+        private Trend _trend;
 
         protected override object ComputeResult()
         {
@@ -43,11 +58,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             var totalWatchTimeHours = _viewersOverTime.Values.Sum() / 60.0;
 
             // Calculate the trend
-            var trend = TrendService.CalculateTrend(
-                _viewerHistory,
-                d => d.Viewers,
-                d => d.Timestamp
-            );
+            // moved trend calculation to update instead of compute to not always run it
 
             return ChannelMetrics.Create(
                 currentViewers,
@@ -57,7 +68,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
                 _currentUptime,
                 _viewersOverTime.ToDictionary(kv => DateTime.Parse(kv.Key), kv => kv.Value),
                 totalWatchTimeHours,
-                trend
+                _trend
             );
         }
 
@@ -66,7 +77,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
             var currentTime = DateTime.UtcNow;
 
             // Update Viewer History Queue
-            _viewerHistory.Enqueue((currentTime, channelInfo.Viewers));
+            _viewerHistory.Enqueue(new ViewerEntry(DateTime.Now, (int)channelInfo.Viewers));
             Interlocked.Add(ref _totalViewers, channelInfo.Viewers);
             Interlocked.Increment(ref _viewerCountEntries);
 
@@ -82,6 +93,12 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
             // Update the uptime based on the channel's reported start time
             _currentUptime = currentTime - channelInfo.Uptime;
+            
+            _trend = TrendService.CalculateTrend(
+                _viewerHistory,
+                d => d.Viewers,
+                d => d.GetDateTime()
+            );
             HasUpdated = true;
             return Task.CompletedTask;
         }
@@ -114,13 +131,14 @@ namespace TwitchScanAPI.Data.Statistics.Channel
         public override void Dispose()
         {
             base.Dispose();
-            _viewerHistory = new ConcurrentQueue<(DateTime, long)>();
-            _viewersOverTime = new ConcurrentDictionary<string, long>();
+            _viewerHistory.Clear();
+            _viewersOverTime.Clear();
             _currentGame = null;
             _currentUptime = TimeSpan.Zero;
             _peakViewers = 0;
             _totalViewers = 0;
             _viewerCountEntries = 0;
+            _trend = Trend.Stable;
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using MongoDB.Driver;
 using TwitchScanAPI.Controllers.Annotations;
@@ -20,7 +21,8 @@ namespace TwitchScanAPI.Controllers
         TwitchChannelManager twitchChannelManager,
         MongoDbContext context,
         TwitchVodService twitchVodService,
-        IHostApplicationLifetime hostApplicationLifetime)
+        IHostApplicationLifetime hostApplicationLifetime, 
+        IMemoryCache memoryCache)
         : Controller
     {
         private async Task<TwitchLogin?> GetUserFromAccessToken()
@@ -163,7 +165,13 @@ namespace TwitchScanAPI.Controllers
         public async Task<ActionResult> GetInitiatedChannels()
         {
             Console.WriteLine("Initiated channels requested by " + HttpContext.Connection.RemoteIpAddress);
-            var channels = await twitchChannelManager.GetInitiatedChannels();
+    
+            var channels = await memoryCache.GetOrCreateAsync("initiated_channels", async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(10);
+                return await twitchChannelManager.GetInitiatedChannels();
+            });
+    
             return Ok(channels);
         }
 

@@ -65,7 +65,10 @@ namespace TwitchScanAPI.Models.Twitch.Chat
 
         private static string GenerateImageUrl(string id)
         {
-            return string.Concat(Prefix, id, Suffix);
+            var url = string.Concat(Prefix, id, Suffix);
+    
+            // Check if already interned, if not then intern it
+            return string.IsInterned(url) ?? string.Intern(url);
         }
 
         private void SetIndices(string message)
