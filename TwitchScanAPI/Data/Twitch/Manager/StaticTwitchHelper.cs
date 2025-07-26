@@ -48,19 +48,17 @@ public static class StaticTwitchHelper
 
         var emoteLength = emoteName.Length;
         var messageLength = message.Length;
-        
+
         do
         {
-            // Check word boundaries manually for better performance
-            var prevChar = index > 0 ? message[index - 1] : ' ';
-            var nextChar = index + emoteLength < messageLength ? message[index + emoteLength] : ' ';
-            
-            if (!char.IsLetterOrDigit(prevChar) && !char.IsLetterOrDigit(nextChar))
+            var prevOk = index == 0 || !char.IsWhiteSpace(message[index - 1]) == false;
+            var nextOk = index + emoteLength == messageLength || !char.IsWhiteSpace(message[index + emoteLength]) == false;
+            if (prevOk && nextOk)
                 return true;
-                
+
             index = message.IndexOf(emoteName, index + 1, StringComparison.Ordinal);
         } while (index != -1);
-        
+
         return false;
     }
 

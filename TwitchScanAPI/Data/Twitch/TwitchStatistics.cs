@@ -409,6 +409,7 @@ namespace TwitchScanAPI.Data.Twitch
                     Message = e.Subscriber.ResubMessage,
                     SubscriptionPlanName = e.Subscriber.SubscriptionPlanName,
                     SubscriptionPlan = e.Subscriber.SubscriptionPlan.ToString(),
+                    SubscriptionPlanObj = e.Subscriber.SubscriptionPlan,
                     Months = 1,
                     MultiMonth = ParseInt(e.Subscriber.MsgParamCumulativeMonths, 1)
                 };
@@ -435,6 +436,7 @@ namespace TwitchScanAPI.Data.Twitch
                     Message = e.ReSubscriber.ResubMessage,
                     SubscriptionPlanName = e.ReSubscriber.SubscriptionPlanName,
                     SubscriptionPlan = e.ReSubscriber.SubscriptionPlan.ToString(),
+                    SubscriptionPlanObj = e.ReSubscriber.SubscriptionPlan,
                     Months = ParseInt(e.ReSubscriber.MsgParamStreakMonths, 1),
                     MultiMonth = ParseInt(e.ReSubscriber.MsgParamCumulativeMonths, 1)
                 };
@@ -462,6 +464,7 @@ namespace TwitchScanAPI.Data.Twitch
                     RecipientDisplayName = e.GiftedSubscription.MsgParamRecipientDisplayName,
                     SubscriptionPlanName = e.GiftedSubscription.MsgParamSubPlanName,
                     SubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString(),
+                    SubscriptionPlanObj = e.GiftedSubscription.MsgParamSubPlan,
                     Months = ParseInt(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, 1),
                     MultiMonth = ParseInt(e.GiftedSubscription.MsgParamMonths, 1),
                     Message = e.GiftedSubscription.SystemMsg,
@@ -489,6 +492,7 @@ namespace TwitchScanAPI.Data.Twitch
                     DisplayName = e.GiftedSubscription.DisplayName,
                     GiftedSubscriptionCount = e.GiftedSubscription.MsgParamMassGiftCount,
                     GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlan.ToString(),
+                    SubscriptionPlanObj = e.GiftedSubscription.MsgParamSubPlan,
                     MultiMonth = ParseInt(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, 1)
                 };
 

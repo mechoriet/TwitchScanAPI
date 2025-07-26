@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using TwitchLib.PubSub.Enums;
 using TwitchScanAPI.Data.Statistics.Base;
 using TwitchScanAPI.Models.Enums;
 using TwitchScanAPI.Models.Twitch.Channel;
@@ -17,6 +18,9 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
         // Tracks the count of each SubscriptionType
         private ConcurrentDictionary<SubscriptionType, int> _subscriptionCounts = new();
+        
+        //Track Tier count per Subscriptionplan
+        private ConcurrentDictionary<SubscriptionPlan, int> _subscriptionPlanCounts = new();
 
         // Tracks the number of subscriptions over each minute interval
         private ConcurrentDictionary<string, long> _subscriptionsOverTime = new();

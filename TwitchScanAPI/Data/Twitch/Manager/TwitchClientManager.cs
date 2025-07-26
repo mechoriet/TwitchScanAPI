@@ -123,7 +123,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             IsOnline = true;
             UpdateChannelEmotes(_cachedChannelInformation.Id);
             StartEmoteUpdateTimer();
-            Console.WriteLine($"{_channelName} is now online.");
             OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
             _sharedTwitchClientManager.JoinChannel(
                 _channelName, 
