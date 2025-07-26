@@ -8,6 +8,7 @@ using TwitchScanAPI.Models.Twitch.Emotes;
 using TwitchScanAPI.Models.Twitch.Emotes.Bttv;
 using TwitchScanAPI.Models.Twitch.Emotes.FrankerFaceZ;
 using TwitchScanAPI.Models.Twitch.Emotes.SevenTV;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace TwitchScanAPI.Services
 {
@@ -209,15 +210,16 @@ namespace TwitchScanAPI.Services
         {
             try
             {
-                var response = await HttpClient.GetAsync(url);
+                using var response = await HttpClient.GetAsync(url);
                 if (!response.IsSuccessStatusCode)
                 {
                     Console.WriteLine($"Failed to fetch emotes from {url}. Status Code: {response.StatusCode}");
                     return default;
                 }
 
-                var content = await response.Content.ReadAsStringAsync();
-                return JsonConvert.DeserializeObject<T>(content);
+                // Use ReadAsStreamAsync for better memory efficiency
+                await using var stream = await response.Content.ReadAsStreamAsync();
+                return await JsonSerializer.DeserializeAsync<T>(stream);
             }
             catch (Exception ex)
             {

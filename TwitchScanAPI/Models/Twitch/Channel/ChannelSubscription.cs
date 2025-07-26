@@ -1,4 +1,5 @@
-﻿using TwitchScanAPI.Models.Enums;
+﻿using TwitchLib.Client.Enums;
+using TwitchScanAPI.Models.Enums;
 using TwitchScanAPI.Models.Twitch.Base;
 
 namespace TwitchScanAPI.Models.Twitch.Channel
@@ -18,6 +19,8 @@ namespace TwitchScanAPI.Models.Twitch.Channel
         public string Message { get; set; }
         public string SubscriptionPlanName { get; set; }
         public string SubscriptionPlan { get; set; }
+        
+        public SubscriptionPlan SubscriptionPlanObj { get; set; }
         public string RecipientUserName { get; set; }
         public string RecipientDisplayName { get; set; }
         public int GiftedSubscriptionCount { get; set; }

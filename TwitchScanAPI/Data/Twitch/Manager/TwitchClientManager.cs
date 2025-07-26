@@ -123,7 +123,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             IsOnline = true;
             UpdateChannelEmotes(_cachedChannelInformation.Id);
             StartEmoteUpdateTimer();
-            Console.WriteLine($"{_channelName} is now online.");
             OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
             _sharedTwitchClientManager.JoinChannel(
                 _channelName, 
@@ -156,7 +155,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             IsOnline = false;
 
             if (!wasOnline) return;
-            Console.WriteLine($"{_channelName} is now offline.");
             StopEmoteUpdateTimer();
             //fetch follows last time
             //stop follow timer
