@@ -35,7 +35,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         public override void Dispose()
         {
             base.Dispose();
-            _uniqueWords = new ConcurrentDictionary<string, byte>();
+            _uniqueWords.Clear();
         }
     }
 }

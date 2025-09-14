@@ -26,7 +26,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
         public override void Dispose()
         {
             base.Dispose();
-            _uniqueChatters = new ConcurrentDictionary<string, byte>();
+            _uniqueChatters.Clear();
         }
     }
 }
