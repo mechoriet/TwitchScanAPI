@@ -288,7 +288,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         
         private readonly TimeSpan _cacheDurationOnline = TimeSpan.FromSeconds(10);
-        private readonly TimeSpan _cacheDurationOffline = TimeSpan.FromSeconds(20);
+        private readonly TimeSpan _cacheDurationOffline = TimeSpan.FromSeconds(15);
         public async Task<ChannelInformation> GetChannelInfoAsync(bool forceRefresh = false)
         {
             lock (_fetchLock)
