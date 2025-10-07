@@ -88,7 +88,6 @@ public class SitemapController : Controller
 
         // Explicitly write XML declaration with UTF-8 encoding
         await xmlWriter.WriteStartDocumentAsync();
-        await xmlWriter.WriteRawAsync("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         await xmlWriter.WriteStartElementAsync(null, "urlset", "http://www.sitemaps.org/schemas/sitemap/0.9");
 
         foreach (var url in urls)

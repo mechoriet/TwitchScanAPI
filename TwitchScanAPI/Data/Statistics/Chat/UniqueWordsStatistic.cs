@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -10,7 +11,7 @@ namespace TwitchScanAPI.Data.Statistics.Chat
     public class UniqueWordsStatistic : StatisticBase
     {
         private static readonly Regex WordRegex = new(@"\b\w+\b", RegexOptions.Compiled);
-        private ConcurrentDictionary<string, byte> _uniqueWords = new();
+        private readonly ConcurrentDictionary<string, byte> _uniqueWords = new(StringComparer.Ordinal);
 
         public override string Name => "UniqueWords";
 
@@ -21,12 +22,17 @@ namespace TwitchScanAPI.Data.Statistics.Chat
 
         public Task Update(ChannelMessage message)
         {
-            var words = WordRegex.Matches(message.ChatMessage.Message)
-                .Select(m => m.Value.ToLowerInvariant().Trim())
-                .Where(w => !string.IsNullOrWhiteSpace(w));
+            var matches = WordRegex.Matches(message.ChatMessage.Message);
 
-            foreach (var word in words)
-                _uniqueWords.TryAdd(word, 0);
+            // Process matches more efficiently by avoiding LINQ allocations
+            foreach (Match match in matches)
+            {
+                var word = match.Value.ToLowerInvariant().Trim();
+                if (!string.IsNullOrWhiteSpace(word))
+                {
+                    _uniqueWords.TryAdd(word, 0);
+                }
+            }
 
             HasUpdated = true;
             return Task.CompletedTask;

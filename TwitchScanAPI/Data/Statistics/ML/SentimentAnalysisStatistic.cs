@@ -18,41 +18,12 @@ namespace TwitchScanAPI.Data.Statistics.ML
     {
         private const int MinMessages = 5;
         private const int TopUsersCount = 10;
-        private const int MaxTopMessages = 10;
-        private static readonly SentimentIntensityAnalyzer Analyzer = CreateAnalyzerWithNeutralTerms();
-
-        private static SentimentIntensityAnalyzer CreateAnalyzerWithNeutralTerms()
-        {
-            var analyzer = new SentimentIntensityAnalyzer();
-    
-            try
-            {
-                // Access the private readonly Lexicon field
-                var lexiconField = typeof(SentimentIntensityAnalyzer)
-                    .GetField("Lexicon", BindingFlags.NonPublic | BindingFlags.Instance);
-        
-                if (lexiconField?.GetValue(analyzer) is Dictionary<string, double> lexicon)
-                {
-                    // Add your neutral commands
-                    lexicon["!join"] = 0.0;
-                    lexicon["!give"] = 0.0;
-                }
-                else
-                {
-                    Console.WriteLine("Could not access Lexicon field");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to modify lexicon: {ex.Message}");
-            }
-    
-            return analyzer;
-        }
+        private const int MaxTopMessages = 5; // Reduced from 10 to lower memory
+        private static readonly SentimentIntensityAnalyzer Analyzer = new SentimentIntensityAnalyzer();
 
         private readonly TimeSpan _bucketSize = TimeSpan.FromMinutes(1);
         private ConcurrentDictionary<DateTime, SentimentScores> _sentimentOverTime = new();
-        private List<SentimentMessage> _topNegativeMessages = [];
+        private List<SentimentMessage> _topNegativeMessages = new();
         private List<SentimentMessage> _topPositiveMessages = new();
         private readonly object _topNegativeMessagesLock = new();
         private readonly object _topPositiveMessagesLock = new();
@@ -90,6 +61,21 @@ namespace TwitchScanAPI.Data.Statistics.ML
             var text = message.ChatMessage.Message;
             var username = message.ChatMessage.Username;
 
+            // Skip sentiment analysis for very short messages or common commands to reduce CPU usage
+            if (text.StartsWith('!') || text.StartsWith('/') || text.Contains("http"))
+            {
+                // Still update user sentiment with neutral score for short/common messages
+                var fastexituserSentiment = _userSentiments.GetOrAdd(username.Trim(), u => new Models.ML.SentimentAnalysis.UserSentiment(u));
+                lock (fastexituserSentiment.Lock)
+                {
+                    fastexituserSentiment.MessageCount++;
+                    fastexituserSentiment.Neutral += 0.5; // Neutral score for skipped messages
+                    fastexituserSentiment.LastUpdated = DateTime.UtcNow;
+                }
+                HasUpdated = true;
+                return Task.CompletedTask;
+            }
+
             // Analyze sentiment
             var results = Analyzer.PolarityScores(text);
 
@@ -123,6 +109,8 @@ namespace TwitchScanAPI.Data.Statistics.ML
             HasUpdated = true;
             return Task.CompletedTask;
         }
+
+
 
         private IEnumerable<SentimentOverTime> GetSentimentOverTime()
         {
