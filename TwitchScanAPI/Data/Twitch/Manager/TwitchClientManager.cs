@@ -26,7 +26,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private long? ViewerCount { get; set; }
         private long? LastViewerCount { get; set; }
         private bool _isOnline;
-
+        
         // Thread-safe property access for IsOnline
         private bool IsOnline
         {
@@ -287,12 +287,12 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         }
 
         
-        private readonly TimeSpan _cacheDurationOnline = TimeSpan.FromSeconds(10);
-        private readonly TimeSpan _cacheDurationOffline = TimeSpan.FromSeconds(15);
+        private readonly TimeSpan _cacheDurationOnline = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan _cacheDurationOffline = TimeSpan.FromSeconds(10);
         public async Task<ChannelInformation> GetChannelInfoAsync(bool forceRefresh = false)
         {
             lock (_fetchLock)
-            {
+            {   
                 var isCurrentlyOnline = IsOnline; // snapshot to avoid race condition
                 var effectiveCacheDuration = isCurrentlyOnline ? _cacheDurationOnline : _cacheDurationOffline;
                 // Moved this check inside the lock

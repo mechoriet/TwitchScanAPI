@@ -24,7 +24,8 @@ namespace TwitchScanAPI.Global
             "overlayexpert",
             "streamstickers",
             "regressz",
-            "botrixoficial"
+            "botrixoficial",
+            "blamebots"
         ];
     }
 }
