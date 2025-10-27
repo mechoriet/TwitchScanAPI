@@ -26,21 +26,6 @@ ENV DOTNET_RUNNING_IN_CONTAINER=true
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
 ENV DOTNET_EnableDiagnostics=0
 
-# Garbage Collection optimizations
-ENV DOTNET_gcServer=1
-ENV DOTNET_gcConcurrent=1
-ENV DOTNET_GCHeapCount=2
-ENV DOTNET_GCMemoryLimit=3000000000
-ENV DOTNET_GCRetainVM=1
-ENV DOTNET_GCLargePages=0
-ENV DOTNET_GCLatencyMode=2
-
-# Thread pool optimizations
-ENV DOTNET_ThreadPool_UnfairSemaphoreSpinLimit=6
-ENV DOTNET_ThreadPoolMinThreads=4
-ENV DOTNET_ThreadPoolMaxThreads=16
-ENV DOTNET_ThreadPoolGrowthRate=2
-
 # Memory and JIT optimizations
 ENV DOTNET_TieredPGO=1
 ENV DOTNET_ReadyToRun=1
