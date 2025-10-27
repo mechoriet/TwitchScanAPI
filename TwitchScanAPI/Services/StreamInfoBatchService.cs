@@ -56,9 +56,9 @@ public class StreamInfoBatchService
         // Update EMA
         _pendingEma = EmaAlpha * currentPendingCount + (1 - EmaAlpha) * _pendingEma;
 
-        // Map EMA (1–20) to delay (1500–600 ms)
-        const double minDelay = 600;
-        const double maxDelay = 1500;
+        // Map EMA (1–20) to delay (200–600 ms)
+        const double minDelay = 200;
+        const double maxDelay = 600;
         var clampedEma = Math.Clamp(_pendingEma, 1, 20);
 
         // Invert: more requests = shorter delay
@@ -83,7 +83,7 @@ public class StreamInfoBatchService
         /*Console.WriteLine($"[BatchService] Processing {batch.Count}");*/
         try
         {
-            var response = await Api.Helix.Streams.GetStreamsAsync(userIds: batch);
+            var response = await Api.Helix.Streams.GetStreamsAsync(userIds: batch, first: 100);
             var resultDict = response.Streams.ToDictionary(s => s.UserId, s => s);
 
             foreach (var channel in batch)
