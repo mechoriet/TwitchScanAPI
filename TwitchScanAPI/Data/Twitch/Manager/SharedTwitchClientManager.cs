@@ -208,6 +208,12 @@ public class SharedTwitchClientManager : IDisposable
                 handler.Invoke(sender, channelStateChanged);
             }
         };
+        client.OnDisconnected += (sender, args) =>
+        {
+            if (client.IsConnected) return;
+            Console.WriteLine($"Scheduling reconnection attempt ...");
+            client.Reconnect();
+        };
         client.Connect();
         return client;
     }
