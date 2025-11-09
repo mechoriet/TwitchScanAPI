@@ -144,13 +144,14 @@ public class TwitchHermesClient
                                         break;
                                     case "commercial":
                                         Console.WriteLine("Commercial:" + pubsubdata);
-                                        Console.WriteLine($"Commercial: length = {pubsubdata.GetProperty("length").GetInt32()}, scheduled = {pubsubdata.GetProperty("scheduled").GetBoolean()}");
+                                        Console.WriteLine($"Commercial for channel {channelId}: length = {pubsubdata.GetProperty("length").GetInt32()}, scheduled = {pubsubdata.GetProperty("scheduled").GetBoolean()}");
                                         var commercialobj = new OnCommercialArgs()
                                         {
                                             Length = pubsubdata.GetProperty("length").GetInt32(),
+                                            ServerTime = "0",
                                             ChannelId = channelId
                                         };
-                                        OnCommercialReceived.Invoke(this,commercialobj);
+                                        OnCommercialReceived.Invoke(this, commercialobj);
                                         break;
                                 }
                             }

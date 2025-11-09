@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using TwitchLib.Api;
 using TwitchLib.Client.Events;
+using TwitchLib.PubSub.Events;
 using TwitchScanAPI.Global;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Emotes;
@@ -125,12 +126,15 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         {
             _hermesservice.OnViewCountChanged += (_, args) =>
             {
-                if (args.ChannelId == _cachedChannelInformation.Id)
-                {
-                    ViewerCount = args.Viewers;
-                    _cachedChannelInformation.Viewers = args.Viewers;
-                    OnConnectionChanged?.Invoke(this,_cachedChannelInformation);
-                }
+                if (args.ChannelId != _cachedChannelInformation.Id) return;
+                ViewerCount = args.Viewers;
+                _cachedChannelInformation.Viewers = args.Viewers;
+                OnConnectionChanged?.Invoke(this,_cachedChannelInformation);
+            };
+            _hermesservice.OnCommercialStarted += (_, args) =>
+            {
+                if (args.ChannelId == _cachedChannelInformation.Id) return;
+                OnCommercial?.Invoke(this, args);
             };
         }
 
@@ -232,6 +236,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         public event EventHandler<OnUserTimedoutArgs>? OnUserTimedOut;
         public event EventHandler<OnChannelStateChangedArgs>? OnChannelStateChanged;
         public event EventHandler<ChannelInformation>? OnConnectionChanged;
+        public event EventHandler<OnCommercialArgs>? OnCommercial;
         public event EventHandler<ChannelFollowers> OnFollowerCountUpdate;
         public event EventHandler? OnDisconnected;
 

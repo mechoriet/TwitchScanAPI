@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using TwitchLib.PubSub.Events;
 using TwitchScanAPI.Utilities;
 
 namespace TwitchScanAPI.Data.Twitch.Manager;
@@ -101,6 +102,12 @@ public class TwitchHermesService
             channelData.CurrentViewers = args.Viewers;
             OnViewCountChanged?.Invoke(this, new ViewCountChangedEventArgs(channelId, args.Viewers));
         };
+        client.OnCommercialReceived += (_, args) =>
+        {
+            if (_disposed) return;
+            OnCommercialStarted?.Invoke(this,args);
+            
+        };
         client.OnErrorOccurred += (_, args) =>
         {
             Console.WriteLine($"Error on hermes client: {args.Message} Stacktrace: {args.StackTrace}");
@@ -145,6 +152,7 @@ public class TwitchHermesService
     
     
     public event EventHandler<ViewCountChangedEventArgs>? OnViewCountChanged;
+    public event EventHandler<OnCommercialArgs>? OnCommercialStarted;
     
     // Helper class to store channel-specific data
     private class HermesData(string channelId, string channelName)
