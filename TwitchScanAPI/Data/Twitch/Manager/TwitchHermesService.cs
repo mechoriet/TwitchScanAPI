@@ -44,8 +44,6 @@ public class TwitchHermesService
 
         var clientCreation = GetOrCreateLeastLoadedClient();
         var channelData = new HermesData(channelId, channelName);
-
-
         try
         {
             _ = clientCreation.client.SubscribeToVideoPlayback(channelId);
@@ -57,6 +55,11 @@ public class TwitchHermesService
         {
             Console.WriteLine($"Error subscribing to PubSub(hermes) topics for channel {channelName}: {ex.Message}");
         }
+    }
+
+    public void UnsubscribeChannel(string channelId)
+    {
+        //TODO: Boilerplate
     }
     
     
@@ -108,6 +111,11 @@ public class TwitchHermesService
             OnCommercialStarted?.Invoke(this,args);
             
         };
+        client.OnSubscriptionActiveChanged += (_, args) =>
+        {
+            if (_disposed) return;
+            OnSubscriptionStateChange?.Invoke(this, args);
+        };
         client.OnErrorOccurred += (_, args) =>
         {
             Console.WriteLine($"Error on hermes client: {args.Message} Stacktrace: {args.StackTrace}");
@@ -153,6 +161,8 @@ public class TwitchHermesService
     
     public event EventHandler<ViewCountChangedEventArgs>? OnViewCountChanged;
     public event EventHandler<OnCommercialArgs>? OnCommercialStarted;
+    
+    public event EventHandler<onSubscriptionActive>? OnSubscriptionStateChange;
     
     // Helper class to store channel-specific data
     private class HermesData(string channelId, string channelName)

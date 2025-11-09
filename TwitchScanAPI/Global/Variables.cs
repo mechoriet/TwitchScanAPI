@@ -26,5 +26,12 @@ namespace TwitchScanAPI.Global
             "regressz",
             "botrixoficial"
         ];
+
+        public static readonly List<string> hermesenabledchannels =
+        [
+            "noraexplorer",
+            "extraemily",
+            "salmmus"
+        ];
     }
 }
