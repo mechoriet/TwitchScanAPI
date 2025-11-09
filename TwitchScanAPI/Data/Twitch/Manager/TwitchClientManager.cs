@@ -12,6 +12,7 @@ using TwitchScanAPI.Global;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Emotes;
 using TwitchScanAPI.Services;
+using TwitchScanAPI.Utilities;
 using Timer = System.Timers.Timer;
 
 namespace TwitchScanAPI.Data.Twitch.Manager
@@ -52,6 +53,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         private DateTime _lastFetchTime;
         public List<MergedEmote>? ExternalChannelEmotes;
+        private bool _useWebSocketData = true;
 
         // Constructor
         private TwitchClientManager(string channelName, IConfiguration configuration, SharedTwitchClientManager sharedTwitchClientManager, StreamInfoBatchService streamInfoBatchService, TwitchHermesService hermesService)
@@ -104,8 +106,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
                 // Set the cached channel information
                 manager._cachedChannelInformation.Id = broadcasterId;
-                // sub to video-playback-events from hermes
-                manager.SubscribeToHermesManagerEvents();
                 manager._channelId = broadcasterId;
                 if (!manager.IsOnline) return manager;
 
@@ -122,20 +122,46 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             }
         }
 
+        
+// Store delegate references so you can unsubscribe later
+        private EventHandler<TwitchHermesService.ViewCountChangedEventArgs>? _onViewCountChangedHandler;
+        private EventHandler<OnCommercialArgs>? _onCommercialStartedHandler;
+        private EventHandler<onSubscriptionActive>? _onSubscriptionStateChangedHandler;
+
         private void SubscribeToHermesManagerEvents()
         {
-            _hermesservice.OnViewCountChanged += (_, args) =>
+            _onViewCountChangedHandler = (_, args) =>
             {
                 if (args.ChannelId != _cachedChannelInformation.Id) return;
                 ViewerCount = args.Viewers;
                 _cachedChannelInformation.Viewers = args.Viewers;
-                OnConnectionChanged?.Invoke(this,_cachedChannelInformation);
+                OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
             };
-            _hermesservice.OnCommercialStarted += (_, args) =>
+
+            _onCommercialStartedHandler = (_, args) =>
             {
-                if (args.ChannelId == _cachedChannelInformation.Id) return;
+                Console.WriteLine($"we received a new commercial started event for channel: {args.ChannelId}");
+                if (args.ChannelId != _cachedChannelInformation.Id) return;
+                Console.WriteLine("the channel is right we gonna fire it of to the stats system");
                 OnCommercial?.Invoke(this, args);
             };
+
+            _onSubscriptionStateChangedHandler = (_, args) =>
+            {
+                if (args.ChannelId != _cachedChannelInformation.Id) return;
+                _useWebSocketData = args.Active;
+            };
+
+            _hermesservice.OnViewCountChanged += _onViewCountChangedHandler;
+            _hermesservice.OnCommercialStarted += _onCommercialStartedHandler;
+            _hermesservice.OnSubscriptionStateChange += _onSubscriptionStateChangedHandler;
+        }
+        
+        private void UnSubscribeToHermesManagerEvents()
+        {
+            _hermesservice.OnViewCountChanged -= _onViewCountChangedHandler;
+            _hermesservice.OnCommercialStarted -= _onCommercialStartedHandler;
+            _hermesservice.OnSubscriptionStateChange -= _onSubscriptionStateChangedHandler;
         }
 
         private void OnStreamUp()
@@ -160,7 +186,13 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 OnUserTimedOutHandler,
                 OnChannelStateChangedHandler,
                 OnRaidNotificationHandler);
-            _hermesservice.SubscribeChannel(_channelId,_channelName);
+            //TODO: for now only enable it for channels that got whitelisted
+            if (Variables.hermesenabledchannels.Contains(_channelName))
+            {
+                _hermesservice.SubscribeChannel(_channelId, _channelName);
+                // sub to video-playback-events from hermes
+                SubscribeToHermesManagerEvents();
+            }
             //do this at last
             Task.Run(async () =>
             {
@@ -189,6 +221,12 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             OnDisconnected?.Invoke(this, EventArgs.Empty);
             OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
             _sharedTwitchClientManager.LeaveChannel(_channelName);
+            if (Variables.hermesenabledchannels.Contains(_channelName))
+            {
+                //TODO: unsub from hermes client to free up space
+                _hermesservice.UnsubscribeChannel(_channelId);
+                UnSubscribeToHermesManagerEvents();
+            }
         }
 
         private async void UpdateChannelEmotes(string channelId)
@@ -310,8 +348,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         
         private readonly TimeSpan _cacheDurationOnline = TimeSpan.FromSeconds(10);
         private readonly TimeSpan _cacheDurationOffline = TimeSpan.FromSeconds(15);
-
-        private bool _useWebSocketData = true;
         public async Task<ChannelInformation> GetChannelInfoAsync(bool forceRefresh = false)
         {
             lock (_fetchLock)
@@ -367,7 +403,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     {
                         effectiveViewerCount = streams.ViewerCount;
                     }
-                    Console.WriteLine($"effective view count is now: {effectiveViewerCount} for channel: {_channelName}.");
+                    Console.WriteLine($"effective view count is now: {effectiveViewerCount} for channel: {_channelName}. at time: {DateTime.UtcNow}");
                     _cachedChannelInformation = new ChannelInformation( 
                         effectiveViewerCount,
                         streams.Title,
