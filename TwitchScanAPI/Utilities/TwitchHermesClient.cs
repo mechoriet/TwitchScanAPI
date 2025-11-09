@@ -21,7 +21,7 @@ public class TwitchHermesClient
     private Dictionary<string, string> _subscriptionToChannel = new();
     private Dictionary<string, string> _ChanneltoSubscription = new();
 
-    public event EventHandler<string> OnMessageReceived;
+    public event EventHandler<string>? OnMessageReceived;
     public event EventHandler<Exception> OnErrorOccurred;
     public event EventHandler<ViewerUpdateData> OnViewCountReceived;
     public event EventHandler<OnCommercialArgs> OnCommercialReceived;
@@ -119,6 +119,24 @@ public class TwitchHermesClient
                         if (json.RootElement.TryGetProperty("subscribeResponse", out var subscribeResponse))
                         {
                             Console.WriteLine($"subscription response:{subscribeResponse}");
+                            try
+                            {
+                                if (subscribeResponse.GetProperty("result").GetString() == "ok")
+                                {
+                                    _subscriptionToChannel.TryGetValue(
+                                        subscribeResponse.GetProperty("subscription").GetProperty("id").GetString(),
+                                        out var channelId);
+                                    OnSubscriptionActiveChanged?.Invoke(this, new onSubscriptionActive()
+                                    {
+                                        ChannelId = channelId,
+                                        Active = true
+                                    });
+                                }
+                            }
+                            catch (Exception err)
+                            {
+                                Console.WriteLine(err);
+                            }
                         }
 
                         if (json.RootElement.TryGetProperty("notification", out var notification))
@@ -205,19 +223,20 @@ public class TwitchHermesClient
     {
         var mainid = IdGenerator.MakeId();
         var subid = IdGenerator.MakeId();
-        var json = $@"{{
-              ""type"": ""subscribe"",
-              ""id"": ""{mainid}"",
-              ""subscribe"": {{
-                ""id"": ""{subid}"",
-                ""type"": ""pubsub"",
-                ""pubsub"": {{
-                  ""topic"": ""video-playback-by-id.{channelId}""
-                }}
-              }},
-              ""timestamp"": ""{DateTime.UtcNow:O}""
-            }}";
-        Console.WriteLine($"send json for subscription: {json}");
+        var json = $$"""
+                     {
+                       "type": "subscribe",
+                       "id": "{{mainid}}",
+                       "subscribe": {
+                         "id": "{{subid}}",
+                         "type": "pubsub",
+                         "pubsub": {
+                           "topic": "video-playback-by-id.{{channelId}}"
+                         }
+                       },
+                       "timestamp": "{{DateTime.UtcNow:O}}"
+                     }
+                     """;
         _subscriptionToChannel.Add(subid,channelId);
         _ChanneltoSubscription.Add(channelId,subid);
         await SendMessageAsync(json);
@@ -225,6 +244,22 @@ public class TwitchHermesClient
 
     public async Task UnsubscribeFromVideoPlayback(string channelId)
     {
+        // {"type":"unsubscribe","id":"FAiUlUhViNFariSM9_d0h","unsubscribe":{"id":"sVazH5NDG_O7e2YxwJahq"},"timestamp":"2025-10-31T18:34:59.856Z"}
+        var mainid = IdGenerator.MakeId(); 
+        _ChanneltoSubscription.TryGetValue(channelId, out var subid);
+        var json = $$"""
+                     {
+                        "type": "unsubscribe",
+                        "id": "{{mainid}}, 
+                        "unsubscribe": {
+                          "id":{{subid}},
+                        },
+                        "timestamp": "{{DateTime.UtcNow:0}}"
+                     }
+                     """;
+        await SendMessageAsync(json);
+        _subscriptionToChannel.Remove(channelId);
+        _ChanneltoSubscription.Remove(channelId);
         //TODO: make unsub
     }
 }
@@ -237,4 +272,5 @@ public string? ChannelId { get; set; }
 public class onSubscriptionActive
 {
     public string? ChannelId { get; set; }
+    public bool Active { get; set; } 
 }
