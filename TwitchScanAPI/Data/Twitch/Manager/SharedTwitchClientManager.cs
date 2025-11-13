@@ -256,7 +256,7 @@ public class SharedTwitchClientManager : IDisposable
             foreach (var clientData in _sharedTwitchClients.ToList())
             {
                 // Check if client has been inactive for more than 20 seconds
-                if ((now - clientData.LastActivityTime).TotalSeconds >= 20)
+                if ((now - clientData.LastActivityTime).TotalSeconds >= 20 && clientData.Client.JoinedChannels.Count > 0)
                 {
                     RestartInactiveClient(clientData);
                 }
