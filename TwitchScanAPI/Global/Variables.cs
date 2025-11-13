@@ -8,7 +8,6 @@ namespace TwitchScanAPI.Global
         public const string TwitchRefreshToken = "refreshToken";
         public const string TwitchClientId = "clientId";
         public const string TwitchClientSecret = "clientSecret";
-        public const string TwitchChatName = "chatName";
 
         public static readonly List<string> BotNames =
         [
@@ -27,11 +26,18 @@ namespace TwitchScanAPI.Global
             "botrixoficial"
         ];
 
-        public static readonly List<string> hermesenabledchannels =
+        public static readonly List<string> Hermesenabledchannels =
         [
             "noraexplorer",
             "extraemily",
-            "salmmus"
+            "salmmus",
+            "misterarther",
+            "itskatchii",
+            "xqc",
+            "zackrawrr",
+            "hasanabi",
+            "honeypuu",
+            "mechoriet"
         ];
     }
 }
