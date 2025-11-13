@@ -14,7 +14,7 @@ public class TwitchHermesService
     private readonly List<TwitchHermesClient> _hermesClients = [];
     private readonly Dictionary<string, HermesData> _channelSubscriptions = new(StringComparer.OrdinalIgnoreCase);
     private Lock _lock = new();
-    private int MaxClients = 100; //TODO: have to test what the limit is twitch enforces
+    private int MaxClients = 200; //TODO: have to test what the limit is twitch enforces
     private int MaxTopicsPerClient = 100; //TODO: test what the max topics is per Client
     private bool _disposed;
 
@@ -59,6 +59,7 @@ public class TwitchHermesService
 
     public void UnsubscribeChannel(string channelId)
     {
+        
         //TODO: Boilerplate
     }
     
