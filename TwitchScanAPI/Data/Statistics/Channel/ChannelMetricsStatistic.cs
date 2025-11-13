@@ -13,7 +13,7 @@ namespace TwitchScanAPI.Data.Statistics.Channel
     public class ChannelMetricsStatistic : StatisticBase
     {
         public override string Name => "ChannelMetrics";
-        private const int BucketSize = 1; // Grouping viewers into 1-minute periods
+        private const int BucketSize = 30; // Grouping viewers into 30-second periods
 
         // For Viewer Count Tracking
         private ConcurrentQueue<(DateTime Timestamp, long Viewers)> _viewerHistory = new();
@@ -101,10 +101,13 @@ namespace TwitchScanAPI.Data.Statistics.Channel
 
         private void UpdateViewersOverTime(DateTime timestamp, long viewers)
         {
-            // Round the timestamp to the nearest minute
-            var roundedMinutes = Math.Floor((double)timestamp.Minute / BucketSize) * BucketSize;
+            // Round the timestamp to the nearest 30-second interval
+            var totalSeconds = timestamp.Minute * 60 + timestamp.Second;
+            var roundedSeconds = Math.Floor((double)totalSeconds / BucketSize) * BucketSize;
+            var minutes = (int)(roundedSeconds / 60);
+            var seconds = (int)(roundedSeconds % 60);
             var roundedTime = new DateTime(timestamp.Year, timestamp.Month, timestamp.Day, timestamp.Hour,
-                    (int)roundedMinutes, 0)
+                    minutes, seconds)
                 .ToUniversalTime()
                 .ToString("yyyy-MM-ddTHH:mm:ssZ");
 
