@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Prometheus;
 using TwitchScanAPI.Models.Twitch.Statistics;
 
 namespace TwitchScanAPI.Data.Statistics.Base
@@ -11,6 +13,9 @@ namespace TwitchScanAPI.Data.Statistics.Base
         private readonly Statistics _statistics = new();
         public bool PropagateEvents { get; set; } = true;
 
+        // Prometheus metrics
+        private static readonly Histogram StatisticsComputationDuration = Metrics.CreateHistogram("twitch_statistics_computation_duration_seconds", "Statistics computation duration", "statistic");
+
         public void Reset()
         {
             _statistics.Reset();
@@ -19,7 +24,17 @@ namespace TwitchScanAPI.Data.Statistics.Base
         public async Task Update<TEvent>(TEvent eventData)
         {
             if (!PropagateEvents) return;
-            await _statistics.Update(eventData);
+
+            var stopwatch = Stopwatch.StartNew();
+            try
+            {
+                await _statistics.Update(eventData);
+                StatisticsComputationDuration.WithLabels(typeof(TEvent).Name).Observe(stopwatch.Elapsed.TotalSeconds);
+            }
+            finally
+            {
+                stopwatch.Stop();
+            }
         }
 
         public Dictionary<string, object?> GetAllStatistics()

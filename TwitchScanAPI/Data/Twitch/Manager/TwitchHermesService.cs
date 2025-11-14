@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Prometheus;
 using TwitchLib.PubSub.Events;
 using TwitchScanAPI.Utilities;
 
@@ -17,6 +18,11 @@ public class TwitchHermesService
     private int MaxClients = 200; //TODO: have to test what the limit is twitch enforces
     private int MaxTopicsPerClient = 100; //TODO: test what the max topics is per Client
     private bool _disposed;
+
+    // Prometheus metrics
+    private static readonly Gauge ActivePubSubClients = Metrics.CreateGauge("twitch_pubsub_clients", "Number of active PubSub clients");
+    private static readonly Counter ViewerCountUpdatesTotal = Metrics.CreateCounter("twitch_viewer_count_updates_total", "Total viewer count updates");
+    private static readonly Counter CommercialEventsTotal = Metrics.CreateCounter("twitch_commercial_events_total", "Total commercial events");
 
     private async Task ReconnectAllClients()
     {
@@ -50,6 +56,9 @@ public class TwitchHermesService
             channelData.AssignedClient = clientCreation.client;
             _channelSubscriptions.Add(channelId, channelData);
             Console.WriteLine($"Subscribed to PubSub(hermes) topics for channel {channelName} ({channelId})");
+
+            // Update metrics
+            ActivePubSubClients.Set(_hermesClients.Count);
         }
         catch (Exception ex)
         {
@@ -66,6 +75,9 @@ public class TwitchHermesService
         {
             client.AssignedClient?.UnsubscribeFromVideoPlayback(channelId);
             _channelSubscriptions.Remove(channelId);
+
+            // Update metrics
+            ActivePubSubClients.Set(_hermesClients.Count);
         }
         catch (Exception err)
         {
@@ -115,12 +127,13 @@ public class TwitchHermesService
 
             channelData.CurrentViewers = args.Viewers;
             OnViewCountChanged?.Invoke(this, new ViewCountChangedEventArgs(channelId, args.Viewers));
+            ViewerCountUpdatesTotal.Inc();
         };
         client.OnCommercialReceived += (_, args) =>
         {
             if (_disposed) return;
             OnCommercialStarted?.Invoke(this,args);
-            
+            CommercialEventsTotal.Inc();
         };
         client.OnSubscriptionActiveChanged += (_, args) =>
         {

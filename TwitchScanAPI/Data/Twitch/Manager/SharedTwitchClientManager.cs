@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Timers;
+using Prometheus;
 using TwitchLib.Client;
 using TwitchLib.Client.Events;
 using TwitchLib.Client.Models;
@@ -18,27 +19,33 @@ public class SharedTwitchClientManager : IDisposable
     private readonly Dictionary<string, ChannelTClientData> _clientassignments = new(StringComparer.OrdinalIgnoreCase);
     
     private const int MaxClients = 5;
-    private const int SoftChannelLimit = 20;
-    private const int HardChannelLimit = 80;
+    private const int SoftChannelLimit = 15;
+    private const int HardChannelLimit = 70;
     private const double RestartIntervalHours = 12.0; // 12 hour restart interval
 
     private readonly Lock _lock = new();
     private readonly Timer _restartTimer;
     private readonly Timer _inactivityTimer;
+    private readonly Timer _metricsUpdateTimer;
+
+    // Prometheus metrics
+    private static readonly Gauge ActiveClients = Metrics.CreateGauge("twitch_active_clients", "Number of active Twitch clients");
+    private static readonly Gauge ChannelsPerClient = Metrics.CreateGauge("twitch_channels_per_client", "Number of channels per client", "client_id");
+    private static readonly Counter ClientRestartsTotal = Metrics.CreateCounter("twitch_client_restarts_total", "Total client restarts");
+    private static readonly Counter IrcMessagesTotal = Metrics.CreateCounter("twitch_irc_messages_per_client_total", "Total IRC messages per client", "client_id");
+    private static readonly Gauge ClientActivityStatus = Metrics.CreateGauge("twitch_client_activity_status", "Client activity status (1=active, 0=inactive)", "client_id");
+    private static readonly Gauge ClientUptimeSeconds = Metrics.CreateGauge("twitch_client_uptime_seconds", "Client uptime in seconds", "client_id");
+    private static readonly Gauge ClientMessageRatePerSecond = Metrics.CreateGauge("twitch_client_message_rate_per_second", "Message rate per second for client", "client_id");
 
     // Struct to hold client and connection time
-    private class TwitchClientData
+    private class TwitchClientData(TwitchClient client)
     {
-        public TwitchClient Client { get; set; }
-        public DateTime ConnectionTime { get; set; }
-        public DateTime LastActivityTime { get; set; }
-
-        public TwitchClientData(TwitchClient client)
-        {
-            Client = client;
-            ConnectionTime = DateTime.UtcNow;
-            LastActivityTime = DateTime.UtcNow;
-        }
+        public string ClientId { get; } = Guid.NewGuid().ToString();
+        public TwitchClient Client { get; } = client;
+        public DateTime ConnectionTime { get; } = DateTime.UtcNow;
+        public DateTime LastActivityTime { get; set; } = DateTime.UtcNow;
+        public long MessageCount { get; set; } = 0;
+        public DateTime LastMessageTime { get; set; } = DateTime.UtcNow;
     }
 
     private class ChannelTClientData(string channelName)
@@ -60,6 +67,15 @@ public class SharedTwitchClientManager : IDisposable
         _inactivityTimer.Elapsed += CheckForInactiveClients;
         _inactivityTimer.AutoReset = true;
         _inactivityTimer.Start();
+
+        // Initialize timer for metrics updates (check every 5 seconds)
+        _metricsUpdateTimer = new Timer(TimeSpan.FromSeconds(5).TotalMilliseconds);
+        _metricsUpdateTimer.Elapsed += UpdateClientMetrics;
+        _metricsUpdateTimer.AutoReset = true;
+        _metricsUpdateTimer.Start();
+
+        // Initialize metrics
+        UpdateMetrics();
     }
 
     private (TwitchClient? Client, bool existed) GetOrCreateLeastLoadedClient()
@@ -67,11 +83,6 @@ public class SharedTwitchClientManager : IDisposable
         var underSoftLimit = _sharedTwitchClients
             .Where(c => GetTwitchChatChannelCount(c.Client) < SoftChannelLimit)
             .ToList();
-
-        var underHardLimit = _sharedTwitchClients
-            .Where(c => GetTwitchChatChannelCount(c.Client) < HardChannelLimit)
-            .ToList();
-
         // Prefer clients under soft limit
         if (underSoftLimit.Any())
         {
@@ -87,6 +98,9 @@ public class SharedTwitchClientManager : IDisposable
             return (newClient, true);
         }
 
+        var underHardLimit = _sharedTwitchClients
+            .Where(c => GetTwitchChatChannelCount(c.Client) < HardChannelLimit)
+            .ToList();
         // Fallback to client under hard limit
         if (underHardLimit.Any())
         {
@@ -123,6 +137,9 @@ public class SharedTwitchClientManager : IDisposable
             if (clientData != null)
             {
                 clientData.LastActivityTime = DateTime.UtcNow;
+                clientData.MessageCount++;
+                clientData.LastMessageTime = DateTime.UtcNow;
+                IrcMessagesTotal.WithLabels(clientData.ClientId).Inc();
             }
 
             if (_messageHandlers.TryGetValue(args.ChatMessage.Channel, out var handler))
@@ -170,7 +187,7 @@ public class SharedTwitchClientManager : IDisposable
         };
         client.OnGiftedSubscription += (sender, args) =>
         {
-            if (_giftedSubscribtionHandlers.TryGetValue(args.Channel, out var handler))
+            if (_giftedSubscriptionHandlers.TryGetValue(args.Channel, out var handler))
             {
                 handler.Invoke(sender, args);
             }
@@ -241,7 +258,7 @@ public class SharedTwitchClientManager : IDisposable
     private readonly Dictionary<string, EventHandler<OnUserLeftArgs>> _userLeftHandlers = new();
     private readonly Dictionary<string, EventHandler<OnNewSubscriberArgs>> _newSubHandlers = new();
     private readonly Dictionary<string, EventHandler<OnReSubscriberArgs>> _reSubscriberHandlers = new();
-    private readonly Dictionary<string, EventHandler<OnGiftedSubscriptionArgs>> _giftedSubscribtionHandlers = new();
+    private readonly Dictionary<string, EventHandler<OnGiftedSubscriptionArgs>> _giftedSubscriptionHandlers = new();
     private readonly Dictionary<string, EventHandler<OnCommunitySubscriptionArgs>> _communitySubscriptionHandlers = new();
     private readonly Dictionary<string, EventHandler<OnUserBannedArgs>> _userBannedHandlers = new();
     private readonly Dictionary<string, EventHandler<OnUserTimedoutArgs>> _userTimeoutHandlers = new();
@@ -295,6 +312,10 @@ public class SharedTwitchClientManager : IDisposable
         }
 
         Console.WriteLine($"Restarted inactive Twitch client. Rejoined {channelsToRejoin.Count} channels.");
+
+        // Update metrics
+        ClientRestartsTotal.Inc();
+        UpdateMetrics();
     }
 
     private void CheckAndRestartClients(object? sender, ElapsedEventArgs e)
@@ -313,8 +334,41 @@ public class SharedTwitchClientManager : IDisposable
         }
     }
 
+    private void UpdateMetrics()
+    {
+        ActiveClients.Set(_sharedTwitchClients.Count);
+        foreach (var clientData in _sharedTwitchClients)
+        {
+            var channelCount = GetTwitchChatChannelCount(clientData.Client);
+            ChannelsPerClient.WithLabels(clientData.ClientId).Set(channelCount);
+        }
+    }
+
+    private void UpdateClientMetrics(object? sender, ElapsedEventArgs e)
+    {
+        lock (_lock)
+        {
+            var now = DateTime.UtcNow;
+            foreach (var clientData in _sharedTwitchClients)
+            {
+                // Update uptime
+                var uptime = (now - clientData.ConnectionTime).TotalSeconds;
+                ClientUptimeSeconds.WithLabels(clientData.ClientId).Set(uptime);
+
+                // Update activity status (active if message received in last 20 seconds)
+                var isActive = (now - clientData.LastActivityTime).TotalSeconds <= 20 ? 1 : 0;
+                ClientActivityStatus.WithLabels(clientData.ClientId).Set(isActive);
+
+                // Update message rate (messages per second over the last minute)
+                var timeSinceLastMessage = (now - clientData.LastMessageTime).TotalSeconds;
+                var rate = timeSinceLastMessage > 0 ? clientData.MessageCount / timeSinceLastMessage : 0;
+                ClientMessageRatePerSecond.WithLabels(clientData.ClientId).Set(rate);
+            }
+        }
+    }
+
     public void JoinChannel(
-        string channelName, 
+        string channelName,
         EventHandler<OnMessageReceivedArgs> onMessageReceived,
         EventHandler<OnUserJoinedArgs> onUserJoined,
         EventHandler<OnUserLeftArgs> onUserLeft,
@@ -350,13 +404,16 @@ public class SharedTwitchClientManager : IDisposable
             _userLeftHandlers[channelName] = onUserLeft;
             _newSubHandlers[channelName] = onNewSubscriber;
             _reSubscriberHandlers[channelName] = onReSubscriber;
-            _giftedSubscribtionHandlers[channelName] = onGiftedSubscription;
+            _giftedSubscriptionHandlers[channelName] = onGiftedSubscription;
             _communitySubscriptionHandlers[channelName] = onCommunitySubscription;
             _userBannedHandlers[channelName] = onUserBanned;
             _messageClearedHandlers[channelName] = onMessageCleared;
             _userTimeoutHandlers[channelName] = onUserTimedout;
             _channelStateHandlers[channelName] = onChannelStateChanged;
             _raidNotificationHandlers[channelName] = onRaidNotification;
+
+            // Update metrics after joining channel
+            UpdateMetrics();
         }
     }
 
@@ -373,17 +430,20 @@ public class SharedTwitchClientManager : IDisposable
             if (client == null) return;
             client.LeaveChannel(channelName);
             if (GetTwitchChatChannelCount(client) != 0 || _sharedTwitchClients.Count <= 1) return;
-            
+
             client.Disconnect();
             _sharedTwitchClients.RemoveAll(c => c.Client == client);
             Console.WriteLine("Removed unused Twitch Chat Client");
+
+            // Update metrics after leaving channel
+            UpdateMetrics();
         }
         _messageHandlers.Remove(channelName);
         _userJoinedHandlers.Remove(channelName);
         _userLeftHandlers.Remove(channelName);
         _newSubHandlers.Remove(channelName);
         _reSubscriberHandlers.Remove(channelName);
-        _giftedSubscribtionHandlers.Remove(channelName);
+        _giftedSubscriptionHandlers.Remove(channelName);
         _communitySubscriptionHandlers.Remove(channelName);
         _userBannedHandlers.Remove(channelName);
         _messageClearedHandlers.Remove(channelName);
@@ -398,6 +458,8 @@ public class SharedTwitchClientManager : IDisposable
         _restartTimer?.Dispose();
         _inactivityTimer?.Stop();
         _inactivityTimer?.Dispose();
+        _metricsUpdateTimer?.Stop();
+        _metricsUpdateTimer?.Dispose();
         lock (_lock)
         {
             foreach (var clientData in _sharedTwitchClients)
