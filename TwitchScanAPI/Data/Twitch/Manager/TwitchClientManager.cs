@@ -25,9 +25,8 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly IConfiguration _configuration;
         private readonly SharedTwitchClientManager _sharedTwitchClientManager;
         private readonly StreamInfoBatchService _streamInfoBatchService;
-        private readonly TwitchHermesService _hermesservice;
+        private readonly TwitchHermesService _hermesService;
         private long? ViewerCount { get; set; }
-        private long? LastViewerCount { get; set; }
         private bool _isOnline;
         
         // Thread-safe property access for IsOnline
@@ -62,7 +61,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             _configuration = configuration;
             _sharedTwitchClientManager = sharedTwitchClientManager;
             _streamInfoBatchService = streamInfoBatchService;
-            _hermesservice = hermesService;
+            _hermesService = hermesService;
             ConfigureTwitchApi();
         }
 
@@ -140,9 +139,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             _onCommercialStartedHandler = (_, args) =>
             {
-                Console.WriteLine($"we received a new commercial started event for channel: {args.ChannelId}");
                 if (args.ChannelId != _cachedChannelInformation.Id) return;
-                Console.WriteLine("the channel is right we gonna fire it of to the stats system");
                 OnCommercial?.Invoke(this, args);
             };
 
@@ -152,16 +149,16 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 _useWebSocketData = args.Active;
             };
 
-            _hermesservice.OnViewCountChanged += _onViewCountChangedHandler;
-            _hermesservice.OnCommercialStarted += _onCommercialStartedHandler;
-            _hermesservice.OnSubscriptionStateChange += _onSubscriptionStateChangedHandler;
+            _hermesService.OnViewCountChanged += _onViewCountChangedHandler;
+            _hermesService.OnCommercialStarted += _onCommercialStartedHandler;
+            _hermesService.OnSubscriptionStateChange += _onSubscriptionStateChangedHandler;
         }
         
         private void UnSubscribeToHermesManagerEvents()
         {
-            _hermesservice.OnViewCountChanged -= _onViewCountChangedHandler;
-            _hermesservice.OnCommercialStarted -= _onCommercialStartedHandler;
-            _hermesservice.OnSubscriptionStateChange -= _onSubscriptionStateChangedHandler;
+            _hermesService.OnViewCountChanged -= _onViewCountChangedHandler;
+            _hermesService.OnCommercialStarted -= _onCommercialStartedHandler;
+            _hermesService.OnSubscriptionStateChange -= _onSubscriptionStateChangedHandler;
         }
 
         private void OnStreamUp()
@@ -187,9 +184,9 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 OnChannelStateChangedHandler,
                 OnRaidNotificationHandler);
             //TODO: for now only enable it for channels that got whitelisted
-            if (Variables.hermesenabledchannels.Contains(_channelName))
+            if (Variables.Hermesenabledchannels.Contains(_channelName))
             {
-                _hermesservice.SubscribeChannel(_channelId, _channelName);
+                _hermesService.SubscribeChannel(_channelId, _channelName);
                 // sub to video-playback-events from hermes
                 SubscribeToHermesManagerEvents();
             }
@@ -221,12 +218,10 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             OnDisconnected?.Invoke(this, EventArgs.Empty);
             OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
             _sharedTwitchClientManager.LeaveChannel(_channelName);
-            if (Variables.hermesenabledchannels.Contains(_channelName))
-            {
-                //TODO: unsub from hermes client to free up space
-                _hermesservice.UnsubscribeChannel(_channelId);
-                UnSubscribeToHermesManagerEvents();
-            }
+            if (!Variables.Hermesenabledchannels.Contains(_channelName)) return;
+            //TODO: unsub from hermes client to free up space
+            _hermesService.UnsubscribeChannel(_channelId);
+            UnSubscribeToHermesManagerEvents();
         }
 
         private async void UpdateChannelEmotes(string channelId)
@@ -403,7 +398,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                     {
                         effectiveViewerCount = streams.ViewerCount;
                     }
-                    Console.WriteLine($"effective view count is now: {effectiveViewerCount} for channel: {_channelName}. at time: {DateTime.UtcNow}");
                     _cachedChannelInformation = new ChannelInformation( 
                         effectiveViewerCount,
                         streams.Title,
@@ -418,8 +412,6 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 {
                     _cachedChannelInformation = new ChannelInformation(IsOnline, _cachedChannelInformation.Id);
                 }
-
-                LastViewerCount = ViewerCount;
                 OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
                 return _cachedChannelInformation;
             }

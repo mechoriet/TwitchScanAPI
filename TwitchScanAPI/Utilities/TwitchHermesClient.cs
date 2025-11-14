@@ -91,19 +91,18 @@ public class TwitchHermesClient
         }
     }
 
+    private readonly byte[] _buffer = new byte[1024 * 4];    
     private async Task ReceiveMessagesAsync(CancellationToken token)
     {
-        var buffer = new byte[1024 * 4];
-
         try
         {
             while (!token.IsCancellationRequested && _webSocket?.State == WebSocketState.Open)
             {
-                var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), token);
+                var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(_buffer), token);
 
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
-                    var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    var message = Encoding.UTF8.GetString(_buffer, 0, result.Count);
                     try
                     {
                         var json = JsonDocument.Parse(message);
@@ -257,10 +256,16 @@ public class TwitchHermesClient
                         "timestamp": "{{DateTime.UtcNow:0}}"
                      }
                      """;
-        await SendMessageAsync(json);
-        _subscriptionToChannel.Remove(channelId);
-        _ChanneltoSubscription.Remove(channelId);
-        //TODO: make unsub
+        try
+        {
+            await SendMessageAsync(json);
+            _subscriptionToChannel.Remove(channelId);
+            _ChanneltoSubscription.Remove(channelId);
+        }
+        catch(Exception err)
+        {
+            Console.WriteLine($"{err}");
+        }
     }
 }
 public class ViewerUpdateData

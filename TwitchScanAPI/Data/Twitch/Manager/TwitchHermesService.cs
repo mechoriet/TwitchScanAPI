@@ -59,8 +59,18 @@ public class TwitchHermesService
 
     public void UnsubscribeChannel(string channelId)
     {
-        
-        //TODO: Boilerplate
+        if (_disposed) return;
+        if (string.IsNullOrWhiteSpace(channelId)) return;
+        var client = _channelSubscriptions[channelId];
+        try
+        {
+            client.AssignedClient?.UnsubscribeFromVideoPlayback(channelId);
+            _channelSubscriptions.Remove(channelId);
+        }
+        catch (Exception err)
+        {
+            Console.WriteLine($"Error unsubscribing from PubSub client: {err.Message}");
+        }
     }
     
     
