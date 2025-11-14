@@ -2,7 +2,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
+using Prometheus;
 using TwitchScanAPI.Data.Twitch.Manager;
 using TwitchScanAPI.DbContext;
 using TwitchScanAPI.HostedServices;
@@ -63,9 +64,8 @@ namespace TwitchScanAPI
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "TwitchScanAPI v1"));
             }
 
-            app.UseHttpsRedirection();
-
             app.UseRouting();
+            app.UseHttpMetrics();
 
             // Enable CORS
             app.UseCors("AllowSpecificOrigins");
@@ -76,6 +76,7 @@ namespace TwitchScanAPI
             {
                 endpoints.MapControllers();
                 endpoints.MapHub<TwitchHub>("/twitchHub"); // Map the SignalR hub
+                endpoints.MapMetrics();
             });
         }
     }
