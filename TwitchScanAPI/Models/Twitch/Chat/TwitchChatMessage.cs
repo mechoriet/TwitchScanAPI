@@ -4,78 +4,60 @@ using System.Text.RegularExpressions;
 
 namespace TwitchScanAPI.Models.Twitch.Chat
 {
-    public class TwitchChatMessage
+    public record TwitchChatMessage(
+        string Username = "",
+        string Message = "",
+        string? ColorHex = null,
+        int Bits = 0,
+        double BitsInDollars = 0.0,
+        List<TwitchEmote>? Emotes = null,
+        bool FirstTime = false)
     {
-        public string Username { get; set; } = string.Empty;
-        public string Message { get; set; } = string.Empty;
-        public string ColorHex { get; set; }
-        public int Bits { get; set; }
-        public double BitsInDollars { get; set; }
-        public List<TwitchEmote> Emotes { get; set; } = [];
+        public List<TwitchEmote> Emotes { get; init; } = Emotes ?? [];
     }
 
-    public class TwitchEmote
+    public record TwitchEmote(
+        string Id,
+        string Name,
+        string ImageUrl,
+        int StartIndex,
+        int EndIndex)
     {
-        public TwitchEmote(string name, int startIndex, int endIndex)
-            : this(name, name, GenerateImageUrl(name), startIndex, endIndex)
-        {
-        }
-
         public TwitchEmote(string id, string name, int startIndex, int endIndex)
             : this(id, name, GenerateImageUrl(id), startIndex, endIndex)
         {
         }
 
-        private TwitchEmote(string id, string name, string imageUrl, int startIndex, int endIndex)
-        {
-            Id = id;
-            Name = name;
-            ImageUrl = imageUrl;
-            StartIndex = startIndex;
-            EndIndex = endIndex;
-        }
-
         public TwitchEmote(string id, string message)
+            : this(id, message, GenerateImageUrl(id), 0, 0)
         {
-            Id = id;
-            Name = message;
-            ImageUrl = GenerateImageUrl(id);
-            SetIndices(message);
+            var startIndex = message.IndexOf(Name, StringComparison.Ordinal);
+            if (startIndex != -1)
+            {
+                StartIndex = startIndex;
+                EndIndex = startIndex + Name.Length;
+            }
+            else
+            {
+                // Handle case when the name is not found in the message
+                StartIndex = EndIndex = -1; // You could throw an exception or handle it as needed
+            }
         }
 
         public TwitchEmote(string id, string name, string imageUrl, Match match)
+            : this(id, name, imageUrl, match.Index, match.Index + match.Length)
         {
-            Id = id;
-            Name = name;
-            ImageUrl = imageUrl;
-            SetIndicesFromMatch(match);
         }
 
-        public string Id { get; private set; }
-        public string Name { get; }
-        public string ImageUrl { get; private set; }
-        public int StartIndex { get; private set; }
-        public int EndIndex { get; private set; }
-
-        private void SetIndicesFromMatch(Match match)
-        {
-            StartIndex = match.Index;
-            EndIndex = StartIndex + match.Length;
-        }
+        private const string Prefix = "https://static-cdn.jtvnw.net/emoticons/v2/";
+        private const string Suffix = "/default/dark/1.0";
 
         private static string GenerateImageUrl(string id)
         {
-            return $"https://static-cdn.jtvnw.net/emoticons/v2/{id}/default/dark/1.0";
-        }
+            var url = string.Concat(Prefix, id, Suffix);
 
-        private void SetIndices(string message)
-        {
-            StartIndex = message.IndexOf(Name, StringComparison.Ordinal);
-            if (StartIndex != -1)
-                EndIndex = StartIndex + Name.Length;
-            else
-                // Handle case when the name is not found in the message
-                StartIndex = EndIndex = -1; // You could throw an exception or handle it as needed
+            // Check if already interned, if not then intern it
+            return string.IsInterned(url) ?? string.Intern(url);
         }
     }
 }

@@ -100,15 +100,19 @@ namespace TwitchScanAPI.Data.Statistics.Base
             var eventType = typeof(TEvent);
             if (!_eventHandlers.TryGetValue(eventType, out var handlers)) return;
 
-            // Invoke each statistic's 'Update' method, passing in the event data
+            // Collect tasks for parallel execution
+            var tasks = new List<Task>();
             foreach (var (statistic, method) in handlers)
             {
                 if (eventData == null) continue;
                 var result = method.Invoke(statistic, [eventData]);
 
                 // Check if the method returns a Task
-                if (result is Task task) await task; // Await if it's a Task
+                if (result is Task task) tasks.Add(task);
             }
+
+            // Await all tasks in parallel for improved performance
+            await Task.WhenAll(tasks);
         }
     }
 }

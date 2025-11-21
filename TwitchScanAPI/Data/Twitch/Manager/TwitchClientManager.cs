@@ -52,7 +52,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         private DateTime _lastFetchTime;
         public List<MergedEmote>? ExternalChannelEmotes;
-        private bool _useWebSocketData = true;
+        private bool _useWebSocketData;
 
         // Constructor
         private TwitchClientManager(string channelName, IConfiguration configuration, SharedTwitchClientManager sharedTwitchClientManager, StreamInfoBatchService streamInfoBatchService, TwitchHermesService hermesService)
@@ -125,7 +125,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 // Store delegate references so you can unsubscribe later
         private EventHandler<TwitchHermesService.ViewCountChangedEventArgs>? _onViewCountChangedHandler;
         private EventHandler<OnCommercialArgs>? _onCommercialStartedHandler;
-        private EventHandler<onSubscriptionActive>? _onSubscriptionStateChangedHandler;
+        private EventHandler<OnSubscriptionActive>? _onSubscriptionStateChangedHandler;
 
         private void SubscribeToHermesManagerEvents()
         {
@@ -147,6 +147,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             {
                 if (args.ChannelId != _cachedChannelInformation.Id) return;
                 _useWebSocketData = args.Active;
+                Console.WriteLine($"Subscription state changed for {_cachedChannelInformation.Id} we are now {args.Active}");
             };
 
             _hermesService.OnViewCountChanged += _onViewCountChangedHandler;
@@ -183,13 +184,12 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 OnUserTimedOutHandler,
                 OnChannelStateChangedHandler,
                 OnRaidNotificationHandler);
-            //TODO: for now only enable it for channels that got whitelisted
-            if (Variables.Hermesenabledchannels.Contains(_channelName))
-            {
+            // if (Variables.Hermesenabledchannels.Contains(_channelName))
+            // { //TODO: try run with all channels
                 _hermesService.SubscribeChannel(_channelId, _channelName);
                 // sub to video-playback-events from hermes
                 SubscribeToHermesManagerEvents();
-            }
+            // }
             //do this at last
             Task.Run(async () =>
             {
@@ -218,8 +218,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             OnDisconnected?.Invoke(this, EventArgs.Empty);
             OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
             _sharedTwitchClientManager.LeaveChannel(_channelName);
-            if (!Variables.Hermesenabledchannels.Contains(_channelName)) return;
-            //TODO: unsub from hermes client to free up space
+            //if (!Variables.Hermesenabledchannels.Contains(_channelName)) return; //TODO: try run with all channels
             _hermesService.UnsubscribeChannel(_channelId);
             UnSubscribeToHermesManagerEvents();
         }
@@ -253,6 +252,7 @@ namespace TwitchScanAPI.Data.Twitch.Manager
             }
             _fetchTimeoutTimer = null;
             _fetchCancellationTokenSource = null;
+            ViewerCount = 0;
         }
 
         // Events to expose

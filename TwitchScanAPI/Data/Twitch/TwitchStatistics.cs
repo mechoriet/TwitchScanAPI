@@ -36,13 +36,39 @@ namespace TwitchScanAPI.Data.Twitch
         private readonly UserManager _userManager;
         private bool _isProcessingOfflineStatus;
         private bool _disposed;
-        private readonly Lock _lockObject = new();
+        private readonly SemaphoreSlim _semaphore = new(1, 1);
         public bool IsOnline { get; private set; }
 
         // Prometheus metrics
         private static readonly Counter MessagesReceivedTotal = Metrics.CreateCounter("twitch_messages_received_total", "Total messages received", "channel");
         private static readonly Counter MessagesFilteredTotal = Metrics.CreateCounter("twitch_messages_filtered_total", "Total messages filtered", "channel", "reason");
-        private static readonly Histogram MessageProcessingDuration = Metrics.CreateHistogram("twitch_message_processing_duration_seconds", "Message processing duration", "channel");
+        private static readonly Histogram MessageProcessingDuration = Metrics
+            .CreateHistogram(
+                name: "twitch_message_processing_duration_seconds",
+                help: "Duration of Twitch message processing in seconds",
+                labelNames: ["channel"],
+                configuration: new HistogramConfiguration
+                {
+                    // Buckets in seconds, but designed to be read as milliseconds
+                    Buckets =
+                    [
+                        0.001,  // 1 ms
+                        0.002,  // 2 ms
+                        0.005,  // 5 ms
+                        0.010,  // 10 ms
+                        0.025,  // 25 ms
+                        0.050,  // 50 ms
+                        0.075,  // 75 ms
+                        0.100,  // 100 ms
+                        0.250,  // 250 ms
+                        0.500,  // 500 ms
+                        0.750,  // 750 ms
+                        1.0,    // 1 s
+                        2.5,    // 2.5 s
+                        5.0,    // 5 s
+                        10.0    // 10 s
+                    ]
+                });
 
         private static readonly Counter EventsProcessedTotal = Metrics.CreateCounter("twitch_events_processed_total", "Total events processed", "channel", "event_type");
 
@@ -74,14 +100,14 @@ namespace TwitchScanAPI.Data.Twitch
             _statisticsTimer.Elapsed += async (_, _) =>
             {
                 if (!_disposed)
-                    await SendStatisticsAsync();
+                    await SendStatisticsAsync().ConfigureAwait(false);
             };
             _statisticsTimer.Start();
         }
 
         public string ChannelName { get; }
         public int MessageCount { get; private set; }
-        public DateTime StartedAt { get; } = DateTime.UtcNow;
+        public DateTime StartedAt { get; set; } = DateTime.UtcNow;
 
         public void Dispose()
         {
@@ -99,7 +125,7 @@ namespace TwitchScanAPI.Data.Twitch
             NotificationService notificationService, MongoDbContext context)
         {
             var clientManager =
-                await clientManagerFactory.GetOrCreateClientManagerAsync(channelName);
+                await clientManagerFactory.GetOrCreateClientManagerAsync(channelName).ConfigureAwait(false);
 
             return clientManager == null
                 ? null
@@ -130,7 +156,7 @@ namespace TwitchScanAPI.Data.Twitch
                     Time = date ?? DateTime.UtcNow
                 };
 
-                await _context.StatisticHistory.InsertOneAsync(statisticHistory);
+                await _context.StatisticHistory.InsertOneAsync(statisticHistory).ConfigureAwait(false);
                 Console.WriteLine($"Saved snapshot for channel '{ChannelName}' with {MessageCount} messages");
 
                 // Update metrics
@@ -187,21 +213,19 @@ namespace TwitchScanAPI.Data.Twitch
 
         private async Task HandleChannelOfflineAsync()
         {
-            // Use a lock to prevent multiple simultaneous calls from processing offline status
-            lock (_lockObject)
+            // Use a semaphore to prevent multiple simultaneous calls from processing offline status
+            await _semaphore.WaitAsync();
+            try
             {
                 if (_isProcessingOfflineStatus) return;
                 _isProcessingOfflineStatus = true;
-            }
 
-            try
-            {
                 // Only save data if we were previously online
                 if (IsOnline)
                 {
                     IsOnline = false;
                     _statisticsManager.PropagateEvents = false;
-                    await SaveSnapshotAsync();
+                    await SaveSnapshotAsync(date: StartedAt).ConfigureAwait(false);
                     Console.WriteLine($"Channel '{ChannelName}' went offline. Snapshot saved.");
                 }
             }
@@ -211,10 +235,8 @@ namespace TwitchScanAPI.Data.Twitch
             }
             finally
             {
-                lock (_lockObject)
-                {
-                    _isProcessingOfflineStatus = false;
-                }
+                _isProcessingOfflineStatus = false;
+                _semaphore.Release();
             }
         }
 
@@ -244,12 +266,13 @@ namespace TwitchScanAPI.Data.Twitch
                             Console.WriteLine($"Channel '{ChannelName}' is now online.");
                             // Clean any data from statistics manager that might still be in memory
                             _statisticsManager.Reset();
+                            StartedAt = channelInformation.Uptime;
                             break;
                     }
                 }
 
                 await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName,
-                    channelInformation.IsOnline, MessageCount, channelInformation.Viewers, channelInformation.Uptime));
+                    channelInformation.IsOnline, MessageCount, channelInformation.Viewers, channelInformation.Uptime)).ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -273,16 +296,16 @@ namespace TwitchScanAPI.Data.Twitch
 
             try
             {
-                var channelInfo = await _clientManager.GetChannelInfoAsync();
+                var channelInfo = await _clientManager.GetChannelInfoAsync().ConfigureAwait(false);
 
                 // If the channel is offline according to the channel info, but we think it's online,
                 // update our status
                 if (!channelInfo.IsOnline && IsOnline)
                 {
-                    await HandleChannelOfflineAsync();
+                    await HandleChannelOfflineAsync().ConfigureAwait(false);
                 }
 
-                await _statisticsManager.Update(channelInfo);
+                await _statisticsManager.Update(channelInfo).ConfigureAwait(false);
 
                 return _statisticsManager.GetAllStatistics();
             }
@@ -304,13 +327,13 @@ namespace TwitchScanAPI.Data.Twitch
             return _statisticsManager.GetChatHistory(username);
         }
 
-        private async Task SendStatisticsAsync()
+        private async ValueTask SendStatisticsAsync()
         {
             if (_disposed) return;
 
             try
             {
-                var channelInformation = await _clientManager.GetChannelInfoAsync();
+                var channelInformation = await _clientManager.GetChannelInfoAsync().ConfigureAwait(false);
 
                 // Double-check if the channel status changed
                 if (IsOnline != channelInformation.IsOnline)
@@ -318,7 +341,7 @@ namespace TwitchScanAPI.Data.Twitch
                     switch (IsOnline)
                     {
                         case true when !channelInformation.IsOnline:
-                            await HandleChannelOfflineAsync();
+                            await HandleChannelOfflineAsync().ConfigureAwait(false);
                             break;
                         case false when channelInformation.IsOnline:
                             IsOnline = true;
@@ -329,13 +352,13 @@ namespace TwitchScanAPI.Data.Twitch
                 }
 
                 await _notificationService.ReceiveOnlineStatusAsync(new ChannelStatus(ChannelName,
-                    channelInformation.IsOnline, MessageCount, channelInformation.Viewers, channelInformation.Uptime));
+                    channelInformation.IsOnline, MessageCount, channelInformation.Viewers, channelInformation.Uptime)).ConfigureAwait(false);
 
                 if (!channelInformation.IsOnline)
                     return;
 
-                var statistics = await GetStatisticsAsync();
-                await _notificationService.ReceiveStatisticsAsync(ChannelName, statistics);
+                var statistics = await GetStatisticsAsync().ConfigureAwait(false);
+                await _notificationService.ReceiveStatisticsAsync(ChannelName, statistics).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -368,15 +391,15 @@ namespace TwitchScanAPI.Data.Twitch
 
                 // Add BTTV and 7TV emotes to the message
                 StaticTwitchHelper.AddEmotesToMessage(channelMessage, _clientManager.ExternalChannelEmotes);
-                await _notificationService.ReceiveChannelMessageAsync(ChannelName, channelMessage);
-                await _notificationService.ReceiveMessageCountAsync(ChannelName, MessageCount);
+                await _notificationService.ReceiveChannelMessageAsync(ChannelName, channelMessage).ConfigureAwait(false);
+                await _notificationService.ReceiveMessageCountAsync(ChannelName, MessageCount).ConfigureAwait(false);
 
                 // Update message count and statistics if not a bot
                 if (!Variables.BotNames.Contains(channelMessage.ChatMessage.Username, StringComparer.OrdinalIgnoreCase))
                 {
                     MessageCount++;
                     MessagesReceivedTotal.WithLabels(ChannelName).Inc();
-                    await _statisticsManager.Update(channelMessage);
+                    await _statisticsManager.Update(channelMessage).ConfigureAwait(false);
                 }
                 else
                 {
@@ -385,11 +408,11 @@ namespace TwitchScanAPI.Data.Twitch
 
                 // Check for observed words
                 if (_observedWordsManager.IsMatch(channelMessage.ChatMessage.Message))
-                    await _notificationService.ReceiveObservedMessageAsync(ChannelName, channelMessage);
+                    await _notificationService.ReceiveObservedMessageAsync(ChannelName, channelMessage).ConfigureAwait(false);
 
                 // Check for elevated users
                 if (IsElevatedUser(chatMessage))
-                    await _notificationService.ReceiveElevatedMessageAsync(ChannelName, channelMessage);
+                    await _notificationService.ReceiveElevatedMessageAsync(ChannelName, channelMessage).ConfigureAwait(false);
 
                 MessageProcessingDuration.WithLabels(ChannelName).Observe(stopwatch.Elapsed.TotalSeconds);
             }
@@ -411,8 +434,8 @@ namespace TwitchScanAPI.Data.Twitch
                 if (_disposed) return;
 
                 if (!_userManager.AddUser(e.Username)) return;
-                await _statisticsManager.Update(new UserJoined(e.Username));
-                await _notificationService.ReceiveUserJoinedAsync(ChannelName, e.Username, e.Channel);
+                await _statisticsManager.Update(new UserJoined(e.Username)).ConfigureAwait(false);
+                await _notificationService.ReceiveUserJoinedAsync(ChannelName, e.Username, e.Channel).ConfigureAwait(false);
                 EventsProcessedTotal.WithLabels(ChannelName, "user_joined").Inc();
             }
             catch (Exception err)
@@ -429,8 +452,8 @@ namespace TwitchScanAPI.Data.Twitch
                 if (_disposed) return;
 
                 if (!_userManager.RemoveUser(e.Username)) return;
-                await _statisticsManager.Update(new UserLeft(e.Username));
-                await _notificationService.ReceiveUserLeftAsync(ChannelName, e.Username);
+                await _statisticsManager.Update(new UserLeft(e.Username)).ConfigureAwait(false);
+                await _notificationService.ReceiveUserLeftAsync(ChannelName, e.Username).ConfigureAwait(false);
                 EventsProcessedTotal.WithLabels(ChannelName, "user_left").Inc();
             }
             catch (Exception err)
@@ -458,8 +481,8 @@ namespace TwitchScanAPI.Data.Twitch
                     MultiMonth = ParseInt(e.Subscriber.MsgParamCumulativeMonths, 1)
                 };
 
-                await _statisticsManager.Update(subscription);
-                await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
+                await _statisticsManager.Update(subscription).ConfigureAwait(false);
+                await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription).ConfigureAwait(false);
                 EventsProcessedTotal.WithLabels(ChannelName, "new_subscriber").Inc();
             }
             catch (Exception err)
@@ -487,8 +510,8 @@ namespace TwitchScanAPI.Data.Twitch
                     MultiMonth = ParseInt(e.ReSubscriber.MsgParamCumulativeMonths, 1)
                 };
 
-                await _statisticsManager.Update(subscription);
-                await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
+                await _statisticsManager.Update(subscription).ConfigureAwait(false);
+                await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription).ConfigureAwait(false);
                 EventsProcessedTotal.WithLabels(ChannelName, "re_subscriber").Inc();
             }
             catch (Exception err)
@@ -519,8 +542,8 @@ namespace TwitchScanAPI.Data.Twitch
                     GiftedSubscriptionPlan = e.GiftedSubscription.MsgParamSubPlanName
                 };
 
-                await _statisticsManager.Update(subscription);
-                await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
+                await _statisticsManager.Update(subscription).ConfigureAwait(false);
+                await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription).ConfigureAwait(false);
                 EventsProcessedTotal.WithLabels(ChannelName, "gifted_subscription").Inc();
             }
             catch (Exception err)
@@ -535,7 +558,7 @@ namespace TwitchScanAPI.Data.Twitch
             try
             {
                 if (_disposed) return;
-                await _statisticsManager.Update(new ChannelCommercial(ChannelName, e.Length));
+                await _statisticsManager.Update(new ChannelCommercial(ChannelName, e.Length)).ConfigureAwait(false);
                 EventsProcessedTotal.WithLabels(ChannelName, "commercial").Inc();
             }
             catch (Exception err)
@@ -560,8 +583,8 @@ namespace TwitchScanAPI.Data.Twitch
                     MultiMonth = ParseInt(e.GiftedSubscription.MsgParamMultiMonthGiftDuration, 1)
                 };
 
-                await _statisticsManager.Update(subscription);
-                await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription);
+                await _statisticsManager.Update(subscription).ConfigureAwait(false);
+                await _notificationService.ReceiveSubscriptionAsync(ChannelName, subscription).ConfigureAwait(false);
                 EventsProcessedTotal.WithLabels(ChannelName, "community_subscription").Inc();
             }
             catch (Exception err)
@@ -579,8 +602,8 @@ namespace TwitchScanAPI.Data.Twitch
 
                 var bannedUser = new UserBanned(e.UserBan.Username, e.UserBan.BanReason);
 
-                await _statisticsManager.Update(bannedUser);
-                await _notificationService.ReceiveBannedUserAsync(ChannelName, bannedUser);
+                await _statisticsManager.Update(bannedUser).ConfigureAwait(false);
+                await _notificationService.ReceiveBannedUserAsync(ChannelName, bannedUser).ConfigureAwait(false);
                 EventsProcessedTotal.WithLabels(ChannelName, "user_banned").Inc();
             }
             catch (Exception err)
@@ -603,8 +626,8 @@ namespace TwitchScanAPI.Data.Twitch
                     TmiSentTs = e.TmiSentTs
                 };
 
-                await _statisticsManager.Update(clearedMessage);
-                await _notificationService.ReceiveClearedMessageAsync(ChannelName, clearedMessage);
+                await _statisticsManager.Update(clearedMessage).ConfigureAwait(false);
+                await _notificationService.ReceiveClearedMessageAsync(ChannelName, clearedMessage).ConfigureAwait(false);
                 EventsProcessedTotal.WithLabels(ChannelName, "message_cleared").Inc();
             }
             catch (Exception err)
@@ -627,8 +650,8 @@ namespace TwitchScanAPI.Data.Twitch
                     TimeoutDuration = e.UserTimeout.TimeoutDuration
                 };
 
-                await _statisticsManager.Update(timedOutUser);
-                await _notificationService.ReceiveTimedOutUserAsync(ChannelName, timedOutUser);
+                await _statisticsManager.Update(timedOutUser).ConfigureAwait(false);
+                await _notificationService.ReceiveTimedOutUserAsync(ChannelName, timedOutUser).ConfigureAwait(false);
                 EventsProcessedTotal.WithLabels(ChannelName, "user_timed_out").Inc();
             }
             catch (Exception err)
@@ -644,7 +667,7 @@ namespace TwitchScanAPI.Data.Twitch
             {
                 if (_disposed) return;
 
-                await _statisticsManager.Update(e.ChannelState);
+                await _statisticsManager.Update(e.ChannelState).ConfigureAwait(false);
                 EventsProcessedTotal.WithLabels(ChannelName, "channel_state_changed").Inc();
             }
             catch (Exception err)
@@ -660,7 +683,7 @@ namespace TwitchScanAPI.Data.Twitch
             {
                 if (_disposed) return;
 
-                await _statisticsManager.Update(e.RaidNotification);
+                await _statisticsManager.Update(e.RaidNotification).ConfigureAwait(false);
                 EventsProcessedTotal.WithLabels(ChannelName, "raid_notification").Inc();
             }
             catch (Exception err)
@@ -675,7 +698,7 @@ namespace TwitchScanAPI.Data.Twitch
             try
             {
                 if (_disposed) return;
-                await _statisticsManager.Update(e);
+                await _statisticsManager.Update(e).ConfigureAwait(false);
                 EventsProcessedTotal.WithLabels(ChannelName, "follower_count_update").Inc();
             }
             catch (Exception err)

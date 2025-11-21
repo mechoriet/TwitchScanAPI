@@ -1,3 +1,5 @@
+using TwitchLib.Client.Enums;
+
 namespace TwitchScanAPI.Data.Twitch.Manager;
 
 using System;
@@ -44,7 +46,7 @@ public class SharedTwitchClientManager : IDisposable
         public TwitchClient Client { get; } = client;
         public DateTime ConnectionTime { get; } = DateTime.UtcNow;
         public DateTime LastActivityTime { get; set; } = DateTime.UtcNow;
-        public long MessageCount { get; set; } = 0;
+        public long MessageCount { get; set; }
         public DateTime LastMessageTime { get; set; } = DateTime.UtcNow;
     }
 
@@ -127,9 +129,17 @@ public class SharedTwitchClientManager : IDisposable
             ThrottlingPeriod = TimeSpan.FromSeconds(30)
         };
 
-        var customClient = new WebSocketClient(clientOptions);
+        var customClient = new TcpClient(clientOptions);
         var client = new TwitchClient(customClient);
         client.Initialize(credentials, "twitchscanapi");
+        client.SendRaw("CAP REQ :twitch.tv/membership");
+        client.OnSendReceiveData += (sender, args) =>
+        {
+            if (args.Direction != SendReceiveDirection.Received) return;
+            var clientData = _sharedTwitchClients.FirstOrDefault(c => c.Client == client);
+            if (clientData == null) return;
+            IrcMessagesTotal.WithLabels(clientData.ClientId).Inc();
+        };
         client.OnMessageReceived += (sender, args) =>
         {
             // Update last activity time for the client
@@ -139,7 +149,6 @@ public class SharedTwitchClientManager : IDisposable
                 clientData.LastActivityTime = DateTime.UtcNow;
                 clientData.MessageCount++;
                 clientData.LastMessageTime = DateTime.UtcNow;
-                IrcMessagesTotal.WithLabels(clientData.ClientId).Inc();
             }
 
             if (_messageHandlers.TryGetValue(args.ChatMessage.Channel, out var handler))
@@ -162,6 +171,7 @@ public class SharedTwitchClientManager : IDisposable
             {
                 handler.Invoke(sender, args);
             }
+            Console.WriteLine($"onjoin test {args.Channel}, {args.Username}");
         };
 
         client.OnUserLeft += (sender, args) =>
@@ -170,6 +180,7 @@ public class SharedTwitchClientManager : IDisposable
             {
                 handler.Invoke(sender, args);
             }
+            Console.WriteLine($"onleave test {args.Channel}, {args.Username}");
         };
         client.OnNewSubscriber += (sender, args) =>
         {
@@ -273,7 +284,7 @@ public class SharedTwitchClientManager : IDisposable
             foreach (var clientData in _sharedTwitchClients.ToList())
             {
                 // Check if client has been inactive for more than 20 seconds
-                if ((now - clientData.LastActivityTime).TotalSeconds >= 20 && clientData.Client.JoinedChannels.Count > 0)
+                if ((now - clientData.LastActivityTime).TotalSeconds >= 60 && clientData.Client.JoinedChannels.Count > 0)
                 {
                     RestartInactiveClient(clientData);
                 }
@@ -291,6 +302,11 @@ public class SharedTwitchClientManager : IDisposable
 
         // Disconnect old client
         clientData.Client.Disconnect();
+        ClientActivityStatus.RemoveLabelled(clientData.ClientId);
+        ChannelsPerClient.RemoveLabelled(clientData.ClientId);
+        ClientUptimeSeconds.RemoveLabelled(clientData.ClientId);
+        ClientMessageRatePerSecond.RemoveLabelled(clientData.ClientId);
+        
         _sharedTwitchClients.Remove(clientData);
 
         // Create new client
@@ -323,13 +339,9 @@ public class SharedTwitchClientManager : IDisposable
         lock (_lock)
         {
             var now = DateTime.UtcNow;
-            foreach (var clientData in _sharedTwitchClients.ToList())
+            foreach (var clientData in _sharedTwitchClients.ToList().Where(clientData => (now - clientData.ConnectionTime).TotalHours >= RestartIntervalHours))
             {
-                // Check if client has been connected for more than 12 hours
-                if ((now - clientData.ConnectionTime).TotalHours >= RestartIntervalHours)
-                {
-                    RestartInactiveClient(clientData);
-                }
+                RestartInactiveClient(clientData);
             }
         }
     }
@@ -341,6 +353,14 @@ public class SharedTwitchClientManager : IDisposable
         {
             var channelCount = GetTwitchChatChannelCount(clientData.Client);
             ChannelsPerClient.WithLabels(clientData.ClientId).Set(channelCount);
+            
+            //Debug behavior what channels are connected or now
+            Console.WriteLine($"Debug for client {clientData.ClientId}: {channelCount} channels");
+            foreach (var keyValuePair in _clientassignments.Where(kvp => kvp.Value.AssignedClient == clientData.Client))
+            {
+                Console.WriteLine($"Channel:{keyValuePair.Value.ChannelName}");
+            }
+            Console.WriteLine("----------");
         }
     }
 
@@ -429,11 +449,12 @@ public class SharedTwitchClientManager : IDisposable
 
             if (client == null) return;
             client.LeaveChannel(channelName);
-            if (GetTwitchChatChannelCount(client) != 0 || _sharedTwitchClients.Count <= 1) return;
-
-            client.Disconnect();
-            _sharedTwitchClients.RemoveAll(c => c.Client == client);
-            Console.WriteLine("Removed unused Twitch Chat Client");
+            if (GetTwitchChatChannelCount(client) == 0 && _sharedTwitchClients.Count > 1)
+            {
+                client.Disconnect();
+                _sharedTwitchClients.RemoveAll(c => c.Client == client);
+                Console.WriteLine("Removed unused Twitch Chat Client");
+            }
 
             // Update metrics after leaving channel
             UpdateMetrics();
