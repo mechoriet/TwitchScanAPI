@@ -266,7 +266,7 @@ namespace TwitchScanAPI.Data.Twitch
                             Console.WriteLine($"Channel '{ChannelName}' is now online.");
                             // Clean any data from statistics manager that might still be in memory
                             _statisticsManager.Reset();
-                            StartedAt = channelInformation.Uptime;
+                            StartedAt = DateTime.Now;
                             break;
                     }
                 }

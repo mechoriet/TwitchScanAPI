@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using TwitchLib.Client.Enums;
 
 namespace TwitchScanAPI.Data.Twitch.Manager;
@@ -255,7 +256,7 @@ public class SharedTwitchClientManager : IDisposable
         client.Connect();
         return client;
     }
-    
+
     public static string GenerateJustinFanUsername()
     {
         var random = new Random();
@@ -306,6 +307,7 @@ public class SharedTwitchClientManager : IDisposable
         ChannelsPerClient.RemoveLabelled(clientData.ClientId);
         ClientUptimeSeconds.RemoveLabelled(clientData.ClientId);
         ClientMessageRatePerSecond.RemoveLabelled(clientData.ClientId);
+        IrcMessagesTotal.RemoveLabelled(clientData.ClientId);
         
         _sharedTwitchClients.Remove(clientData);
 
