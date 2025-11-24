@@ -18,7 +18,14 @@ public class StreamInfoBatchService
     private static readonly Counter StreamInfoBatchesProcessedTotal = Metrics.CreateCounter("stream_twitchapi_batch_batches_processed_total", "Total batches processed", "status");
     private static readonly Histogram StreamInfoBatchProcessingDuration = Metrics.CreateHistogram("stream_twitchapi_batch_processing_duration_seconds", "Time taken to process a batch");
     private static readonly Gauge StreamInfoPendingChannels = Metrics.CreateGauge("stream_twitchapi_batch_pending_channels", "Number of pending channels");
-    private static readonly Histogram StreamTwitchApiBatchSize = Metrics.CreateHistogram("stream_twitchapi_batch_size", "Size of batch sent to Twitch API");
+    private static readonly Histogram StreamTwitchApiBatchSize = Metrics.CreateHistogram(
+        name: "stream_twitchapi_batch_size",
+        help: "Size of batch sent to Twitch API",
+        new HistogramConfiguration()
+        {
+            Buckets = Histogram.LinearBuckets(start: 0, width: 5, count: 21) // 0–100 in steps of 5
+        }
+    );
 
     private readonly Lock _lock = new();
     private static readonly HashSet<string> PendingChannels = [];
