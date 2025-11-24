@@ -22,7 +22,7 @@ public class SharedTwitchClientManager : IDisposable
     private readonly Dictionary<string, ChannelTClientData> _clientassignments = new(StringComparer.OrdinalIgnoreCase);
     
     private const int MaxClients = 5;
-    private const int SoftChannelLimit = 15;
+    private const int SoftChannelLimit = 30;
     private const int HardChannelLimit = 70;
     private const double RestartIntervalHours = 12.0; // 12 hour restart interval
 
@@ -133,7 +133,6 @@ public class SharedTwitchClientManager : IDisposable
         var customClient = new TcpClient(clientOptions);
         var client = new TwitchClient(customClient);
         client.Initialize(credentials, "twitchscanapi");
-        client.SendRaw("CAP REQ :twitch.tv/membership");
         client.OnSendReceiveData += (sender, args) =>
         {
             if (args.Direction != SendReceiveDirection.Received) return;
@@ -172,7 +171,6 @@ public class SharedTwitchClientManager : IDisposable
             {
                 handler.Invoke(sender, args);
             }
-            Console.WriteLine($"onjoin test {args.Channel}, {args.Username}");
         };
 
         client.OnUserLeft += (sender, args) =>
@@ -181,7 +179,6 @@ public class SharedTwitchClientManager : IDisposable
             {
                 handler.Invoke(sender, args);
             }
-            Console.WriteLine($"onleave test {args.Channel}, {args.Username}");
         };
         client.OnNewSubscriber += (sender, args) =>
         {
