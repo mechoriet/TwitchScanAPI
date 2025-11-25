@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Prometheus;
 using TwitchLib.PubSub.Events;
-using TwitchScanAPI.Utilities;
+using TwitchScanAPI.Utilities.Hermes;
 
 namespace TwitchScanAPI.Data.Twitch.Manager;
 

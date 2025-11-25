@@ -12,7 +12,7 @@ using TwitchScanAPI.Global;
 using TwitchScanAPI.Models.Twitch.Channel;
 using TwitchScanAPI.Models.Twitch.Emotes;
 using TwitchScanAPI.Services;
-using TwitchScanAPI.Utilities;
+using TwitchScanAPI.Utilities.Hermes;
 using Timer = System.Timers.Timer;
 
 namespace TwitchScanAPI.Data.Twitch.Manager
@@ -27,16 +27,13 @@ namespace TwitchScanAPI.Data.Twitch.Manager
         private readonly StreamInfoBatchService _streamInfoBatchService;
         private readonly TwitchHermesService _hermesService;
         private long? ViewerCount { get; set; }
-        private bool _isOnline;
-        
-        // Thread-safe property access for IsOnline
         private bool IsOnline
         {
-            get => _isOnline;
+            get;
             set
             {
-                if (_isOnline == value) return;
-                _isOnline = value;
+                if (field == value) return;
+                field = value;
                 _cachedChannelInformation.IsOnline = value;
             }
         }

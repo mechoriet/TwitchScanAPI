@@ -10,7 +10,7 @@ using TwitchLib.PubSub.Events;
 using TwitchScanAPI.Data.Twitch.Manager;
 using TwitchScanAPI.Utilities.Hermes;
 
-namespace TwitchScanAPI.Utilities;
+namespace TwitchScanAPI.Utilities.Hermes;
 
 public class TwitchHermesClient : IDisposable
 {
@@ -137,7 +137,7 @@ public class TwitchHermesClient : IDisposable
                 if (result.MessageType != WebSocketMessageType.Text)
                     continue;
 
-                string message = Encoding.UTF8.GetString(_buffer, 0, result.Count);
+                var message = Encoding.UTF8.GetString(_buffer, 0, result.Count);
                 await HandleTextMessageAsync(message);
             }
         }
