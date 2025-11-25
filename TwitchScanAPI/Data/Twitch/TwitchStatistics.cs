@@ -147,7 +147,9 @@ namespace TwitchScanAPI.Data.Twitch
         {
             try
             {
-                await HandleChannelOfflineAsync();
+                // Only handle offline status if we were actually online and this is a true disconnection
+                // Don't save snapshots just because IRC disconnected - wait for API confirmation
+                Console.WriteLine($"IRC client disconnected for '{ChannelName}'. Waiting for reconnection or API confirmation.");
             }
             catch (Exception err)
             {

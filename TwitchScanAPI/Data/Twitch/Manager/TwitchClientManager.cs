@@ -143,7 +143,10 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
             if (!wasOnline) return;
             Console.WriteLine($"{_channelName} is now offline.");
-            Dispose();
+            
+            // Don't dispose the client immediately - just mark as offline
+            // The IRC connection should stay alive for potential reconnection
+            // Only dispose if the client manager itself is being shut down
             OnDisconnected?.Invoke(this, EventArgs.Empty);
             OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
         }
@@ -216,15 +219,16 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         private async Task AttemptConnectionAsync()
         {
-            switch (IsOnline)
+            // Always try to reconnect if the IRC client is not connected,
+            // regardless of what the API says about stream status
+            if (_client is not { IsConnected: true })
             {
-                // If the channel is online, but we're not connected, start the client
-                case true when _client is not { IsConnected: true }:
-                    await StartClientAsync();
-                    break;
-                case false when _client?.IsConnected != true:
-                    ScheduleReconnect();
-                    break;
+                await StartClientAsync();
+            }
+            else if (!IsOnline && _client?.IsConnected != true)
+            {
+                // If we're offline and not connected, schedule a retry
+                ScheduleReconnect();
             }
         }
 
@@ -285,14 +289,13 @@ namespace TwitchScanAPI.Data.Twitch.Manager
                 _client.Connect();
                 Console.WriteLine($"Twitch client connected successfully to {_channelName}");
 
-                // If we successfully connected, update online status
-                IsOnline = true;
-                OnConnectionChanged?.Invoke(this, _cachedChannelInformation);
+                // Don't set online status here - let the connection events handle it
+                // IsOnline should be managed by API status, not IRC connection status
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error starting Twitch client for {_channelName}: {ex.Message}");
-                Dispose();
+                // Don't dispose everything - just schedule a reconnect attempt
                 ScheduleReconnect();
             }
 
@@ -402,10 +405,14 @@ namespace TwitchScanAPI.Data.Twitch.Manager
 
         private void OnTwitchDisconnectedHandler(object? sender, EventArgs e)
         {
-            if (IsOnline)
+            Console.WriteLine($"Twitch client disconnected for {_channelName}.");
+            
+            // Always attempt to reconnect when IRC connection is lost
+            // regardless of what the API says about stream status
+            if (_client != null && !_client.IsConnected)
             {
-                // Channel disconnected unexpectedly
-                Console.WriteLine($"Twitch client disconnected for {_channelName}. Attempting to reconnect...");
+                Console.WriteLine($"Scheduling reconnection attempt for {_channelName}...");
+                ScheduleReconnect();
             }
         }
 
